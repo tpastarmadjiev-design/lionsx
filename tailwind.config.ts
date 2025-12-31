@@ -61,15 +61,17 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Rank colors
+        // Rank colors - Lion System
         rank: {
-          bronze: "hsl(var(--rank-bronze))",
-          silver: "hsl(var(--rank-silver))",
-          gold: "hsl(var(--rank-gold))",
-          platinum: "hsl(var(--rank-platinum))",
-          diamond: "hsl(var(--rank-diamond))",
-          master: "hsl(var(--rank-master))",
-          lion: "hsl(var(--rank-lion))",
+          cub: "hsl(var(--rank-cub))",
+          scout: "hsl(var(--rank-scout))",
+          hunter: "hsl(var(--rank-hunter))",
+          warrior: "hsl(var(--rank-warrior))",
+          guardian: "hsl(var(--rank-guardian))",
+          champion: "hsl(var(--rank-champion))",
+          elite: "hsl(var(--rank-elite))",
+          alpha: "hsl(var(--rank-alpha))",
+          legendary: "hsl(var(--rank-legendary))",
         },
         // Skill colors
         strength: "hsl(var(--strength))",

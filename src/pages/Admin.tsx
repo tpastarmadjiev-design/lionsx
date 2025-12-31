@@ -1,3 +1,5 @@
+import { getRank } from '@/lib/ranks';
+import { Crown, Edit2, Users, TrendingUp, Dumbbell, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,8 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, TrendingUp, Dumbbell, Search, Crown, Edit2 } from 'lucide-react';
-import { getRank } from '@/lib/ranks';
 import { toast } from 'sonner';
 
 interface UserProfile {
@@ -154,7 +154,7 @@ export default function Admin() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg ${rank.bgClass} flex items-center justify-center`}>
-                    <Crown className="w-5 h-5 text-primary-foreground" />
+                    <span className="text-lg">{rank.icon}</span>
                   </div>
                   <div>
                     <p className="font-medium text-foreground">{userProfile.nickname}</p>

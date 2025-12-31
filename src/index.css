@@ -38,14 +38,16 @@
 
     --radius: 0.75rem;
 
-    /* Rank Colors */
-    --rank-bronze: 30 50% 45%;
-    --rank-silver: 220 10% 65%;
-    --rank-gold: 45 100% 50%;
-    --rank-platinum: 200 30% 70%;
-    --rank-diamond: 200 100% 70%;
-    --rank-master: 280 80% 60%;
-    --rank-lion: 42 100% 55%;
+    /* Rank Colors - Lion System */
+    --rank-cub: 35 60% 50%;
+    --rank-scout: 140 50% 45%;
+    --rank-hunter: 25 80% 50%;
+    --rank-warrior: 0 70% 50%;
+    --rank-guardian: 210 70% 55%;
+    --rank-champion: 45 100% 50%;
+    --rank-elite: 280 70% 60%;
+    --rank-alpha: 320 80% 55%;
+    --rank-legendary: 42 100% 55%;
 
     /* Skill Colors */
     --strength: 0 75% 55%;
