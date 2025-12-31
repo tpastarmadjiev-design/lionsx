@@ -5,16 +5,19 @@ export interface Rank {
   color: string;
   bgClass: string;
   textClass: string;
+  icon: string;
 }
 
 export const RANKS: Rank[] = [
-  { name: 'Bronze', minLP: 0, maxLP: 999, color: 'rank-bronze', bgClass: 'bg-rank-bronze', textClass: 'text-rank-bronze' },
-  { name: 'Silver', minLP: 1000, maxLP: 2999, color: 'rank-silver', bgClass: 'bg-rank-silver', textClass: 'text-rank-silver' },
-  { name: 'Gold', minLP: 3000, maxLP: 5999, color: 'rank-gold', bgClass: 'bg-rank-gold', textClass: 'text-rank-gold' },
-  { name: 'Platinum', minLP: 6000, maxLP: 9999, color: 'rank-platinum', bgClass: 'bg-rank-platinum', textClass: 'text-rank-platinum' },
-  { name: 'Diamond', minLP: 10000, maxLP: 14999, color: 'rank-diamond', bgClass: 'bg-rank-diamond', textClass: 'text-rank-diamond' },
-  { name: 'Master', minLP: 15000, maxLP: 24999, color: 'rank-master', bgClass: 'bg-rank-master', textClass: 'text-rank-master' },
-  { name: 'Lion', minLP: 25000, maxLP: Infinity, color: 'rank-lion', bgClass: 'bg-rank-lion', textClass: 'text-rank-lion' },
+  { name: 'Cub', minLP: 0, maxLP: 999, color: 'rank-cub', bgClass: 'bg-rank-cub', textClass: 'text-rank-cub', icon: '🐱' },
+  { name: 'Scout', minLP: 1000, maxLP: 2999, color: 'rank-scout', bgClass: 'bg-rank-scout', textClass: 'text-rank-scout', icon: '🔍' },
+  { name: 'Hunter', minLP: 3000, maxLP: 6999, color: 'rank-hunter', bgClass: 'bg-rank-hunter', textClass: 'text-rank-hunter', icon: '🏹' },
+  { name: 'Warrior', minLP: 7000, maxLP: 14999, color: 'rank-warrior', bgClass: 'bg-rank-warrior', textClass: 'text-rank-warrior', icon: '⚔️' },
+  { name: 'Guardian', minLP: 15000, maxLP: 29999, color: 'rank-guardian', bgClass: 'bg-rank-guardian', textClass: 'text-rank-guardian', icon: '🛡️' },
+  { name: 'Champion', minLP: 30000, maxLP: 45999, color: 'rank-champion', bgClass: 'bg-rank-champion', textClass: 'text-rank-champion', icon: '🏆' },
+  { name: 'Elite', minLP: 46000, maxLP: 64999, color: 'rank-elite', bgClass: 'bg-rank-elite', textClass: 'text-rank-elite', icon: '💎' },
+  { name: 'Alpha', minLP: 65000, maxLP: 84999, color: 'rank-alpha', bgClass: 'bg-rank-alpha', textClass: 'text-rank-alpha', icon: '👑' },
+  { name: 'Legendary', minLP: 85000, maxLP: Infinity, color: 'rank-legendary', bgClass: 'bg-rank-legendary', textClass: 'text-rank-legendary', icon: '🦁' },
 ];
 
 export const DAILY_LP_CAP = 500;
@@ -54,4 +57,9 @@ export function formatLP(lp: number): string {
     return `${(lp / 1000).toFixed(1)}K`;
   }
   return lp.toString();
+}
+
+export function getRankIndex(lp: number): number {
+  const rank = getRank(lp);
+  return RANKS.findIndex(r => r.name === rank.name);
 }

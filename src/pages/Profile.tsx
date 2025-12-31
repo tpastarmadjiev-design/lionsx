@@ -1,3 +1,5 @@
+import { getRank } from '@/lib/ranks';
+import { User, Globe, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,8 +8,6 @@ import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getRank } from '@/lib/ranks';
-import { User, Globe, Save, Crown } from 'lucide-react';
 
 export default function Profile() {
   const { user, loading: authLoading } = useAuth();
@@ -65,8 +65,8 @@ export default function Profile() {
               {profile.nickname.charAt(0).toUpperCase()}
             </span>
           </div>
-          <div className={`absolute -bottom-2 -right-2 w-10 h-10 rounded-xl ${rank.bgClass} flex items-center justify-center`}>
-            <Crown className="w-5 h-5 text-primary-foreground" />
+          <div className={`absolute -bottom-2 -right-2 w-12 h-12 rounded-xl ${rank.bgClass} flex items-center justify-center shadow-lg`}>
+            <span className="text-xl">{rank.icon}</span>
           </div>
         </div>
         <h2 className="text-2xl font-display font-bold text-foreground">{profile.nickname}</h2>
@@ -126,18 +126,21 @@ export default function Profile() {
           </div>
           <div className="p-3 rounded-lg bg-secondary/50">
             <p className="text-xs text-muted-foreground">Current Rank</p>
-            <p className={`text-xl font-display font-bold ${rank.textClass}`}>{rank.name}</p>
+            <div className="flex items-center gap-2">
+              <span>{rank.icon}</span>
+              <p className={`text-xl font-display font-bold ${rank.textClass}`}>{rank.name}</p>
+            </div>
           </div>
           <div className="p-3 rounded-lg bg-strength/10">
-            <p className="text-xs text-muted-foreground">Strength</p>
+            <p className="text-xs text-muted-foreground">Strength XP</p>
             <p className="text-xl font-display font-bold text-strength">{profile.strength.toLocaleString()}</p>
           </div>
           <div className="p-3 rounded-lg bg-endurance/10">
-            <p className="text-xs text-muted-foreground">Endurance</p>
+            <p className="text-xs text-muted-foreground">Endurance XP</p>
             <p className="text-xl font-display font-bold text-endurance">{profile.endurance.toLocaleString()}</p>
           </div>
           <div className="p-3 rounded-lg bg-mobility/10 col-span-2">
-            <p className="text-xs text-muted-foreground">Mobility</p>
+            <p className="text-xs text-muted-foreground">Mobility XP</p>
             <p className="text-xl font-display font-bold text-mobility">{profile.mobility.toLocaleString()}</p>
           </div>
         </div>

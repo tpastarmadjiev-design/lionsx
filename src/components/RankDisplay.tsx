@@ -1,5 +1,5 @@
 import { getRank, getRankProgress, formatLP, getNextRank, DAILY_LP_CAP } from '@/lib/ranks';
-import { Crown, Flame, TrendingUp } from 'lucide-react';
+import { Flame, TrendingUp } from 'lucide-react';
 
 interface RankDisplayProps {
   lp: number;
@@ -18,7 +18,7 @@ export function RankDisplay({ lp, dailyLP }: RankDisplayProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-14 h-14 rounded-xl ${rank.bgClass} flex items-center justify-center lion-glow`}>
-            <Crown className="w-7 h-7 text-primary-foreground" />
+            <span className="text-2xl">{rank.icon}</span>
           </div>
           <div>
             <p className="text-muted-foreground text-sm">Current Rank</p>
@@ -36,7 +36,7 @@ export function RankDisplay({ lp, dailyLP }: RankDisplayProps) {
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="w-4 h-4" /> Next: {nextRank.name}
+              <TrendingUp className="w-4 h-4" /> Next: {nextRank.name} {nextRank.icon}
             </span>
             <span className="text-foreground font-medium">{Math.round(progress)}%</span>
           </div>
@@ -49,6 +49,12 @@ export function RankDisplay({ lp, dailyLP }: RankDisplayProps) {
           <p className="text-xs text-muted-foreground">
             {formatLP(nextRank.minLP - lp)} LP to {nextRank.name}
           </p>
+        </div>
+      )}
+
+      {nextRank === null && (
+        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-center">
+          <p className="text-primary font-display font-semibold">🦁 Maximum Rank Achieved!</p>
         </div>
       )}
 
