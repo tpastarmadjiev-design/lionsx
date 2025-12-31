@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { toast } from 'sonner';
 
 export interface Exercise {
   id: string;
@@ -31,7 +30,17 @@ export function useExercises() {
   });
 
   const logTraining = useMutation({
-    mutationFn: async ({ exerciseId, lpEarned }: { exerciseId: string; lpEarned: number }) => {
+    mutationFn: async ({ 
+      exerciseId, 
+      lpEarned,
+      proofUrl,
+      proofType 
+    }: { 
+      exerciseId: string; 
+      lpEarned: number;
+      proofUrl?: string;
+      proofType?: 'none' | 'photo' | 'video';
+    }) => {
       if (!user?.id) throw new Error('Not authenticated');
 
       const { error } = await supabase
@@ -40,6 +49,8 @@ export function useExercises() {
           user_id: user.id,
           exercise_id: exerciseId,
           lp_earned: lpEarned,
+          proof_url: proofUrl || null,
+          proof_type: proofType || 'none',
         });
 
       if (error) throw error;

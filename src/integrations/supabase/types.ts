@@ -48,11 +48,14 @@ export type Database = {
           daily_lp: number
           endurance: number
           id: string
+          last_count_reset: string | null
           last_lp_reset: string | null
           lp: number
           mobility: number
           nickname: string
+          no_proof_count: number
           strength: number
+          total_exercises_count: number
           updated_at: string
         }
         Insert: {
@@ -61,11 +64,14 @@ export type Database = {
           daily_lp?: number
           endurance?: number
           id: string
+          last_count_reset?: string | null
           last_lp_reset?: string | null
           lp?: number
           mobility?: number
           nickname: string
+          no_proof_count?: number
           strength?: number
+          total_exercises_count?: number
           updated_at?: string
         }
         Update: {
@@ -74,11 +80,14 @@ export type Database = {
           daily_lp?: number
           endurance?: number
           id?: string
+          last_count_reset?: string | null
           last_lp_reset?: string | null
           lp?: number
           mobility?: number
           nickname?: string
+          no_proof_count?: number
           strength?: number
+          total_exercises_count?: number
           updated_at?: string
         }
         Relationships: []
@@ -89,6 +98,8 @@ export type Database = {
           exercise_id: string
           id: string
           lp_earned: number
+          proof_type: string | null
+          proof_url: string | null
           user_id: string
         }
         Insert: {
@@ -96,6 +107,8 @@ export type Database = {
           exercise_id: string
           id?: string
           lp_earned: number
+          proof_type?: string | null
+          proof_url?: string | null
           user_id: string
         }
         Update: {
@@ -103,6 +116,8 @@ export type Database = {
           exercise_id?: string
           id?: string
           lp_earned?: number
+          proof_type?: string | null
+          proof_url?: string | null
           user_id?: string
         }
         Relationships: [
