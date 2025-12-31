@@ -5,12 +5,20 @@ import { AppLayout } from '@/components/AppLayout';
 import { RankDisplay } from '@/components/RankDisplay';
 import { SkillBars } from '@/components/SkillBars';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, TrendingUp, Calendar } from 'lucide-react';
+import { Dumbbell, TrendingUp, Calendar, Zap, Shield } from 'lucide-react';
 import { useEffect } from 'react';
+import { DAILY_LP_CAP } from '@/lib/ranks';
+import { MAX_NO_PROOF_PER_CYCLE } from '@/hooks/useProfile';
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
-  const { profile, isLoading } = useProfile();
+  const { 
+    profile, 
+    isLoading, 
+    getEffectiveDailyLP, 
+    getRemainingDailyLP,
+    getNoProofRemaining 
+  } = useProfile();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,6 +43,11 @@ export default function Dashboard() {
     );
   }
 
+  const effectiveDailyLP = getEffectiveDailyLP();
+  const remainingLP = getRemainingDailyLP();
+  const noProofRemaining = getNoProofRemaining();
+  const dailyProgress = (effectiveDailyLP / DAILY_LP_CAP) * 100;
+
   return (
     <AppLayout>
       {/* Header */}
@@ -52,8 +65,34 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Daily LP Status - Prominent Display */}
+      <div className="lion-card p-4 mb-4 animate-fade-in border-2 border-accent/30">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-accent" />
+            <span className="font-display font-semibold text-foreground">Daily LP Progress</span>
+          </div>
+          <span className="text-lg font-display font-bold text-accent">
+            {effectiveDailyLP} / {DAILY_LP_CAP}
+          </span>
+        </div>
+        <div className="skill-bar h-3 mb-2">
+          <div
+            className="skill-bar-fill bg-gradient-to-r from-accent to-primary transition-all duration-500"
+            style={{ width: `${Math.max(2, dailyProgress)}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{remainingLP} LP remaining today</span>
+          <span className="flex items-center gap-1">
+            <Shield className="w-3 h-3" />
+            {noProofRemaining}/{MAX_NO_PROOF_PER_CYCLE} no-proof left
+          </span>
+        </div>
+      </div>
+
       {/* Rank Display */}
-      <RankDisplay lp={profile.lp} dailyLP={profile.daily_lp} />
+      <RankDisplay lp={profile.lp} dailyLP={effectiveDailyLP} />
 
       {/* Skills */}
       <div className="mt-4">
@@ -71,10 +110,16 @@ export default function Dashboard() {
           size="xl"
           className="w-full"
           onClick={() => navigate('/training')}
+          disabled={remainingLP <= 0}
         >
           <Dumbbell className="w-5 h-5" />
-          Start Training
+          {remainingLP > 0 ? 'Start Training' : 'Daily Cap Reached'}
         </Button>
+        {remainingLP <= 0 && (
+          <p className="text-center text-sm text-muted-foreground">
+            Come back tomorrow for more training!
+          </p>
+        )}
       </div>
 
       {/* Stats */}

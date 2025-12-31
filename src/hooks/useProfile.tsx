@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { DAILY_LP_CAP } from '@/lib/ranks';
+import { useEffect, useCallback } from 'react';
 
 export interface Profile {
   id: string;
@@ -26,6 +27,10 @@ export const PROOF_BONUS_LP = 10;
 export const MAX_NO_PROOF_PER_CYCLE = 3;
 export const CYCLE_SIZE = 5;
 
+function getTodayDate(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 export function useProfile() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -46,6 +51,52 @@ export function useProfile() {
     },
     enabled: !!user?.id,
   });
+
+  // Check if daily reset is needed
+  const needsDailyReset = useCallback(() => {
+    if (!profile) return false;
+    const today = getTodayDate();
+    return profile.last_lp_reset !== today || profile.last_count_reset !== today;
+  }, [profile]);
+
+  // Reset daily limits mutation
+  const resetDailyLimits = useMutation({
+    mutationFn: async () => {
+      if (!user?.id || !profile) throw new Error('Not authenticated');
+      
+      const today = getTodayDate();
+      
+      const updates: Partial<Profile> = {
+        daily_lp: 0,
+        last_lp_reset: today,
+        no_proof_count: 0,
+        total_exercises_count: 0,
+        last_count_reset: today,
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) throw error;
+      return updates;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+      toast.success('Daily limits reset! Ready for a new day of training! 💪');
+    },
+    onError: (error) => {
+      console.error('Failed to reset daily limits:', error);
+    },
+  });
+
+  // Auto-reset daily limits when profile loads and day has changed
+  useEffect(() => {
+    if (profile && needsDailyReset() && !resetDailyLimits.isPending) {
+      resetDailyLimits.mutate();
+    }
+  }, [profile, needsDailyReset, resetDailyLimits.isPending]);
 
   const updateProfile = useMutation({
     mutationFn: async (updates: Partial<Profile>) => {
@@ -83,7 +134,7 @@ export function useProfile() {
       if (!user?.id || !profile) throw new Error('Not authenticated');
 
       // Check if daily reset is needed
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayDate();
       let currentDailyLP = profile.daily_lp;
       
       if (profile.last_lp_reset !== today) {
@@ -109,7 +160,6 @@ export function useProfile() {
       // Check no-proof limit (3 out of every 5)
       if (proofType === 'none') {
         const cyclePosition = totalCount % CYCLE_SIZE;
-        const noProofInCycle = noProofCount % MAX_NO_PROOF_PER_CYCLE;
         
         // Reset cycle counts every 5 exercises
         if (cyclePosition === 0 && totalCount > 0) {
@@ -166,10 +216,10 @@ export function useProfile() {
     },
   });
 
-  // Check if user can skip proof
-  const canSkipProof = () => {
+  // Check if user can skip proof - uses today's values
+  const canSkipProof = useCallback(() => {
     if (!profile) return false;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDate();
     
     let noProofCount = profile.no_proof_count;
     if (profile.last_count_reset !== today) {
@@ -177,11 +227,11 @@ export function useProfile() {
     }
     
     return noProofCount < MAX_NO_PROOF_PER_CYCLE;
-  };
+  }, [profile]);
 
-  const getNoProofRemaining = () => {
+  const getNoProofRemaining = useCallback(() => {
     if (!profile) return MAX_NO_PROOF_PER_CYCLE;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDate();
     
     let noProofCount = profile.no_proof_count;
     if (profile.last_count_reset !== today) {
@@ -189,7 +239,22 @@ export function useProfile() {
     }
     
     return Math.max(0, MAX_NO_PROOF_PER_CYCLE - noProofCount);
-  };
+  }, [profile]);
+
+  // Get the effective daily LP (accounting for auto-reset)
+  const getEffectiveDailyLP = useCallback(() => {
+    if (!profile) return 0;
+    const today = getTodayDate();
+    
+    if (profile.last_lp_reset !== today) {
+      return 0;
+    }
+    return profile.daily_lp;
+  }, [profile]);
+
+  const getRemainingDailyLP = useCallback(() => {
+    return Math.max(0, DAILY_LP_CAP - getEffectiveDailyLP());
+  }, [getEffectiveDailyLP]);
 
   return {
     profile,
@@ -199,5 +264,9 @@ export function useProfile() {
     addLP,
     canSkipProof,
     getNoProofRemaining,
+    getEffectiveDailyLP,
+    getRemainingDailyLP,
+    resetDailyLimits,
+    needsDailyReset,
   };
 }
