@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Exercise } from '@/hooks/useExercises';
+import { Exercise, useExercises } from '@/hooks/useExercises';
 import { useProfile, MAX_LP_PER_EXERCISE, PROOF_BONUS_LP } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +12,6 @@ import {
   Check, 
   X, 
   Loader2,
-  Upload,
   Dumbbell,
   Heart,
   Wind,
@@ -52,8 +51,8 @@ export function TrainingFlow({ exercise, onComplete, onCancel }: TrainingFlowPro
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { user } = useAuth();
-  const { addLP, canSkipProof, getNoProofRemaining, profile } = useProfile();
-  const { logTraining } = require('@/hooks/useExercises').useExercises();
+  const { addLP, canSkipProof, getNoProofRemaining } = useProfile();
+  const { logTraining } = useExercises();
 
   const Icon = categoryIcons[exercise.category as keyof typeof categoryIcons];
   const colors = categoryColors[exercise.category as keyof typeof categoryColors];

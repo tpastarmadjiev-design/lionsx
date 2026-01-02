@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Training from "./pages/Training";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
+import Ranks from "./pages/Ranks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/training" element={<Training />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/ranks" element={<Ranks />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
