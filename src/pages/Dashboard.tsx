@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { DAILY_LP_CAP, getRank } from '@/lib/ranks';
 
 import trainingCardBg from '@/assets/training-card-bg.jpg';
+import shopCardBg from '@/assets/shop-card-bg.jpg';
 import ranksCardBg from '@/assets/ranks-card-bg.jpg';
 
 const MAX_SKILL = 10000;
@@ -132,6 +133,28 @@ export default function Dashboard() {
             </h3>
             <p className="text-sm text-muted-foreground text-left">
               Begin your workout session
+            </p>
+          </div>
+          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
+        </button>
+
+        {/* Our Shop Card */}
+        <button
+          onClick={() => navigate('/shop')}
+          className="relative w-full h-32 rounded-2xl overflow-hidden group"
+        >
+          <img 
+            src={shopCardBg} 
+            alt="" 
+            className="absolute inset-0 w-full h-full object-cover object-top"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-amber-900/80 to-transparent" />
+          <div className="relative z-10 h-full flex flex-col justify-center px-5">
+            <h3 className="text-xl font-display font-bold text-foreground text-left">
+              Our Shop
+            </h3>
+            <p className="text-sm text-muted-foreground text-left">
+              Get exclusive merch
             </p>
           </div>
           <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
