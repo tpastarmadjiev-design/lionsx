@@ -9,6 +9,10 @@ export interface Exercise {
   lp_reward: number;
   description: string | null;
   created_at: string;
+  skill_strength: number;
+  skill_endurance: number;
+  skill_mobility: number;
+  is_timed: boolean;
 }
 
 export function useExercises() {
@@ -39,7 +43,7 @@ export function useExercises() {
       exerciseId: string; 
       lpEarned: number;
       proofUrl?: string;
-      proofType?: 'none' | 'photo' | 'video';
+      proofType?: 'none' | 'photo' | 'video' | 'timed';
     }) => {
       if (!user?.id) throw new Error('Not authenticated');
 
@@ -50,7 +54,7 @@ export function useExercises() {
           exercise_id: exerciseId,
           lp_earned: lpEarned,
           proof_url: proofUrl || null,
-          proof_type: proofType || 'none',
+          proof_type: proofType || 'timed',
         });
 
       if (error) throw error;

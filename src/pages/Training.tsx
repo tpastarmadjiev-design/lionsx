@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfile, MAX_LP_PER_EXERCISE, PROOF_BONUS_LP } from '@/hooks/useProfile';
+import { useProfile } from '@/hooks/useProfile';
 import { useExercises, Exercise } from '@/hooks/useExercises';
 import { AppLayout } from '@/components/AppLayout';
-import { TrainingFlow } from '@/components/TrainingFlow';
+import { TimedTrainingFlow } from '@/components/TimedTrainingFlow';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, Heart, Wind, Zap, Play, AlertCircle } from 'lucide-react';
+import { Dumbbell, Heart, Wind, Zap, Play, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DAILY_LP_CAP } from '@/lib/ranks';
 
@@ -24,8 +24,8 @@ const categoryColors = {
 
 export default function Training() {
   const { user, loading: authLoading } = useAuth();
-  const { profile, getNoProofRemaining } = useProfile();
-  const { exercisesByCategory, isLoading } = useExercises();
+  const { profile, addLP, getRemainingDailyLP } = useProfile();
+  const { exercisesByCategory, isLoading, logTraining } = useExercises();
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [showFlow, setShowFlow] = useState(false);
   const navigate = useNavigate();
@@ -42,7 +42,26 @@ export default function Training() {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async (reps: number, skillXP: { strength: number; endurance: number; mobility: number }) => {
+    if (!selectedExercise) return;
+    
+    try {
+      // Add LP with skill distribution
+      await addLP.mutateAsync({
+        lp: reps,
+        skillXP,
+      });
+
+      // Log the training
+      await logTraining.mutateAsync({
+        exerciseId: selectedExercise.id,
+        lpEarned: reps,
+        proofType: 'timed',
+      });
+    } catch (error) {
+      console.error('Error completing training:', error);
+    }
+    
     setShowFlow(false);
     setSelectedExercise(null);
   };
@@ -51,8 +70,7 @@ export default function Training() {
     setShowFlow(false);
   };
 
-  const remainingDaily = profile ? Math.max(0, DAILY_LP_CAP - profile.daily_lp) : 0;
-  const noProofRemaining = getNoProofRemaining();
+  const remainingDaily = getRemainingDailyLP();
 
   if (authLoading || isLoading) {
     return (
@@ -64,8 +82,9 @@ export default function Training() {
 
   if (showFlow && selectedExercise) {
     return (
-      <TrainingFlow
+      <TimedTrainingFlow
         exercise={selectedExercise}
+        remainingDailyLP={remainingDaily}
         onComplete={handleComplete}
         onCancel={handleCancel}
       />
@@ -94,33 +113,28 @@ export default function Training() {
           </span>
         </div>
         
-        {/* No-proof remaining indicator */}
-        <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50 text-sm">
-          <AlertCircle className={cn(
-            "w-4 h-4",
-            noProofRemaining > 0 ? "text-accent" : "text-destructive"
-          )} />
-          <span className="text-muted-foreground">
-            No-proof exercises remaining: 
-            <span className={cn(
-              "ml-1 font-semibold",
-              noProofRemaining > 0 ? "text-accent" : "text-destructive"
-            )}>
-              {noProofRemaining}/3
-            </span>
-          </span>
+        {/* Progress bar */}
+        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${((DAILY_LP_CAP - remainingDaily) / DAILY_LP_CAP) * 100}%` }}
+          />
         </div>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          {DAILY_LP_CAP - remainingDaily} / {DAILY_LP_CAP} LP earned today
+        </p>
       </div>
 
-      {/* Info Cards */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="lion-card p-3 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          <p className="text-xs text-muted-foreground mb-1">Max per exercise</p>
-          <p className="text-lg font-display font-bold text-foreground">{MAX_LP_PER_EXERCISE} LP</p>
-        </div>
-        <div className="lion-card p-3 animate-fade-in" style={{ animationDelay: '0.15s' }}>
-          <p className="text-xs text-muted-foreground mb-1">Proof bonus</p>
-          <p className="text-lg font-display font-bold text-primary">+{PROOF_BONUS_LP} LP</p>
+      {/* Info Card */}
+      <div className="lion-card p-4 mb-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+            <Timer className="w-5 h-5 text-accent" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">60-Second Challenge</p>
+            <p className="text-xs text-muted-foreground">Each rep/second = 1 LP. AI tracks your form!</p>
+          </div>
         </div>
       </div>
 
@@ -128,6 +142,8 @@ export default function Training() {
       {(['strength', 'endurance', 'mobility'] as const).map((category, catIndex) => {
         const Icon = categoryIcons[category];
         const exercises = exercisesByCategory?.[category] || [];
+        
+        if (exercises.length === 0) return null;
         
         return (
           <div 
@@ -144,8 +160,8 @@ export default function Training() {
             
             <div className="grid gap-2">
               {exercises.map((exercise) => {
-                const baseLp = Math.min(exercise.lp_reward, MAX_LP_PER_EXERCISE);
                 const isSelected = selectedExercise?.id === exercise.id;
+                const isPlank = exercise.name.toLowerCase().includes('plank');
                 
                 return (
                   <button
@@ -173,10 +189,9 @@ export default function Training() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-lg font-display font-bold text-primary">
-                        +{baseLp}
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {isPlank ? '1 LP/sec' : '1 LP/rep'}
                       </span>
-                      <p className="text-xs text-muted-foreground">LP</p>
                     </div>
                   </button>
                 );

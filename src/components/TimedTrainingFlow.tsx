@@ -1,0 +1,366 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Exercise } from '@/hooks/useExercises';
+import { Button } from '@/components/ui/button';
+import { PoseTracker } from '@/components/PoseTracker';
+import { 
+  Play, 
+  Check, 
+  X, 
+  Loader2,
+  Dumbbell,
+  Heart,
+  Wind,
+  Timer,
+  Zap,
+  Plus,
+  Minus
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { DAILY_LP_CAP } from '@/lib/ranks';
+
+type FlowStep = 'ready' | 'active' | 'manual-input' | 'finish';
+
+interface TimedTrainingFlowProps {
+  exercise: Exercise;
+  remainingDailyLP: number;
+  onComplete: (reps: number, skillDistribution: { strength: number; endurance: number; mobility: number }) => void;
+  onCancel: () => void;
+}
+
+const categoryIcons = {
+  strength: Dumbbell,
+  endurance: Heart,
+  mobility: Wind,
+};
+
+const categoryColors = {
+  strength: 'text-strength bg-strength/20 border-strength/30',
+  endurance: 'text-endurance bg-endurance/20 border-endurance/30',
+  mobility: 'text-mobility bg-mobility/20 border-mobility/30',
+};
+
+const TIMER_DURATION = 60; // 60 seconds
+
+// Map exercise names to PoseTracker exercise types
+function getExerciseType(name: string): 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press' {
+  const normalized = name.toLowerCase();
+  if (normalized.includes('sit')) return 'sit-ups';
+  if (normalized.includes('push')) return 'push-ups';
+  if (normalized.includes('jump')) return 'jumps';
+  if (normalized.includes('plank')) return 'plank';
+  if (normalized.includes('dip')) return 'dips';
+  if (normalized.includes('pull')) return 'pull-ups';
+  if (normalized.includes('bench')) return 'bench-press';
+  return 'push-ups'; // Default fallback
+}
+
+export function TimedTrainingFlow({ 
+  exercise, 
+  remainingDailyLP,
+  onComplete, 
+  onCancel 
+}: TimedTrainingFlowProps) {
+  const [step, setStep] = useState<FlowStep>('ready');
+  const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
+  const [repCount, setRepCount] = useState(0);
+  const [manualCount, setManualCount] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const Icon = categoryIcons[exercise.category as keyof typeof categoryIcons];
+  const colors = categoryColors[exercise.category as keyof typeof categoryColors];
+  const isPlank = exercise.name.toLowerCase().includes('plank');
+  const exerciseType = getExerciseType(exercise.name);
+  
+  // Calculate LP (capped by daily limit)
+  const earnedLP = Math.min(repCount, remainingDailyLP);
+  
+  // Calculate skill distribution from exercise
+  const skillDistribution = {
+    strength: (exercise as any).skill_strength || 0,
+    endurance: (exercise as any).skill_endurance || 0,
+    mobility: (exercise as any).skill_mobility || 0,
+  };
+
+  // Start timer
+  const startTimer = useCallback(() => {
+    setStep('active');
+    setTimeRemaining(TIMER_DURATION);
+    setRepCount(0);
+    
+    timerRef.current = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          setStep('manual-input');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
+  // Handle rep/second detected
+  const handleRepComplete = useCallback(() => {
+    setRepCount(prev => prev + 1);
+  }, []);
+
+  // For plank - each second counts as a rep
+  const handleSecondComplete = useCallback(() => {
+    setRepCount(prev => prev + 1);
+  }, []);
+
+  // Confirm reps and complete
+  const handleConfirm = useCallback((finalCount: number) => {
+    setIsSubmitting(true);
+    
+    // Cap LP by daily remaining
+    const actualLP = Math.min(finalCount, remainingDailyLP);
+    
+    // Calculate skill XP based on distribution percentages
+    const skillXP = {
+      strength: Math.floor(actualLP * (skillDistribution.strength / 100)),
+      endurance: Math.floor(actualLP * (skillDistribution.endurance / 100)),
+      mobility: Math.floor(actualLP * (skillDistribution.mobility / 100)),
+    };
+    
+    onComplete(actualLP, skillXP);
+  }, [remainingDailyLP, skillDistribution, onComplete]);
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-lg flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <button 
+          onClick={() => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            onCancel();
+          }} 
+          className="p-2 rounded-lg hover:bg-secondary"
+        >
+          <X className="w-6 h-6 text-muted-foreground" />
+        </button>
+        <h2 className="text-lg font-display font-semibold text-foreground">
+          {step === 'active' ? 'GO!' : step === 'manual-input' ? 'Confirm Reps' : 'Training'}
+        </h2>
+        <div className="w-10" />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+        
+        {/* Ready Step */}
+        {step === 'ready' && (
+          <div className="w-full max-w-sm space-y-6 animate-fade-in">
+            {/* Exercise Card */}
+            <div className="lion-card p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center border", colors)}>
+                  <Icon className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-display font-bold text-foreground">{exercise.name}</h3>
+                  <p className="text-sm text-muted-foreground capitalize">{exercise.category}</p>
+                </div>
+              </div>
+              
+              {/* Info */}
+              <div className="space-y-2 p-3 rounded-lg bg-secondary/50">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Timer className="w-4 h-4" />
+                    Duration
+                  </span>
+                  <span className="font-medium text-foreground">60 seconds</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Zap className="w-4 h-4" />
+                    {isPlank ? 'Each second' : 'Each rep'}
+                  </span>
+                  <span className="font-medium text-primary">= 1 LP</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Daily LP remaining */}
+            <div className="text-center text-sm text-muted-foreground">
+              Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP} / {DAILY_LP_CAP}</span>
+            </div>
+
+            {/* Start Button */}
+            <Button 
+              variant="hero" 
+              size="xl" 
+              className="w-full"
+              onClick={startTimer}
+            >
+              <Play className="w-5 h-5" />
+              Start 60s Challenge
+            </Button>
+          </div>
+        )}
+
+        {/* Active Step - Timer Running */}
+        {step === 'active' && (
+          <div className="w-full max-w-sm space-y-4 animate-fade-in">
+            {/* Timer Display */}
+            <div className="text-center mb-4">
+              <div className={cn(
+                "text-6xl font-display font-bold tabular-nums",
+                timeRemaining <= 10 ? "text-destructive animate-pulse" : "text-primary"
+              )}>
+                {formatTime(timeRemaining)}
+              </div>
+              <p className="text-muted-foreground text-sm mt-1">
+                {isPlank ? 'Hold your plank!' : 'Keep going!'}
+              </p>
+            </div>
+
+            {/* Pose Tracker */}
+            <PoseTracker
+              exercise={exerciseType}
+              isActive={true}
+              onRepComplete={handleRepComplete}
+              onSecondComplete={isPlank ? handleSecondComplete : undefined}
+            />
+
+            {/* Rep Counter */}
+            <div className="lion-card p-4 flex items-center justify-between">
+              <span className="text-muted-foreground">
+                {isPlank ? 'Seconds Held' : 'Reps Detected'}
+              </span>
+              <span className="text-3xl font-display font-bold text-primary">
+                {repCount}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Input Step */}
+        {step === 'manual-input' && (
+          <div className="w-full max-w-sm space-y-6 animate-fade-in">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                <Timer className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-2xl font-display font-bold text-foreground">Time's Up!</h3>
+              <p className="text-muted-foreground mt-2">
+                We detected <span className="text-primary font-bold">{repCount}</span> {isPlank ? 'seconds' : 'reps'}.
+              </p>
+            </div>
+
+            {/* Manual adjustment */}
+            <div className="lion-card p-4">
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                Adjust if needed:
+              </p>
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 rounded-full"
+                  onClick={() => setManualCount(prev => Math.max(0, (prev || repCount) - 1))}
+                >
+                  <Minus className="w-5 h-5" />
+                </Button>
+                <span className="text-4xl font-display font-bold text-primary w-20 text-center">
+                  {manualCount || repCount}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 rounded-full"
+                  onClick={() => setManualCount(prev => (prev || repCount) + 1)}
+                >
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* LP earned preview */}
+            <div className="lion-card p-4 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{isPlank ? 'Seconds' : 'Reps'} × 1 LP</span>
+                <span className="font-medium text-foreground">{manualCount || repCount} LP</span>
+              </div>
+              {(manualCount || repCount) > remainingDailyLP && (
+                <div className="flex justify-between text-sm text-destructive">
+                  <span>Daily cap limit</span>
+                  <span>-{(manualCount || repCount) - remainingDailyLP} LP</span>
+                </div>
+              )}
+              <div className="border-t border-border pt-3 flex justify-between">
+                <span className="font-medium text-foreground">Total Earned</span>
+                <span className="text-xl font-display font-bold text-primary">
+                  +{Math.min(manualCount || repCount, remainingDailyLP)} LP
+                </span>
+              </div>
+            </div>
+
+            {/* Skill distribution preview */}
+            <div className="lion-card p-4">
+              <p className="text-xs text-muted-foreground mb-3">Skill XP Distribution</p>
+              <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                <div className="p-2 rounded-lg bg-strength/10">
+                  <Dumbbell className="w-4 h-4 text-strength mx-auto mb-1" />
+                  <span className="font-semibold text-strength">
+                    +{Math.floor(Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.strength / 100))}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-endurance/10">
+                  <Heart className="w-4 h-4 text-endurance mx-auto mb-1" />
+                  <span className="font-semibold text-endurance">
+                    +{Math.floor(Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.endurance / 100))}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-mobility/10">
+                  <Wind className="w-4 h-4 text-mobility mx-auto mb-1" />
+                  <span className="font-semibold text-mobility">
+                    +{Math.floor(Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.mobility / 100))}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              variant="hero" 
+              size="xl" 
+              className="w-full"
+              onClick={() => handleConfirm(manualCount || repCount)}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="w-5 h-5" />
+                  Confirm & Save
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

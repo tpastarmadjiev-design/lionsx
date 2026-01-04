@@ -20,24 +20,36 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_timed: boolean
           lp_reward: number
           name: string
+          skill_endurance: number
+          skill_mobility: number
+          skill_strength: number
         }
         Insert: {
           category: string
           created_at?: string
           description?: string | null
           id?: string
+          is_timed?: boolean
           lp_reward?: number
           name: string
+          skill_endurance?: number
+          skill_mobility?: number
+          skill_strength?: number
         }
         Update: {
           category?: string
           created_at?: string
           description?: string | null
           id?: string
+          is_timed?: boolean
           lp_reward?: number
           name?: string
+          skill_endurance?: number
+          skill_mobility?: number
+          skill_strength?: number
         }
         Relationships: []
       }

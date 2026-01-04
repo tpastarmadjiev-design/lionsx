@@ -22,11 +22,6 @@ export interface Profile {
   updated_at: string;
 }
 
-export const MAX_LP_PER_EXERCISE = 50;
-export const PROOF_BONUS_LP = 10;
-export const MAX_NO_PROOF_PER_CYCLE = 3;
-export const CYCLE_SIZE = 5;
-
 function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
@@ -56,7 +51,7 @@ export function useProfile() {
   const needsDailyReset = useCallback(() => {
     if (!profile) return false;
     const today = getTodayDate();
-    return profile.last_lp_reset !== today || profile.last_count_reset !== today;
+    return profile.last_lp_reset !== today;
   }, [profile]);
 
   // Reset daily limits mutation
@@ -69,9 +64,6 @@ export function useProfile() {
       const updates: Partial<Profile> = {
         daily_lp: 0,
         last_lp_reset: today,
-        no_proof_count: 0,
-        total_exercises_count: 0,
-        last_count_reset: today,
       };
 
       const { error } = await supabase
@@ -119,17 +111,14 @@ export function useProfile() {
     },
   });
 
+  // New addLP for timed exercises - with skill distribution
   const addLP = useMutation({
     mutationFn: async ({ 
       lp, 
-      category,
-      proofType,
-      proofUrl
+      skillXP,
     }: { 
       lp: number; 
-      category: 'strength' | 'endurance' | 'mobility';
-      proofType: 'none' | 'photo' | 'video';
-      proofUrl?: string;
+      skillXP: { strength: number; endurance: number; mobility: number };
     }) => {
       if (!user?.id || !profile) throw new Error('Not authenticated');
 
@@ -147,49 +136,24 @@ export function useProfile() {
         throw new Error('Daily LP cap reached! Come back tomorrow.');
       }
 
-      // Reset no-proof cycle if needed (every 5 exercises)
-      let noProofCount = profile.no_proof_count;
-      let totalCount = profile.total_exercises_count;
-      const lastReset = profile.last_count_reset;
-
-      if (lastReset !== today) {
-        noProofCount = 0;
-        totalCount = 0;
-      }
-
-      // Check no-proof limit (3 out of every 5)
-      if (proofType === 'none') {
-        const cyclePosition = totalCount % CYCLE_SIZE;
-        
-        // Reset cycle counts every 5 exercises
-        if (cyclePosition === 0 && totalCount > 0) {
-          noProofCount = 0;
-        }
-        
-        if (noProofCount >= MAX_NO_PROOF_PER_CYCLE && cyclePosition < CYCLE_SIZE) {
-          throw new Error('You need to provide proof! (3/5 no-proof limit reached)');
-        }
-        
-        noProofCount += 1;
-      }
-
-      totalCount += 1;
-
-      // Calculate LP with cap and bonus
-      let baseLp = Math.min(lp, MAX_LP_PER_EXERCISE);
-      if (proofType !== 'none') {
-        baseLp += PROOF_BONUS_LP;
-      }
-      const actualLP = Math.min(baseLp, remainingDaily);
+      // Cap LP by daily remaining
+      const actualLP = Math.min(lp, remainingDaily);
+      
+      // Scale skill XP proportionally if LP was capped
+      const scale = lp > 0 ? actualLP / lp : 0;
+      const actualSkillXP = {
+        strength: Math.floor(skillXP.strength * scale),
+        endurance: Math.floor(skillXP.endurance * scale),
+        mobility: Math.floor(skillXP.mobility * scale),
+      };
 
       const updates: Partial<Profile> = {
         lp: profile.lp + actualLP,
         daily_lp: currentDailyLP + actualLP,
         last_lp_reset: today,
-        [category]: profile[category] + actualLP,
-        no_proof_count: noProofCount,
-        total_exercises_count: totalCount,
-        last_count_reset: today,
+        strength: profile.strength + actualSkillXP.strength,
+        endurance: profile.endurance + actualSkillXP.endurance,
+        mobility: profile.mobility + actualSkillXP.mobility,
       };
 
       const { error } = await supabase
@@ -201,45 +165,17 @@ export function useProfile() {
 
       return { 
         earnedLP: actualLP, 
-        category, 
-        proofType,
-        hasBonus: proofType !== 'none'
+        skillXP: actualSkillXP,
       };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
-      const bonusText = data.hasBonus ? ` (+${PROOF_BONUS_LP} proof bonus!)` : '';
-      toast.success(`+${data.earnedLP} LP earned!${bonusText}`);
+      toast.success(`+${data.earnedLP} LP earned!`);
     },
     onError: (error: Error) => {
       toast.error(error.message);
     },
   });
-
-  // Check if user can skip proof - uses today's values
-  const canSkipProof = useCallback(() => {
-    if (!profile) return false;
-    const today = getTodayDate();
-    
-    let noProofCount = profile.no_proof_count;
-    if (profile.last_count_reset !== today) {
-      noProofCount = 0;
-    }
-    
-    return noProofCount < MAX_NO_PROOF_PER_CYCLE;
-  }, [profile]);
-
-  const getNoProofRemaining = useCallback(() => {
-    if (!profile) return MAX_NO_PROOF_PER_CYCLE;
-    const today = getTodayDate();
-    
-    let noProofCount = profile.no_proof_count;
-    if (profile.last_count_reset !== today) {
-      noProofCount = 0;
-    }
-    
-    return Math.max(0, MAX_NO_PROOF_PER_CYCLE - noProofCount);
-  }, [profile]);
 
   // Get the effective daily LP (accounting for auto-reset)
   const getEffectiveDailyLP = useCallback(() => {
@@ -262,8 +198,6 @@ export function useProfile() {
     error,
     updateProfile,
     addLP,
-    canSkipProof,
-    getNoProofRemaining,
     getEffectiveDailyLP,
     getRemainingDailyLP,
     resetDailyLimits,
