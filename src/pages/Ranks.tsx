@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { AppLayout } from '@/components/AppLayout';
 import { RANKS, getRank, getRankProgress, formatLP } from '@/lib/ranks';
+import { getCountryFlag } from '@/lib/countryFlags';
 import { cn } from '@/lib/utils';
 import { Trophy, Lock, Check, Users } from 'lucide-react';
 
@@ -235,7 +236,7 @@ export default function Ranks() {
                           <div className="flex items-center gap-2">
                             <span className="w-5 text-center text-muted-foreground">#{displayPosition}</span>
                             <span className="text-foreground">{player.nickname}</span>
-                            <span className="text-xs text-muted-foreground">({player.country})</span>
+                            <span className="text-xs text-muted-foreground">({getCountryFlag(player.country)} {player.country})</span>
                           </div>
                           <span className="text-muted-foreground">{formatLP(player.lp)}</span>
                         </div>

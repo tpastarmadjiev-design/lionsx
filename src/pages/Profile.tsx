@@ -1,4 +1,5 @@
 import { getRank } from '@/lib/ranks';
+import { getCountryFlag } from '@/lib/countryFlags';
 import { User, Globe, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -71,7 +72,7 @@ export default function Profile() {
         </div>
         <h2 className="text-2xl font-display font-bold text-foreground">{profile.nickname}</h2>
         <p className={`text-lg font-display font-semibold ${rank.textClass}`}>{rank.name}</p>
-        <p className="text-muted-foreground text-sm mt-1">{profile.country}</p>
+        <p className="text-muted-foreground text-sm mt-1">{getCountryFlag(profile.country)} {profile.country}</p>
       </div>
 
       {/* Edit Form */}
