@@ -5,8 +5,9 @@ import { useProfile } from '@/hooks/useProfile';
 import { useExercises, Exercise } from '@/hooks/useExercises';
 import { AppLayout } from '@/components/AppLayout';
 import { TimedTrainingFlow } from '@/components/TimedTrainingFlow';
+import { RunningTracker } from '@/components/RunningTracker';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, Heart, Wind, Zap, Play, Timer } from 'lucide-react';
+import { Dumbbell, Heart, Wind, Zap, Play, Timer, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DAILY_LP_CAP } from '@/lib/ranks';
 
@@ -81,6 +82,20 @@ export default function Training() {
   }
 
   if (showFlow && selectedExercise) {
+    // Use RunningTracker for running exercise, otherwise use TimedTrainingFlow
+    const isRunning = selectedExercise.name.toLowerCase() === 'running';
+    
+    if (isRunning) {
+      return (
+        <RunningTracker
+          exercise={selectedExercise}
+          remainingDailyLP={remainingDaily}
+          onComplete={handleComplete}
+          onCancel={handleCancel}
+        />
+      );
+    }
+    
     return (
       <TimedTrainingFlow
         exercise={selectedExercise}
@@ -162,6 +177,15 @@ export default function Training() {
               {exercises.map((exercise) => {
                 const isSelected = selectedExercise?.id === exercise.id;
                 const isPlank = exercise.name.toLowerCase().includes('plank');
+                const isRunning = exercise.name.toLowerCase() === 'running';
+                
+                // Determine LP display text
+                let lpText = '1 LP/rep';
+                if (isPlank) lpText = '1 LP/sec';
+                if (isRunning) lpText = '1 LP/20m';
+                
+                // Use different icon for running
+                const ExerciseIcon = isRunning ? Navigation : Icon;
                 
                 return (
                   <button
@@ -181,7 +205,7 @@ export default function Training() {
                         "w-10 h-10 rounded-lg flex items-center justify-center border",
                         categoryColors[category]
                       )}>
-                        <Icon className="w-5 h-5" />
+                        <ExerciseIcon className="w-5 h-5" />
                       </div>
                       <div className="text-left">
                         <p className="font-medium text-foreground">{exercise.name}</p>
@@ -190,7 +214,7 @@ export default function Training() {
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-medium text-muted-foreground">
-                        {isPlank ? '1 LP/sec' : '1 LP/rep'}
+                        {lpText}
                       </span>
                     </div>
                   </button>
