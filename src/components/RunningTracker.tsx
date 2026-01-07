@@ -37,11 +37,27 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
   
   const positionsRef = useRef<Position[]>([]);
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
+
+  // Check permission status on mount
+  useEffect(() => {
+    if ('permissions' in navigator) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        setPermissionStatus(result.state as 'granted' | 'denied' | 'prompt');
+        result.onchange = () => {
+          setPermissionStatus(result.state as 'granted' | 'denied' | 'prompt');
+        };
+      }).catch(() => {
+        // Some browsers don't support permissions API
+        setPermissionStatus('unknown');
+      });
+    }
+  }, []);
 
   // LP calculation: 1 LP per 20 meters
   const LP_PER_20_METERS = 1;
@@ -112,18 +128,20 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
         setGpsError(null);
       },
       (error) => {
+        console.log('GPS Error:', error.code, error.message);
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            setGpsError('Location permission denied. Please enable GPS.');
+            setGpsError('Browser needs location permission. Tap the lock icon in your browser\'s address bar → Site settings → Allow Location.');
+            setPermissionStatus('denied');
             break;
           case error.POSITION_UNAVAILABLE:
-            setGpsError('Location unavailable. Move to an open area.');
+            setGpsError('Location unavailable. Make sure you\'re outside with clear sky view.');
             break;
           case error.TIMEOUT:
-            setGpsError('GPS signal timeout. Trying again...');
+            setGpsError('GPS signal weak. Move to an open area...');
             break;
           default:
-            setGpsError('GPS error occurred.');
+            setGpsError('GPS error occurred. Please try again.');
         }
       },
       {
@@ -202,13 +220,28 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
             </p>
           </div>
 
+          {/* Permission warning if denied */}
+          {permissionStatus === 'denied' && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-6 w-full max-w-sm">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-destructive font-medium text-sm">Location Blocked</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your browser blocked location access. Tap the lock icon (🔒) in your browser's address bar → Site settings → Allow Location, then reload.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6 w-full max-w-sm">
             <div className="flex items-start gap-2">
               <MapPin className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-amber-500 font-medium text-sm">GPS Required</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Make sure you're outside with a clear view of the sky for best GPS accuracy.
+                  Make sure you're outside with a clear view of the sky. Your browser will ask for location permission when you start.
                 </p>
               </div>
             </div>
