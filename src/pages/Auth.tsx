@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Crown, Eye, EyeOff, Mail, Lock, User, Globe } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
+import lionxSymbol from '@/assets/lionx-symbol.png';
 
 const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -14,13 +14,7 @@ const signUpSchema = z.object({
   country: z.string().min(2, 'Please enter your country'),
 });
 
-const signInSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
-});
-
 export default function Auth() {
-  const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -30,7 +24,7 @@ export default function Auth() {
   const [nickname, setNickname] = useState('');
   const [country, setCountry] = useState('');
   
-  const { signIn, signUp } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,54 +33,28 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const result = signUpSchema.safeParse({ email, password, nickname, country });
-        if (!result.success) {
-          const fieldErrors: Record<string, string> = {};
-          result.error.errors.forEach((err) => {
-            if (err.path[0]) {
-              fieldErrors[err.path[0].toString()] = err.message;
-            }
-          });
-          setErrors(fieldErrors);
-          setLoading(false);
-          return;
-        }
-
-        const { error } = await signUp(email, password, nickname, country);
-        if (error) {
-          if (error.message.includes('already registered')) {
-            setErrors({ email: 'This email is already registered' });
-          } else {
-            setErrors({ general: error.message });
+      const result = signUpSchema.safeParse({ email, password, nickname, country });
+      if (!result.success) {
+        const fieldErrors: Record<string, string> = {};
+        result.error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0].toString()] = err.message;
           }
+        });
+        setErrors(fieldErrors);
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await signUp(email, password, nickname, country);
+      if (error) {
+        if (error.message.includes('already registered')) {
+          setErrors({ email: 'This email is already registered' });
         } else {
-          navigate('/dashboard');
+          setErrors({ general: error.message });
         }
       } else {
-        const result = signInSchema.safeParse({ email, password });
-        if (!result.success) {
-          const fieldErrors: Record<string, string> = {};
-          result.error.errors.forEach((err) => {
-            if (err.path[0]) {
-              fieldErrors[err.path[0].toString()] = err.message;
-            }
-          });
-          setErrors(fieldErrors);
-          setLoading(false);
-          return;
-        }
-
-        const { error } = await signIn(email, password);
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            setErrors({ general: 'Invalid email or password' });
-          } else {
-            setErrors({ general: error.message });
-          }
-        } else {
-          navigate('/dashboard');
-        }
+        navigate('/dashboard');
       }
     } finally {
       setLoading(false);
@@ -94,127 +62,137 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero flex flex-col items-center justify-center p-4">
-      {/* Logo */}
-      <div className="flex items-center gap-3 mb-8 animate-fade-in">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center lion-glow">
-          <Crown className="w-8 h-8 text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-display font-bold text-foreground tracking-wide">LION</h1>
-          <p className="text-sm text-muted-foreground -mt-1">SYSTEM</p>
-        </div>
-      </div>
-
-      {/* Form Card */}
-      <div className="w-full max-w-sm lion-card p-6 animate-slide-up">
-        <h2 className="text-xl font-display font-semibold text-foreground text-center mb-6">
-          {isSignUp ? 'Create Account' : 'Welcome Back'}
-        </h2>
-
-        {errors.general && (
-          <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-            {errors.general}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-foreground">Email</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="lion@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-11"
-              />
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
+      
+      {/* Back button */}
+      <button
+        onClick={() => navigate('/')}
+        className="absolute top-6 left-6 text-white/40 hover:text-white/70 transition-colors flex items-center gap-2 z-20"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span className="text-sm font-display tracking-wider">BACK</span>
+      </button>
+      
+      {/* Main content */}
+      <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-6">
+        {/* Symbol */}
+        <div className="mb-4 animate-fade-in">
+          <div className="relative">
+            <div className="absolute inset-0 blur-xl opacity-20">
+              <img src={lionxSymbol} alt="" className="w-20 h-20 object-contain" />
             </div>
-            {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
+            <img 
+              src={lionxSymbol} 
+              alt="LionX Symbol" 
+              className="w-20 h-20 object-contain relative drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+            />
+          </div>
+        </div>
+
+        {/* Title */}
+        <h1 
+          className="text-2xl font-display font-bold text-white tracking-[0.2em] mb-1 animate-fade-in"
+          style={{ animationDelay: '0.1s' }}
+        >
+          JOIN LIONX
+        </h1>
+        <p 
+          className="text-xs text-white/30 tracking-[0.3em] uppercase mb-8 animate-fade-in"
+          style={{ animationDelay: '0.15s' }}
+        >
+          Begin Your Journey
+        </p>
+
+        {/* Sign Up Form */}
+        <form 
+          onSubmit={handleSubmit} 
+          className="w-full space-y-3 animate-fade-in"
+          style={{ animationDelay: '0.2s' }}
+        >
+          {errors.general && (
+            <div className="text-center text-red-400/80 text-sm py-2 bg-red-500/5 rounded-lg border border-red-500/10">
+              {errors.general}
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.05] transition-all rounded-lg"
+            />
+            {errors.email && <p className="text-red-400/70 text-xs pl-1">{errors.email}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-foreground">Password</Label>
+          <div className="space-y-1">
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-11 pr-11"
+                className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.05] transition-all rounded-lg pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {errors.password && <p className="text-destructive text-xs">{errors.password}</p>}
+            {errors.password && <p className="text-red-400/70 text-xs pl-1">{errors.password}</p>}
           </div>
 
-          {isSignUp && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="nickname" className="text-foreground">Nickname</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    id="nickname"
-                    type="text"
-                    placeholder="YourLionName"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className="pl-11"
-                  />
-                </div>
-                {errors.nickname && <p className="text-destructive text-xs">{errors.nickname}</p>}
-              </div>
+          <div className="space-y-1">
+            <Input
+              type="text"
+              placeholder="Nickname"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.05] transition-all rounded-lg"
+            />
+            {errors.nickname && <p className="text-red-400/70 text-xs pl-1">{errors.nickname}</p>}
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="country" className="text-foreground">Country</Label>
-                <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    id="country"
-                    type="text"
-                    placeholder="United States"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    className="pl-11"
-                  />
-                </div>
-                {errors.country && <p className="text-destructive text-xs">{errors.country}</p>}
-              </div>
-            </>
-          )}
+          <div className="space-y-1">
+            <Input
+              type="text"
+              placeholder="Country"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.05] transition-all rounded-lg"
+            />
+            {errors.country && <p className="text-red-400/70 text-xs pl-1">{errors.country}</p>}
+          </div>
 
-          <Button type="submit" variant="hero" size="lg" className="w-full" disabled={loading}>
-            {loading ? 'Loading...' : isSignUp ? 'Start Training' : 'Enter the Pride'}
+          <Button 
+            type="submit" 
+            disabled={loading}
+            className="w-full h-12 bg-white text-black font-display font-semibold tracking-wider hover:bg-white/90 transition-all rounded-lg mt-4"
+          >
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              'CREATE ACCOUNT'
+            )}
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
+        <p className="mt-8 text-xs text-white/20 text-center">
+          Already have an account?{' '}
           <button
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setErrors({});
-            }}
-            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            onClick={() => navigate('/')}
+            className="text-white/50 hover:text-white/80 transition-colors underline underline-offset-2"
           >
-            {isSignUp ? 'Already a Lion? Sign in' : "New Lion? Create account"}
+            Sign in
           </button>
-        </div>
+        </p>
       </div>
-
-      <p className="mt-8 text-xs text-muted-foreground text-center">
-        Train hard. Rise higher. Become the Lion.
-      </p>
     </div>
   );
 }
