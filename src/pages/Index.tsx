@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { z } from 'zod';
-import lionxSymbol from '@/assets/lionx-symbol.png';
 
 const signInSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -75,27 +74,34 @@ const Index = () => {
       
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-6">
-        {/* Symbol - The emotional core */}
+        {/* Symbol - The emotional core with pulsing glow */}
         <div className="mb-8 animate-fade-in">
           <div className="relative flex items-center justify-center">
-            {/* Glow effect */}
+            {/* Pulsing glow effect */}
             <div 
-              className="absolute w-56 h-56 rounded-full blur-3xl opacity-[0.08]"
-              style={{ background: 'radial-gradient(circle, white 0%, transparent 70%)' }}
+              className="absolute w-64 h-64 rounded-full blur-3xl animate-[pulse-glow_4s_ease-in-out_infinite]"
+              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)' }}
             />
-            {/* SVG Symbol - clean, no background */}
+            <div 
+              className="absolute w-40 h-40 rounded-full blur-2xl animate-[pulse-glow_4s_ease-in-out_infinite_0.5s]"
+              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)' }}
+            />
+            {/* SVG Symbol - 3 angular shapes like the logo */}
             <svg 
-              viewBox="0 0 100 140" 
-              className="w-44 h-60 drop-shadow-[0_0_60px_rgba(255,255,255,0.15)]"
+              viewBox="0 0 100 160" 
+              className="w-40 h-56 drop-shadow-[0_0_40px_rgba(255,255,255,0.12)]"
               fill="none"
               stroke="white"
-              strokeWidth="8"
-              strokeLinecap="square"
+              strokeWidth="10"
+              strokeLinecap="butt"
+              strokeLinejoin="miter"
             >
-              {/* Top arrow pointing right */}
-              <polyline points="30,20 70,40 30,60" />
-              {/* Bottom arrow pointing left */}
-              <polyline points="70,80 30,100 70,120" />
+              {/* Top right-pointing arrow */}
+              <path d="M25,15 L75,40 L25,65" />
+              {/* Middle connector going down-left */}
+              <path d="M75,40 L75,95" />
+              {/* Bottom left-pointing arrow */}
+              <path d="M75,95 L25,120 L75,145" />
             </svg>
           </div>
         </div>

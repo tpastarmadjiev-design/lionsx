@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
-import lionxSymbol from '@/assets/lionx-symbol.png';
 
 const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -77,23 +76,25 @@ export default function Auth() {
       
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-6">
-        {/* Symbol */}
+        {/* Symbol with subtle glow */}
         <div className="mb-4 animate-fade-in">
           <div className="relative flex items-center justify-center">
             <div 
-              className="absolute w-28 h-28 rounded-full blur-2xl opacity-[0.06]"
-              style={{ background: 'radial-gradient(circle, white 0%, transparent 70%)' }}
+              className="absolute w-32 h-32 rounded-full blur-2xl animate-[pulse-glow_4s_ease-in-out_infinite]"
+              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)' }}
             />
             <svg 
-              viewBox="0 0 100 140" 
-              className="w-20 h-28 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+              viewBox="0 0 100 160" 
+              className="w-16 h-24 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]"
               fill="none"
               stroke="white"
-              strokeWidth="8"
-              strokeLinecap="square"
+              strokeWidth="10"
+              strokeLinecap="butt"
+              strokeLinejoin="miter"
             >
-              <polyline points="30,20 70,40 30,60" />
-              <polyline points="70,80 30,100 70,120" />
+              <path d="M25,15 L75,40 L25,65" />
+              <path d="M75,40 L75,95" />
+              <path d="M75,95 L25,120 L75,145" />
             </svg>
           </div>
         </div>
