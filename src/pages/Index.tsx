@@ -76,21 +76,27 @@ const Index = () => {
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-6">
         {/* Symbol - The emotional core */}
-        <div className="mb-6 animate-fade-in">
-          <div className="relative">
+        <div className="mb-8 animate-fade-in">
+          <div className="relative flex items-center justify-center">
             {/* Glow effect */}
-            <div className="absolute inset-0 blur-xl opacity-30">
-              <img 
-                src={lionxSymbol} 
-                alt="" 
-                className="w-32 h-32 object-contain"
-              />
-            </div>
-            <img 
-              src={lionxSymbol} 
-              alt="LionX Symbol" 
-              className="w-32 h-32 object-contain relative drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+            <div 
+              className="absolute w-56 h-56 rounded-full blur-3xl opacity-[0.08]"
+              style={{ background: 'radial-gradient(circle, white 0%, transparent 70%)' }}
             />
+            {/* SVG Symbol - clean, no background */}
+            <svg 
+              viewBox="0 0 100 140" 
+              className="w-44 h-60 drop-shadow-[0_0_60px_rgba(255,255,255,0.15)]"
+              fill="none"
+              stroke="white"
+              strokeWidth="8"
+              strokeLinecap="square"
+            >
+              {/* Top arrow pointing right */}
+              <polyline points="30,20 70,40 30,60" />
+              {/* Bottom arrow pointing left */}
+              <polyline points="70,80 30,100 70,120" />
+            </svg>
           </div>
         </div>
 
@@ -99,7 +105,7 @@ const Index = () => {
           className="text-4xl font-display font-bold text-white tracking-[0.3em] mb-1 animate-fade-in"
           style={{ animationDelay: '0.1s' }}
         >
-          LIONX
+          LIONSX
         </h1>
         <p 
           className="text-sm text-white/40 tracking-[0.4em] uppercase mb-12 animate-fade-in"

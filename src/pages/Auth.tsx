@@ -79,15 +79,22 @@ export default function Auth() {
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-6">
         {/* Symbol */}
         <div className="mb-4 animate-fade-in">
-          <div className="relative">
-            <div className="absolute inset-0 blur-xl opacity-20">
-              <img src={lionxSymbol} alt="" className="w-20 h-20 object-contain" />
-            </div>
-            <img 
-              src={lionxSymbol} 
-              alt="LionX Symbol" 
-              className="w-20 h-20 object-contain relative drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+          <div className="relative flex items-center justify-center">
+            <div 
+              className="absolute w-28 h-28 rounded-full blur-2xl opacity-[0.06]"
+              style={{ background: 'radial-gradient(circle, white 0%, transparent 70%)' }}
             />
+            <svg 
+              viewBox="0 0 100 140" 
+              className="w-20 h-28 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+              fill="none"
+              stroke="white"
+              strokeWidth="8"
+              strokeLinecap="square"
+            >
+              <polyline points="30,20 70,40 30,60" />
+              <polyline points="70,80 30,100 70,120" />
+            </svg>
           </div>
         </div>
 
@@ -96,7 +103,7 @@ export default function Auth() {
           className="text-2xl font-display font-bold text-white tracking-[0.2em] mb-1 animate-fade-in"
           style={{ animationDelay: '0.1s' }}
         >
-          JOIN LIONX
+          JOIN LIONSX
         </h1>
         <p 
           className="text-xs text-white/30 tracking-[0.3em] uppercase mb-8 animate-fade-in"
