@@ -1,12 +1,26 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Crown, Dumbbell, TrendingUp, Users } from 'lucide-react';
-import { useEffect } from 'react';
+import { Input } from '@/components/ui/input';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { z } from 'zod';
+import lionxSymbol from '@/assets/lionx-symbol.png';
+
+const signInSchema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(1, 'Required'),
+});
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
+  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!loading && user) {
@@ -14,81 +28,153 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
-  const features = [
-    {
-      icon: Dumbbell,
-      title: 'Train Hard',
-      description: 'Complete exercises to earn LP and level up your skills',
-    },
-    {
-      icon: TrendingUp,
-      title: 'Rise in Ranks',
-      description: 'From Bronze to Lion - climb the ranks and prove your worth',
-    },
-    {
-      icon: Users,
-      title: 'Track Progress',
-      description: 'Monitor your strength, endurance, and mobility growth',
-    },
-  ];
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    
+    const result = signInSchema.safeParse({ email, password });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0].toString()] = err.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    const { error } = await signIn(email, password);
+    setIsSubmitting(false);
+
+    if (error) {
+      if (error.message.includes('Invalid login credentials')) {
+        setErrors({ general: 'Invalid credentials' });
+      } else {
+        setErrors({ general: error.message });
+      }
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-hero flex flex-col">
-      {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        {/* Logo */}
-        <div className="animate-float mb-6">
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-accent flex items-center justify-center lion-glow">
-            <Crown className="w-14 h-14 text-primary-foreground" />
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Ambient glow behind symbol */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-[200px] h-[200px] bg-white/[0.04] rounded-full blur-2xl pointer-events-none" />
+      
+      {/* Main content */}
+      <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-6">
+        {/* Symbol - The emotional core */}
+        <div className="mb-6 animate-fade-in">
+          <div className="relative">
+            {/* Glow effect */}
+            <div className="absolute inset-0 blur-xl opacity-30">
+              <img 
+                src={lionxSymbol} 
+                alt="" 
+                className="w-32 h-32 object-contain"
+              />
+            </div>
+            <img 
+              src={lionxSymbol} 
+              alt="LionX Symbol" 
+              className="w-32 h-32 object-contain relative drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+            />
           </div>
         </div>
 
-        <h1 className="text-5xl font-display font-bold text-foreground tracking-wide mb-2 animate-fade-in">
-          LION
-        </h1>
-        <p className="text-xl text-primary font-display tracking-widest mb-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          SYSTEM
-        </p>
-        
-        <p className="text-muted-foreground max-w-sm mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          Train. Earn LP. Rise through the ranks. Become the Lion you were meant to be.
-        </p>
-
-        <Button 
-          variant="hero" 
-          size="xl" 
-          className="animate-fade-in"
-          style={{ animationDelay: '0.3s' }}
-          onClick={() => navigate('/auth')}
+        {/* Brand text */}
+        <h1 
+          className="text-4xl font-display font-bold text-white tracking-[0.3em] mb-1 animate-fade-in"
+          style={{ animationDelay: '0.1s' }}
         >
-          <Crown className="w-5 h-5" />
-          Begin Your Journey
-        </Button>
+          LIONX
+        </h1>
+        <p 
+          className="text-sm text-white/40 tracking-[0.4em] uppercase mb-12 animate-fade-in"
+          style={{ animationDelay: '0.15s' }}
+        >
+          Train · Rank · Become
+        </p>
+
+        {/* Login Form - integrated into the environment */}
+        <form 
+          onSubmit={handleSubmit} 
+          className="w-full space-y-4 animate-fade-in"
+          style={{ animationDelay: '0.2s' }}
+        >
+          {errors.general && (
+            <div className="text-center text-red-400/80 text-sm py-2">
+              {errors.general}
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.05] transition-all rounded-lg"
+            />
+            {errors.email && <p className="text-red-400/70 text-xs pl-1">{errors.email}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <div className="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.05] transition-all rounded-lg pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            {errors.password && <p className="text-red-400/70 text-xs pl-1">{errors.password}</p>}
+          </div>
+
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="w-full h-12 bg-white text-black font-display font-semibold tracking-wider hover:bg-white/90 transition-all rounded-lg mt-2"
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              'ENTER THE SYSTEM'
+            )}
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/auth')}
+            className="w-full h-12 bg-transparent border border-white/[0.12] text-white/60 font-display tracking-wider hover:bg-white/[0.03] hover:text-white/80 hover:border-white/20 transition-all rounded-lg"
+          >
+            CREATE ACCOUNT
+          </button>
+        </form>
       </div>
 
-      {/* Features */}
-      <div className="p-6 pb-12">
-        <div className="space-y-4">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-              <div 
-                key={feature.title}
-                className="lion-card p-4 flex items-center gap-4 animate-slide-up"
-                style={{ animationDelay: `${0.4 + index * 0.1}s` }}
-              >
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Icon className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-foreground">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Subtle bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
     </div>
   );
 };
