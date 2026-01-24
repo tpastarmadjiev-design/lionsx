@@ -79,22 +79,33 @@ export default function Auth() {
         {/* Symbol with subtle glow */}
         <div className="mb-4 animate-fade-in">
           <div className="relative flex items-center justify-center">
+            {/* Pulsing glow */}
             <div 
-              className="absolute w-32 h-32 rounded-full blur-2xl animate-[pulse-glow_4s_ease-in-out_infinite]"
-              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)' }}
+              className="absolute w-48 h-48 rounded-full blur-2xl animate-pulse-glow"
+              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)' }}
             />
+            {/* SVG Symbol - Same zigzag pattern */}
             <svg 
-              viewBox="0 0 100 160" 
-              className="w-16 h-24 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              viewBox="0 0 60 100" 
+              className="w-16 h-24 drop-shadow-[0_0_15px_rgba(255,255,255,0.08)]"
               fill="none"
-              stroke="white"
-              strokeWidth="10"
-              strokeLinecap="butt"
+              stroke="currentColor"
+              strokeWidth="8"
+              strokeLinecap="square"
               strokeLinejoin="miter"
+              style={{ color: 'hsl(var(--foreground))' }}
             >
-              <path d="M25,15 L75,40 L25,65" />
-              <path d="M75,40 L75,95" />
-              <path d="M75,95 L25,120 L75,145" />
+              {/* Top horizontal */}
+              <path d="M8,8 L52,8" />
+              {/* Diagonal down-left */}
+              <path d="M52,8 L8,35" />
+              {/* Vertical connector */}
+              <path d="M8,35 L8,50" />
+              {/* Diagonal down-right */}
+              <path d="M8,50 L52,77" />
+              {/* Bottom vertical + horizontal */}
+              <path d="M52,77 L52,92" />
+              <path d="M52,92 L8,92" />
             </svg>
           </div>
         </div>

@@ -82,59 +82,65 @@ const Index = () => {
         
         {/* Symbol Container - The emotional core */}
         <div className="mb-6 relative flex items-center justify-center">
-          {/* Pulsing glow layers */}
+          {/* Pulsing glow layers - subtle aura */}
           <div 
-            className={`absolute w-80 h-80 rounded-full blur-3xl pointer-events-none ${
+            className={`absolute w-72 h-72 rounded-full blur-3xl pointer-events-none ${
               isTransitioning ? 'animate-symbol-glow-expand' : 'animate-pulse-glow'
             }`}
-            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%)' }}
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)' }}
           />
           <div 
-            className={`absolute w-56 h-56 rounded-full blur-2xl pointer-events-none ${
+            className={`absolute w-48 h-48 rounded-full blur-2xl pointer-events-none ${
               isTransitioning ? 'animate-symbol-glow-expand' : 'animate-pulse-glow'
             }`}
             style={{ 
-              background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%)',
               animationDelay: '0.5s'
             }}
           />
           
-          {/* SVG Symbol - Split into two parts for open animation */}
-          <div className="relative w-48 h-64 flex items-center justify-center">
-            {/* Top part of symbol */}
+          {/* SVG Symbol - Exact pattern from reference image */}
+          <div className="relative w-28 h-44 flex items-center justify-center">
+            {/* Top half - for split animation */}
             <svg 
-              viewBox="0 0 100 80" 
-              className={`absolute top-0 w-48 h-32 drop-shadow-[0_0_30px_rgba(255,255,255,0.15)] ${
+              viewBox="0 0 60 100" 
+              className={`absolute w-28 h-44 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] ${
                 isTransitioning ? 'animate-symbol-open-top' : ''
               }`}
               fill="none"
               stroke="currentColor"
               strokeWidth="8"
-              strokeLinecap="butt"
+              strokeLinecap="square"
               strokeLinejoin="miter"
               style={{ color: 'hsl(var(--foreground))' }}
             >
-              {/* Top right-pointing arrow */}
-              <path d="M20,10 L80,40 L20,70" />
+              {/* Top horizontal: left to right */}
+              <path d="M8,8 L52,8" />
+              {/* Diagonal: top-right to bottom-left */}
+              <path d="M52,8 L8,35" />
+              {/* Short vertical down on left side */}
+              <path d="M8,35 L8,50" />
             </svg>
             
-            {/* Bottom part of symbol */}
+            {/* Bottom half - for split animation */}
             <svg 
-              viewBox="0 0 100 100" 
-              className={`absolute bottom-0 w-48 h-40 drop-shadow-[0_0_30px_rgba(255,255,255,0.15)] ${
+              viewBox="0 0 60 100" 
+              className={`absolute w-28 h-44 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] ${
                 isTransitioning ? 'animate-symbol-open-bottom' : ''
               }`}
               fill="none"
               stroke="currentColor"
               strokeWidth="8"
-              strokeLinecap="butt"
+              strokeLinecap="square"
               strokeLinejoin="miter"
               style={{ color: 'hsl(var(--foreground))' }}
             >
-              {/* Vertical connector */}
-              <path d="M80,0 L80,50" />
-              {/* Bottom left-pointing arrow */}
-              <path d="M80,50 L20,80 L80,110" />
+              {/* Diagonal: left to bottom-right */}
+              <path d="M8,50 L52,77" />
+              {/* Short vertical down on right side */}
+              <path d="M52,77 L52,92" />
+              {/* Bottom horizontal: right to left */}
+              <path d="M52,92 L8,92" />
             </svg>
           </div>
         </div>
