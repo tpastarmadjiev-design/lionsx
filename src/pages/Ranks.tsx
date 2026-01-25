@@ -4,9 +4,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { AppLayout } from '@/components/AppLayout';
 import { RANKS, getRank, getRankProgress, formatLP } from '@/lib/ranks';
+import { getDivisionInfo } from '@/lib/divisions';
 import { getCountryFlag } from '@/lib/countryFlags';
+import { RankMedal } from '@/components/RankMedal';
 import { cn } from '@/lib/utils';
-import { Trophy, Lock, Check, Users } from 'lucide-react';
+import { Trophy, Lock, Check, Users, Star } from 'lucide-react';
 
 // Simulated profiles for each rank to show division population
 const MOCK_PROFILES = [
@@ -98,16 +100,40 @@ export default function Ranks() {
   const currentRankIndex = RANKS.findIndex(r => r.name === currentRank.name);
   const progress = getRankProgress(currentLP);
   const { position, total } = getPositionInRank(currentLP, currentRank.name);
+  const divisionInfo = getDivisionInfo(currentLP);
 
   return (
     <AppLayout title="Rank System">
       {/* Current Rank Hero */}
       <div className="lion-card p-6 mb-6 animate-fade-in text-center">
-        <div className="text-5xl mb-3">{currentRank.icon}</div>
+        <RankMedal 
+          rank={currentRank.name} 
+          stars={divisionInfo.stars} 
+          size="xl" 
+          animated 
+          className="mx-auto mb-4"
+        />
         <h2 className={cn("text-2xl font-display font-bold mb-1", currentRank.textClass)}>
           {currentRank.name}
         </h2>
         <p className="text-muted-foreground mb-2">Current Rank</p>
+        
+        {/* Star display */}
+        {!divisionInfo.isMaxRank && (
+          <div className="flex justify-center gap-1 mb-3">
+            {[1, 2, 3].map((starNum) => (
+              <Star
+                key={starNum}
+                className={cn(
+                  "w-6 h-6 transition-all",
+                  starNum <= divisionInfo.stars 
+                    ? 'text-yellow-400 fill-yellow-400' 
+                    : 'text-muted-foreground/30'
+                )}
+              />
+            ))}
+          </div>
+        )}
         
         {/* Position in division */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 mb-4">
@@ -166,12 +192,12 @@ export default function Ranks() {
                 "p-4 flex items-center gap-4",
                 !isUnlocked && "opacity-60"
               )}>
-                <div className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center text-2xl",
-                  isUnlocked ? `${rank.bgClass}/20` : "bg-muted"
-                )}>
-                  {rank.icon}
-                </div>
+                <RankMedal 
+                  rank={rank.name} 
+                  stars={isCurrent ? divisionInfo.stars : 0} 
+                  size="sm"
+                  showStars={isCurrent}
+                />
                 
                 <div className="flex-1">
                   <div className="flex items-center gap-2">

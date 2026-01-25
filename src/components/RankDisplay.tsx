@@ -1,4 +1,6 @@
 import { getRank, getRankProgress, formatLP, getNextRank, DAILY_LP_CAP, RANKS, getRankIndex } from '@/lib/ranks';
+import { getDivisionInfo } from '@/lib/divisions';
+import { RankMedal } from './RankMedal';
 import { Flame, TrendingUp, Star } from 'lucide-react';
 
 interface RankDisplayProps {
@@ -12,24 +14,40 @@ export function RankDisplay({ lp, dailyLP }: RankDisplayProps) {
   const progress = getRankProgress(lp);
   const remainingDaily = Math.max(0, DAILY_LP_CAP - dailyLP);
   const rankIndex = getRankIndex(lp);
+  const divisionInfo = getDivisionInfo(lp);
 
   return (
     <div className="lion-card space-y-4 animate-fade-in">
       {/* Current Rank Badge */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-16 h-16 rounded-xl ${rank.bgClass} flex items-center justify-center lion-glow relative`}>
-            <span className="text-3xl">{rank.icon}</span>
-            <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-background border-2 border-primary flex items-center justify-center">
-              <span className="text-[10px] font-bold text-primary">{rankIndex + 1}</span>
-            </div>
-          </div>
+          <RankMedal 
+            rank={rank.name} 
+            stars={divisionInfo.stars} 
+            size="lg"
+            animated
+          />
           <div>
             <p className="text-muted-foreground text-xs uppercase tracking-wider">Current Rank</p>
             <h3 className={`text-2xl font-display font-bold ${rank.textClass}`}>{rank.name}</h3>
             <p className="text-xs text-muted-foreground">
               Rank {rankIndex + 1} of {RANKS.length}
             </p>
+            {/* Star progress */}
+            {!divisionInfo.isMaxRank && (
+              <div className="flex items-center gap-1 mt-1">
+                {[1, 2, 3].map((starNum) => (
+                  <Star
+                    key={starNum}
+                    className={`w-4 h-4 ${
+                      starNum <= divisionInfo.stars 
+                        ? 'text-yellow-400 fill-yellow-400' 
+                        : 'text-muted-foreground/30'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="text-right">
@@ -39,12 +57,33 @@ export function RankDisplay({ lp, dailyLP }: RankDisplayProps) {
         </div>
       </div>
 
+      {/* Star Progress (within current rank) */}
+      {!divisionInfo.isMaxRank && (
+        <div className="space-y-2 p-3 rounded-lg bg-secondary/20 border border-border/30">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <Star className="w-4 h-4 text-yellow-400" /> 
+              Star {divisionInfo.stars + 1} Progress
+            </span>
+            <span className="text-foreground font-display font-bold">
+              {Math.round(divisionInfo.progressToNextStar)}%
+            </span>
+          </div>
+          <div className="skill-bar h-2">
+            <div
+              className="skill-bar-fill bg-yellow-400/80 transition-all duration-500"
+              style={{ width: `${divisionInfo.progressToNextStar}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Progress to Next Rank */}
       {nextRank && (
         <div className="space-y-2 p-3 rounded-lg bg-secondary/30 border border-border/50">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="w-4 h-4" /> Next: <span className={nextRank.textClass}>{nextRank.name}</span> {nextRank.icon}
+              <TrendingUp className="w-4 h-4" /> Next: <span className={nextRank.textClass}>{nextRank.name}</span>
             </span>
             <span className="text-foreground font-display font-bold">{Math.round(progress)}%</span>
           </div>
@@ -65,9 +104,9 @@ export function RankDisplay({ lp, dailyLP }: RankDisplayProps) {
       {nextRank === null && (
         <div className="p-4 rounded-lg bg-gradient-to-r from-rank-legendary/20 to-rank-alpha/20 border border-rank-legendary/30 text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
-            <Star className="w-5 h-5 text-rank-legendary" />
+            <Star className="w-5 h-5 text-rank-legendary fill-rank-legendary" />
             <p className="text-rank-legendary font-display font-bold text-lg">Maximum Rank Achieved!</p>
-            <Star className="w-5 h-5 text-rank-legendary" />
+            <Star className="w-5 h-5 text-rank-legendary fill-rank-legendary" />
           </div>
           <p className="text-sm text-muted-foreground">You are a true Lion. Keep training to increase your legend!</p>
         </div>
