@@ -166,6 +166,8 @@ export function useProfile() {
       return { 
         earnedLP: actualLP, 
         skillXP: actualSkillXP,
+        previousLP: profile.lp,
+        newLP: profile.lp + actualLP,
       };
     },
     onSuccess: (data) => {
