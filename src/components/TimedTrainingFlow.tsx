@@ -63,6 +63,7 @@ export function TimedTrainingFlow({
   const [step, setStep] = useState<FlowStep>('ready');
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
+  const [detectedReps, setDetectedReps] = useState(0); // Store original detected count
   const [manualCount, setManualCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -87,18 +88,22 @@ export function TimedTrainingFlow({
     setStep('active');
     setTimeRemaining(TIMER_DURATION);
     setRepCount(0);
+    setDetectedReps(0);
+    setManualCount(0);
     
     timerRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
+          // Store detected reps before moving to manual-input
+          setDetectedReps(repCount);
           setStep('manual-input');
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  }, []);
+  }, [repCount]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -220,12 +225,15 @@ export function TimedTrainingFlow({
         {/* Active Step - Timer Running */}
         {step === 'active' && (
           <div className="w-full max-w-sm space-y-4 animate-fade-in">
-            {/* Timer Display */}
+            {/* Timer Display - Single timer only */}
             <div className="text-center mb-4">
-              <div className={cn(
-                "text-6xl font-display font-bold tabular-nums",
-                timeRemaining <= 10 ? "text-destructive animate-pulse" : "text-primary"
-              )}>
+              <div 
+                key={timeRemaining <= 10 ? 'countdown' : 'normal'}
+                className={cn(
+                  "text-6xl font-display font-bold tabular-nums transition-colors duration-200",
+                  timeRemaining <= 10 ? "text-destructive" : "text-primary"
+                )}
+              >
                 {formatTime(timeRemaining)}
               </div>
               <p className="text-muted-foreground text-sm mt-1">
@@ -269,29 +277,40 @@ export function TimedTrainingFlow({
             {/* Manual adjustment */}
             <div className="lion-card p-4">
               <p className="text-sm text-muted-foreground text-center mb-4">
-                Adjust if needed:
+                Adjust if needed (max +15%):
               </p>
-              <div className="flex items-center justify-center gap-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 rounded-full"
-                  onClick={() => setManualCount(prev => Math.max(0, (prev || repCount) - 1))}
-                >
-                  <Minus className="w-5 h-5" />
-                </Button>
-                <span className="text-4xl font-display font-bold text-primary w-20 text-center">
-                  {manualCount || repCount}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 rounded-full"
-                  onClick={() => setManualCount(prev => (prev || repCount) + 1)}
-                >
-                  <Plus className="w-5 h-5" />
-                </Button>
-              </div>
+              {(() => {
+                // Calculate max allowed reps (detected + 15%)
+                const maxManualAdd = Math.floor(repCount * 0.15);
+                const maxAllowed = repCount + maxManualAdd;
+                const currentValue = manualCount || repCount;
+                
+                return (
+                  <div className="flex items-center justify-center gap-4">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-12 w-12 rounded-full"
+                      onClick={() => setManualCount(prev => Math.max(0, (prev || repCount) - 1))}
+                      disabled={currentValue <= 0}
+                    >
+                      <Minus className="w-5 h-5" />
+                    </Button>
+                    <span className="text-4xl font-display font-bold text-primary w-20 text-center">
+                      {currentValue}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-12 w-12 rounded-full"
+                      onClick={() => setManualCount(prev => Math.min(maxAllowed, (prev || repCount) + 1))}
+                      disabled={currentValue >= maxAllowed}
+                    >
+                      <Plus className="w-5 h-5" />
+                    </Button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* LP earned preview */}

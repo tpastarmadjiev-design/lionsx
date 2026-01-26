@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -80,12 +80,29 @@ export default function Ranks() {
   const { user, loading: authLoading } = useAuth();
   const { profile, isLoading } = useProfile();
   const navigate = useNavigate();
+  const currentRankRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
+
+  const currentLP = profile?.lp || 0;
+  const currentRank = getRank(currentLP);
+  const currentRankIndex = RANKS.findIndex(r => r.name === currentRank.name);
+  const progress = getRankProgress(currentLP);
+  const { position, total } = getPositionInRank(currentLP, currentRank.name);
+  const divisionInfo = getDivisionInfo(currentLP);
+
+  // Auto-scroll to current rank after render
+  useEffect(() => {
+    if (!authLoading && !isLoading && currentRankRef.current) {
+      setTimeout(() => {
+        currentRankRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [authLoading, isLoading, currentRank.name]);
 
   if (authLoading || isLoading) {
     return (
@@ -94,13 +111,6 @@ export default function Ranks() {
       </div>
     );
   }
-
-  const currentLP = profile?.lp || 0;
-  const currentRank = getRank(currentLP);
-  const currentRankIndex = RANKS.findIndex(r => r.name === currentRank.name);
-  const progress = getRankProgress(currentLP);
-  const { position, total } = getPositionInRank(currentLP, currentRank.name);
-  const divisionInfo = getDivisionInfo(currentLP);
 
   return (
     <AppLayout title="Rank System">
@@ -173,7 +183,8 @@ export default function Ranks() {
       <h3 className="text-lg font-display font-semibold text-foreground mb-4">All Divisions</h3>
       
       <div className="space-y-3">
-        {RANKS.map((rank, index) => {
+        {/* Reverse order: highest rank at top */}
+        {[...RANKS].reverse().map((rank, index) => {
           const isUnlocked = currentLP >= rank.minLP;
           const isCurrent = rank.name === currentRank.name;
           const memberCount = getRankMemberCount(rank.name);
@@ -182,6 +193,7 @@ export default function Ranks() {
           return (
             <div
               key={rank.name}
+              ref={isCurrent ? currentRankRef : undefined}
               className={cn(
                 "lion-card overflow-hidden transition-all duration-200 animate-fade-in",
                 isCurrent && "ring-2 ring-primary"
