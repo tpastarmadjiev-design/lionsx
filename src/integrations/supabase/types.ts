@@ -58,6 +58,7 @@ export type Database = {
           country: string
           created_at: string
           daily_lp: number
+          email: string | null
           endurance: number
           id: string
           last_count_reset: string | null
@@ -74,6 +75,7 @@ export type Database = {
           country?: string
           created_at?: string
           daily_lp?: number
+          email?: string | null
           endurance?: number
           id: string
           last_count_reset?: string | null
@@ -90,6 +92,7 @@ export type Database = {
           country?: string
           created_at?: string
           daily_lp?: number
+          email?: string | null
           endurance?: number
           id?: string
           last_count_reset?: string | null

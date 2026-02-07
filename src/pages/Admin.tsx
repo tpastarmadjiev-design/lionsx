@@ -1,5 +1,5 @@
 import { getRank } from '@/lib/ranks';
-import { Crown, Edit2, Users, TrendingUp, Dumbbell, Search } from 'lucide-react';
+import { Edit2, Users, TrendingUp, Activity, ClipboardCheck, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,11 +13,19 @@ import { toast } from 'sonner';
 interface UserProfile {
   id: string;
   nickname: string;
+  email: string | null;
   country: string;
   lp: number;
   strength: number;
   endurance: number;
   mobility: number;
+}
+
+interface DashboardStats {
+  totalUsers: number;
+  activeUsersToday: number;
+  sessionsStartedToday: number;
+  sessionsCompletedToday: number;
 }
 
 export default function Admin() {
@@ -30,6 +38,12 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [editLP, setEditLP] = useState('');
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    activeUsersToday: 0,
+    sessionsStartedToday: 0,
+    sessionsCompletedToday: 0,
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -47,6 +61,7 @@ export default function Admin() {
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
+      fetchStats();
     }
   }, [isAdmin]);
 
@@ -64,6 +79,36 @@ export default function Admin() {
       setUsers(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchStats = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
+
+    // Get total users count
+    const { count: totalUsers } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
+
+    // Get training logs from today
+    const { data: todayLogs } = await supabase
+      .from('training_logs')
+      .select('user_id, completed_at')
+      .gte('completed_at', todayISO);
+
+    // Count unique active users today
+    const uniqueUsersToday = new Set(todayLogs?.map(log => log.user_id) || []);
+    
+    // Sessions started/completed today (each log entry is a completed session)
+    const sessionsToday = todayLogs?.length || 0;
+
+    setStats({
+      totalUsers: totalUsers || 0,
+      activeUsersToday: uniqueUsersToday.size,
+      sessionsStartedToday: sessionsToday,
+      sessionsCompletedToday: sessionsToday,
+    });
   };
 
   const handleUpdateLP = async (userId: string, newLP: number) => {
@@ -84,7 +129,7 @@ export default function Admin() {
 
   const filteredUsers = users.filter((u) =>
     u.nickname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.country.toLowerCase().includes(searchTerm.toLowerCase())
+    (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (authLoading || adminLoading || loading) {
@@ -99,32 +144,37 @@ export default function Admin() {
     return null;
   }
 
-  const totalLP = users.reduce((sum, u) => sum + u.lp, 0);
-
   return (
     <AppLayout title="Admin Panel">
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      {/* Stats Dashboard */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="lion-card p-4 animate-fade-in">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Users</span>
+            <span className="text-xs text-muted-foreground">Total Users</span>
           </div>
-          <p className="text-2xl font-display font-bold text-foreground">{users.length}</p>
+          <p className="text-2xl font-display font-bold text-foreground">{stats.totalUsers}</p>
         </div>
         <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-accent" />
-            <span className="text-xs text-muted-foreground">Total LP</span>
+            <Activity className="w-4 h-4 text-accent" />
+            <span className="text-xs text-muted-foreground">Active Today</span>
           </div>
-          <p className="text-2xl font-display font-bold text-foreground">{totalLP.toLocaleString()}</p>
+          <p className="text-2xl font-display font-bold text-foreground">{stats.activeUsersToday}</p>
         </div>
         <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.2s' }}>
           <div className="flex items-center gap-2 mb-2">
-            <Dumbbell className="w-4 h-4 text-strength" />
-            <span className="text-xs text-muted-foreground">Exercises</span>
+            <TrendingUp className="w-4 h-4 text-strength" />
+            <span className="text-xs text-muted-foreground">Sessions Started</span>
           </div>
-          <p className="text-2xl font-display font-bold text-foreground">15</p>
+          <p className="text-2xl font-display font-bold text-foreground">{stats.sessionsStartedToday}</p>
+        </div>
+        <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <ClipboardCheck className="w-4 h-4 text-endurance" />
+            <span className="text-xs text-muted-foreground">Sessions Completed</span>
+          </div>
+          <p className="text-2xl font-display font-bold text-foreground">{stats.sessionsCompletedToday}</p>
         </div>
       </div>
 
@@ -132,7 +182,7 @@ export default function Admin() {
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
         <Input
-          placeholder="Search users..."
+          placeholder="Search by name or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-11"
@@ -158,7 +208,7 @@ export default function Admin() {
                   </div>
                   <div>
                     <p className="font-medium text-foreground">{userProfile.nickname}</p>
-                    <p className="text-xs text-muted-foreground">{userProfile.country}</p>
+                    <p className="text-xs text-muted-foreground">{userProfile.email || userProfile.country}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
