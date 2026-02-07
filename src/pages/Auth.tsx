@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 import { COUNTRIES } from '@/lib/countries';
+import lionsSxSymbol from '@/assets/lionsx-symbol-new.png';
 
 const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -86,29 +87,13 @@ export default function Auth() {
               className="absolute w-48 h-48 rounded-full blur-2xl animate-pulse-glow"
               style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)' }}
             />
-            {/* SVG Symbol - Same zigzag pattern */}
-            <svg 
-              viewBox="0 0 60 100" 
-              className="w-16 h-24 drop-shadow-[0_0_15px_rgba(255,255,255,0.08)]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="8"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              style={{ color: 'hsl(var(--foreground))' }}
-            >
-              {/* Top horizontal */}
-              <path d="M8,8 L52,8" />
-              {/* Diagonal down-left */}
-              <path d="M52,8 L8,35" />
-              {/* Vertical connector */}
-              <path d="M8,35 L8,50" />
-              {/* Diagonal down-right */}
-              <path d="M8,50 L52,77" />
-              {/* Bottom vertical + horizontal */}
-              <path d="M52,77 L52,92" />
-              <path d="M52,92 L8,92" />
-            </svg>
+            {/* Logo Symbol */}
+            <img 
+              src={lionsSxSymbol}
+              alt="LionsX Symbol"
+              className="w-16 h-24 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.08)] invert brightness-0 invert"
+              style={{ filter: 'invert(1) brightness(100)' }}
+            />
           </div>
         </div>
 
