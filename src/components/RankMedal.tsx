@@ -6,6 +6,7 @@ import warriorMedalImage from '@/assets/warrior-medal.png';
 import guardianMedalImage from '@/assets/guardian-medal.png';
 import championMedalImage from '@/assets/champion-medal.png';
 import eliteMedalImage from '@/assets/elite-medal.png';
+import alphaMedalImage from '@/assets/alpha-medal.png';
 
 interface RankMedalProps {
   rank: string;
@@ -99,6 +100,7 @@ const IMAGE_MEDALS: Record<string, string> = {
   Guardian: guardianMedalImage,
   Champion: championMedalImage,
   Elite: eliteMedalImage,
+  Alpha: alphaMedalImage,
 };
 
 export function RankMedal({ 
