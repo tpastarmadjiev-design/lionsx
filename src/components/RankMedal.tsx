@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import cubMedalImage from '@/assets/cub-medal.jpg';
 
 interface RankMedalProps {
   rank: string;
@@ -83,6 +84,11 @@ const SIZE_MAP = {
   xl: { width: 200, height: 234, starSize: 24 },
 };
 
+// Ranks that use custom images instead of SVG
+const IMAGE_MEDALS: Record<string, string> = {
+  Cub: cubMedalImage,
+};
+
 export function RankMedal({ 
   rank, 
   stars = 0, 
@@ -94,6 +100,68 @@ export function RankMedal({
   const config = MEDAL_CONFIGS[rank as keyof typeof MEDAL_CONFIGS] || MEDAL_CONFIGS.Cub;
   const sizeConfig = SIZE_MAP[size];
   const isLegendary = rank === 'Legendary';
+  const hasCustomImage = IMAGE_MEDALS[rank];
+  
+  // If this rank has a custom image, render image instead of SVG
+  if (hasCustomImage) {
+    return (
+      <div 
+        className={cn("relative inline-flex items-center justify-center", className)}
+        style={{ width: sizeConfig.width, height: sizeConfig.height }}
+      >
+        {/* Outer glow */}
+        <div 
+          className={cn("absolute inset-0 blur-xl", animated && "animate-pulse")}
+          style={{ 
+            background: `radial-gradient(ellipse at center, ${config.glow} 0%, transparent 70%)`,
+          }}
+        />
+        
+        <img 
+          src={hasCustomImage}
+          alt={`${rank} medal`}
+          className="w-full h-full object-contain relative z-10"
+          style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.5))' }}
+        />
+
+        {/* Stars display at bottom */}
+        {showStars && stars > 0 && rank !== 'Legendary' && (
+          <div 
+            className="absolute flex gap-0.5 justify-center"
+            style={{ 
+              bottom: size === 'sm' ? '-2px' : size === 'md' ? '-4px' : '-8px',
+            }}
+          >
+            {Array.from({ length: stars }).map((_, i) => (
+              <svg 
+                key={i}
+                viewBox="0 0 24 24" 
+                style={{ 
+                  width: sizeConfig.starSize, 
+                  height: sizeConfig.starSize,
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                }}
+              >
+                <defs>
+                  <linearGradient id={`star-gold-img-${rank}-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FFD700" />
+                    <stop offset="50%" stopColor="#FFA500" />
+                    <stop offset="100%" stopColor="#FFD700" />
+                  </linearGradient>
+                </defs>
+                <polygon
+                  points="12,2 15,9 22,9 17,14 19,22 12,17 5,22 7,14 2,9 9,9"
+                  fill={`url(#star-gold-img-${rank}-${i})`}
+                  stroke="#B7791F"
+                  strokeWidth="1"
+                />
+              </svg>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
   
   return (
     <div 
