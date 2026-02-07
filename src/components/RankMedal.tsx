@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import cubMedalImage from '@/assets/cub-medal.jpg';
+import cubMedalImage from '@/assets/cub-medal.png';
 import scoutMedalImage from '@/assets/scout-medal.png';
 import hunterMedalImage from '@/assets/hunter-medal.png';
 import warriorMedalImage from '@/assets/warrior-medal.png';
