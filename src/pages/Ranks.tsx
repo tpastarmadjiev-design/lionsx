@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { AppLayout } from '@/components/AppLayout';
@@ -7,73 +8,39 @@ import { RANKS, getRank, getRankProgress, formatLP } from '@/lib/ranks';
 import { getDivisionInfo } from '@/lib/divisions';
 import { getCountryFlag } from '@/lib/countryFlags';
 import { RankMedal } from '@/components/RankMedal';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { Trophy, Lock, Check, Users, Star, ChevronDown, ChevronUp } from 'lucide-react';
 
-// Simulated profiles for each rank to show division population
-const MOCK_PROFILES = [
-  // Cub rank (0-999)
-  { nickname: 'TigerCub', country: 'USA', lp: 150 },
-  { nickname: 'NewLion', country: 'UK', lp: 320 },
-  { nickname: 'FreshPaw', country: 'Germany', lp: 580 },
-  { nickname: 'BabyRoar', country: 'France', lp: 890 },
-  { nickname: 'LittleClaw', country: 'Italy', lp: 450 },
-  // Scout rank (1000-2999)
-  { nickname: 'ScoutMaster', country: 'Canada', lp: 1200 },
-  { nickname: 'TrailBlazer', country: 'Australia', lp: 1850 },
-  { nickname: 'PathFinder', country: 'Japan', lp: 2400 },
-  { nickname: 'ForestEye', country: 'Brazil', lp: 2750 },
-  // Hunter rank (3000-6999)
-  { nickname: 'ShadowHunter', country: 'Spain', lp: 3500 },
-  { nickname: 'SwiftArrow', country: 'Italy', lp: 4800 },
-  { nickname: 'NightStalker', country: 'Mexico', lp: 5900 },
-  { nickname: 'SilentPrey', country: 'India', lp: 6500 },
-  { nickname: 'QuickHunt', country: 'Thailand', lp: 4200 },
-  { nickname: 'PreciseShot', country: 'Vietnam', lp: 5100 },
-  // Warrior rank (7000-14999)
-  { nickname: 'IronFist', country: 'Russia', lp: 7500 },
-  { nickname: 'BattleBorn', country: 'China', lp: 9200 },
-  { nickname: 'WarMachine', country: 'Korea', lp: 11500 },
-  { nickname: 'SteelHeart', country: 'Poland', lp: 14000 },
-  { nickname: 'BladeRunner', country: 'Ukraine', lp: 8800 },
-  // Guardian rank (15000-29999)
-  { nickname: 'ShieldBearer', country: 'Sweden', lp: 16000 },
-  { nickname: 'Protector', country: 'Norway', lp: 21000 },
-  { nickname: 'Defender', country: 'Finland', lp: 27000 },
-  // Champion rank (30000-45999)
-  { nickname: 'GoldChamp', country: 'Netherlands', lp: 32000 },
-  { nickname: 'VictoryKing', country: 'Belgium', lp: 40000 },
-  // Elite rank (46000-64999)
-  { nickname: 'DiamondElite', country: 'Switzerland', lp: 50000 },
-  { nickname: 'PlatinumPro', country: 'Austria', lp: 60000 },
-  // Alpha rank (65000-84999)
-  { nickname: 'AlphaLord', country: 'Denmark', lp: 70000 },
-  { nickname: 'PackLeader', country: 'Ireland', lp: 80000 },
-  // Legendary rank (85000+)
-  { nickname: 'LegendaryKing', country: 'Portugal', lp: 95000 },
-  { nickname: 'MythicBeast', country: 'Greece', lp: 120000 },
-];
+interface UserProfile {
+  id: string;
+  nickname: string;
+  country: string;
+  lp: number;
+}
 
-function getRankMemberCount(rankName: string): number {
+function getRankMemberCount(rankName: string, allUsers: UserProfile[]): number {
   const rank = RANKS.find(r => r.name === rankName);
   if (!rank) return 0;
-  return MOCK_PROFILES.filter(p => p.lp >= rank.minLP && p.lp <= rank.maxLP).length;
+  return allUsers.filter(p => p.lp >= rank.minLP && p.lp <= rank.maxLP).length;
 }
 
-function getPlayersInRank(rankName: string) {
+function getPlayersInRank(rankName: string, allUsers: UserProfile[], currentUserId?: string): UserProfile[] {
   const rank = RANKS.find(r => r.name === rankName);
   if (!rank) return [];
-  return MOCK_PROFILES
-    .filter(p => p.lp >= rank.minLP && p.lp <= rank.maxLP)
+  return allUsers
+    .filter(p => p.lp >= rank.minLP && p.lp <= rank.maxLP && p.id !== currentUserId)
     .sort((a, b) => b.lp - a.lp);
 }
 
-function getPositionInRank(userLP: number, rankName: string): { position: number; total: number } {
-  const players = getPlayersInRank(rankName);
-  const allPlayers = [...players, { nickname: 'You', country: '', lp: userLP }]
-    .sort((a, b) => b.lp - a.lp);
-  const position = allPlayers.findIndex(p => p.nickname === 'You') + 1;
-  return { position, total: allPlayers.length };
+function getPositionInRank(userLP: number, rankName: string, allUsers: UserProfile[], currentUserId?: string): { position: number; total: number } {
+  const rank = RANKS.find(r => r.name === rankName);
+  if (!rank) return { position: 1, total: 1 };
+  
+  const playersInRank = allUsers.filter(p => p.lp >= rank.minLP && p.lp <= rank.maxLP);
+  const sortedPlayers = [...playersInRank].sort((a, b) => b.lp - a.lp);
+  const position = sortedPlayers.findIndex(p => p.id === currentUserId) + 1;
+  return { position: position || 1, total: playersInRank.length };
 }
 
 // Expandable Leaderboard Component
@@ -149,6 +116,21 @@ export default function Ranks() {
   const navigate = useNavigate();
   const currentRankRef = useRef<HTMLDivElement>(null);
 
+  // Fetch all users for leaderboard
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['all-profiles'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, nickname, country, lp')
+        .order('lp', { ascending: false });
+      
+      if (error) throw error;
+      return data as UserProfile[];
+    },
+    enabled: !!user,
+  });
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -159,7 +141,7 @@ export default function Ranks() {
   const currentRank = getRank(currentLP);
   const currentRankIndex = RANKS.findIndex(r => r.name === currentRank.name);
   const progress = getRankProgress(currentLP);
-  const { position, total } = getPositionInRank(currentLP, currentRank.name);
+  const { position, total } = getPositionInRank(currentLP, currentRank.name, allUsers, user?.id);
   const divisionInfo = getDivisionInfo(currentLP);
 
   // Auto-scroll to current rank after render
@@ -254,8 +236,8 @@ export default function Ranks() {
         {[...RANKS].reverse().map((rank, index) => {
           const isUnlocked = currentLP >= rank.minLP;
           const isCurrent = rank.name === currentRank.name;
-          const memberCount = getRankMemberCount(rank.name);
-          const players = getPlayersInRank(rank.name);
+          const memberCount = getRankMemberCount(rank.name, allUsers);
+          const players = getPlayersInRank(rank.name, allUsers, user?.id);
           
           return (
             <div
