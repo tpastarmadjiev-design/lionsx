@@ -92,7 +92,7 @@ export default function Auth() {
               src={lionsSxSymbol}
               alt="LionsX Symbol"
               className="w-32 h-48 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.08)]"
-              style={{ filter: 'invert(1) brightness(100)' }}
+              style={{ filter: 'invert(1) contrast(1000%) brightness(2)' }}
             />
           </div>
         </div>
