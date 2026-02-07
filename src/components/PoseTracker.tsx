@@ -64,18 +64,23 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     };
   }, []);
 
-  // Start camera
+  // Start/stop camera based on isActive prop
   useEffect(() => {
     if (!videoRef.current || isLoading) return;
     
+    let stream: MediaStream | null = null;
+    
     const startCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: 640, height: 480 }
         });
         
-        if (videoRef.current) {
+        if (videoRef.current && isActive) {
           videoRef.current.srcObject = stream;
+        } else if (stream) {
+          // If not active anymore, stop immediately
+          stream.getTracks().forEach(track => track.stop());
         }
       } catch (err) {
         console.error('Camera access denied:', err);
@@ -83,15 +88,29 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       }
     };
 
-    startCamera();
+    if (isActive) {
+      startCamera();
+    } else {
+      // Stop camera when not active
+      if (videoRef.current?.srcObject) {
+        const currentStream = videoRef.current.srcObject as MediaStream;
+        currentStream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+    }
     
     return () => {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
+      // Cleanup: always stop the camera
+      if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      if (videoRef.current?.srcObject) {
+        const currentStream = videoRef.current.srcObject as MediaStream;
+        currentStream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
     };
-  }, [isLoading]);
+  }, [isLoading, isActive]);
 
   // Detect rep based on exercise type
   const detectRep = useCallback((landmarks: any[]) => {
