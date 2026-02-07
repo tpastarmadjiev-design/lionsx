@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useExercises, Exercise } from '@/hooks/useExercises';
+import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { TimedTrainingFlow } from '@/components/TimedTrainingFlow';
 import { RunningTracker } from '@/components/RunningTracker';
@@ -30,6 +31,8 @@ export default function Training() {
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [showFlow, setShowFlow] = useState(false);
   const navigate = useNavigate();
+
+  useTrackScreen('training');
 
   useEffect(() => {
     if (!authLoading && !user) {

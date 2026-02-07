@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { CircularSkillProgress } from '@/components/CircularSkillProgress';
 import { Crown, ChevronRight } from 'lucide-react';
@@ -17,6 +18,8 @@ export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const { profile, isLoading, getEffectiveDailyLP } = useProfile();
   const navigate = useNavigate();
+  
+  useTrackScreen('dashboard');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -49,11 +52,19 @@ export default function Dashboard() {
       <div className="flex items-start gap-4 mb-6">
         {/* Profile Avatar */}
         <div className="relative">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center border-2 border-primary overflow-hidden">
-            <span className="text-2xl font-display font-bold text-primary-foreground">
-              {profile.nickname.charAt(0).toUpperCase()}
-            </span>
-          </div>
+          {(profile as any).avatar_url ? (
+            <img 
+              src={(profile as any).avatar_url} 
+              alt={profile.nickname}
+              className="w-16 h-16 rounded-full object-cover border-2 border-primary"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center border-2 border-primary overflow-hidden">
+              <span className="text-2xl font-display font-bold text-primary-foreground">
+                {profile.nickname.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
           <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-background flex items-center justify-center">
             <Crown className="w-4 h-4 text-primary" />
           </div>
