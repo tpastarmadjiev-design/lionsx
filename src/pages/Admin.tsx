@@ -1,5 +1,5 @@
 import { getRank } from '@/lib/ranks';
-import { Edit2, Users, TrendingUp, Activity, ClipboardCheck, Search } from 'lucide-react';
+import { Edit2, Users, TrendingUp, Activity, ClipboardCheck, Search, BarChart3, Database } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
+import { AdminDeepMetrics } from '@/components/admin/AdminDeepMetrics';
 
 interface UserProfile {
   id: string;
@@ -86,21 +89,16 @@ export default function Admin() {
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
 
-    // Get total users count
     const { count: totalUsers } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true });
 
-    // Get training logs from today
     const { data: todayLogs } = await supabase
       .from('training_logs')
       .select('user_id, completed_at')
       .gte('completed_at', todayISO);
 
-    // Count unique active users today
     const uniqueUsersToday = new Set(todayLogs?.map(log => log.user_id) || []);
-    
-    // Sessions started/completed today (each log entry is a completed session)
     const sessionsToday = todayLogs?.length || 0;
 
     setStats({
@@ -146,124 +144,154 @@ export default function Admin() {
 
   return (
     <AppLayout title="Admin Panel">
-      {/* Stats Dashboard */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="lion-card p-4 animate-fade-in">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Total Users</span>
-          </div>
-          <p className="text-2xl font-display font-bold text-foreground">{stats.totalUsers}</p>
-        </div>
-        <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-4 h-4 text-accent" />
-            <span className="text-xs text-muted-foreground">Active Today</span>
-          </div>
-          <p className="text-2xl font-display font-bold text-foreground">{stats.activeUsersToday}</p>
-        </div>
-        <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-strength" />
-            <span className="text-xs text-muted-foreground">Sessions Started</span>
-          </div>
-          <p className="text-2xl font-display font-bold text-foreground">{stats.sessionsStartedToday}</p>
-        </div>
-        <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <ClipboardCheck className="w-4 h-4 text-endurance" />
-            <span className="text-xs text-muted-foreground">Sessions Completed</span>
-          </div>
-          <p className="text-2xl font-display font-bold text-foreground">{stats.sessionsCompletedToday}</p>
-        </div>
-      </div>
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsTrigger value="dashboard" className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-1">
+            <BarChart3 className="w-4 h-4" />
+            <span className="hidden sm:inline">Analytics</span>
+          </TabsTrigger>
+          <TabsTrigger value="deep-metrics" className="flex items-center gap-1">
+            <Database className="w-4 h-4" />
+            <span className="hidden sm:inline">Deep Metrics</span>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-        <Input
-          placeholder="Search by name or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-11"
-        />
-      </div>
-
-      {/* Users List */}
-      <div className="space-y-2">
-        {filteredUsers.map((userProfile, index) => {
-          const rank = getRank(userProfile.lp);
-          const isEditing = editingUser?.id === userProfile.id;
-
-          return (
-            <div 
-              key={userProfile.id} 
-              className="lion-card p-4 animate-fade-in"
-              style={{ animationDelay: `${index * 0.05}s` }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg ${rank.bgClass} flex items-center justify-center`}>
-                    <span className="text-lg">{rank.icon}</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{userProfile.nickname}</p>
-                    <p className="text-xs text-muted-foreground">{userProfile.email || userProfile.country}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {isEditing ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={editLP}
-                        onChange={(e) => setEditLP(e.target.value)}
-                        className="w-24 h-9"
-                        placeholder="LP"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => handleUpdateLP(userProfile.id, parseInt(editLP) || 0)}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingUser(null);
-                          setEditLP('');
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="text-right">
-                        <p className={`text-lg font-display font-bold ${rank.textClass}`}>
-                          {userProfile.lp.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{rank.name}</p>
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingUser(userProfile);
-                          setEditLP(userProfile.lp.toString());
-                        }}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
+        {/* Dashboard Tab */}
+        <TabsContent value="dashboard" className="space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="lion-card p-4 animate-fade-in">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">Total Users</span>
               </div>
+              <p className="text-2xl font-display font-bold text-foreground">{stats.totalUsers}</p>
             </div>
-          );
-        })}
-      </div>
+            <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-4 h-4 text-accent" />
+                <span className="text-xs text-muted-foreground">Active Today</span>
+              </div>
+              <p className="text-2xl font-display font-bold text-foreground">{stats.activeUsersToday}</p>
+            </div>
+            <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-strength" />
+                <span className="text-xs text-muted-foreground">Sessions Started</span>
+              </div>
+              <p className="text-2xl font-display font-bold text-foreground">{stats.sessionsStartedToday}</p>
+            </div>
+            <div className="lion-card p-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <ClipboardCheck className="w-4 h-4 text-endurance" />
+                <span className="text-xs text-muted-foreground">Sessions Completed</span>
+              </div>
+              <p className="text-2xl font-display font-bold text-foreground">{stats.sessionsCompletedToday}</p>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-11"
+            />
+          </div>
+
+          {/* Users List */}
+          <div className="space-y-2">
+            {filteredUsers.map((userProfile, index) => {
+              const rank = getRank(userProfile.lp);
+              const isEditing = editingUser?.id === userProfile.id;
+
+              return (
+                <div 
+                  key={userProfile.id} 
+                  className="lion-card p-4 animate-fade-in"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg ${rank.bgClass} flex items-center justify-center`}>
+                        <span className="text-lg">{rank.icon}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{userProfile.nickname}</p>
+                        <p className="text-xs text-muted-foreground">{userProfile.email || userProfile.country}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={editLP}
+                            onChange={(e) => setEditLP(e.target.value)}
+                            className="w-24 h-9"
+                            placeholder="LP"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleUpdateLP(userProfile.id, parseInt(editLP) || 0)}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingUser(null);
+                              setEditLP('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-right">
+                            <p className={`text-lg font-display font-bold ${rank.textClass}`}>
+                              {userProfile.lp.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{rank.name}</p>
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingUser(userProfile);
+                              setEditLP(userProfile.lp.toString());
+                            }}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics">
+          <AdminAnalytics />
+        </TabsContent>
+
+        {/* Deep Metrics Tab */}
+        <TabsContent value="deep-metrics">
+          <AdminDeepMetrics />
+        </TabsContent>
+      </Tabs>
     </AppLayout>
   );
 }
