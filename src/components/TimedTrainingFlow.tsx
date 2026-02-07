@@ -66,6 +66,7 @@ export function TimedTrainingFlow({
   const [detectedReps, setDetectedReps] = useState(0); // Store original detected count
   const [manualCount, setManualCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false); // Track camera state
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   const Icon = categoryIcons[exercise.category as keyof typeof categoryIcons];
@@ -86,6 +87,7 @@ export function TimedTrainingFlow({
   // Start timer
   const startTimer = useCallback(() => {
     setStep('active');
+    setCameraActive(true); // Activate camera
     setTimeRemaining(TIMER_DURATION);
     setRepCount(0);
     setDetectedReps(0);
@@ -95,6 +97,7 @@ export function TimedTrainingFlow({
       setTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
+          setCameraActive(false); // Deactivate camera when timer ends
           // Store detected reps before moving to manual-input
           setDetectedReps(repCount);
           setStep('manual-input');
@@ -105,12 +108,13 @@ export function TimedTrainingFlow({
     }, 1000);
   }, [repCount]);
 
-  // Cleanup timer on unmount
+  // Cleanup timer and camera on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      setCameraActive(false); // Ensure camera is off when component unmounts
     };
   }, []);
 
@@ -155,6 +159,7 @@ export function TimedTrainingFlow({
         <button 
           onClick={() => {
             if (timerRef.current) clearInterval(timerRef.current);
+            setCameraActive(false); // Stop camera on cancel
             onCancel();
           }} 
           className="p-2 rounded-lg hover:bg-secondary"
@@ -242,12 +247,14 @@ export function TimedTrainingFlow({
             </div>
 
             {/* Pose Tracker */}
-            <PoseTracker
-              exercise={exerciseType}
-              isActive={true}
-              onRepComplete={handleRepComplete}
-              onSecondComplete={isPlank ? handleSecondComplete : undefined}
-            />
+            {cameraActive && (
+              <PoseTracker
+                exercise={exerciseType}
+                isActive={cameraActive}
+                onRepComplete={handleRepComplete}
+                onSecondComplete={isPlank ? handleSecondComplete : undefined}
+              />
+            )}
 
             {/* Rep Counter */}
             <div className="lion-card p-4 flex items-center justify-between">
