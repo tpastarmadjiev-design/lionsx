@@ -5,18 +5,25 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AvatarUpload } from '@/components/AvatarUpload';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Profile() {
   const { user, loading: authLoading } = useAuth();
   const { profile, isLoading, updateProfile } = useProfile();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  useTrackScreen('profile');
 
   const [nickname, setNickname] = useState('');
   const [country, setCountry] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -28,12 +35,18 @@ export default function Profile() {
     if (profile) {
       setNickname(profile.nickname);
       setCountry(profile.country);
+      setAvatarUrl((profile as any).avatar_url || null);
     }
   }, [profile]);
 
   const handleSave = () => {
     if (nickname.length < 2 || country.length < 2) return;
     updateProfile.mutate({ nickname, country });
+  };
+
+  const handleAvatarUpload = (url: string) => {
+    setAvatarUrl(url);
+    queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
   };
 
   const hasChanges = profile && (nickname !== profile.nickname || country !== profile.country);
@@ -61,11 +74,11 @@ export default function Profile() {
       {/* Avatar & Rank */}
       <div className="lion-card flex flex-col items-center py-8 mb-6 animate-fade-in">
         <div className="relative mb-4">
-          <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center lion-glow">
-            <span className="text-4xl font-display font-bold text-primary-foreground">
-              {profile.nickname.charAt(0).toUpperCase()}
-            </span>
-          </div>
+          <AvatarUpload
+            currentAvatarUrl={avatarUrl}
+            nickname={profile.nickname}
+            onUploadComplete={handleAvatarUpload}
+          />
           <div className={`absolute -bottom-2 -right-2 w-12 h-12 rounded-xl ${rank.bgClass} flex items-center justify-center shadow-lg`}>
             <span className="text-xl">{rank.icon}</span>
           </div>

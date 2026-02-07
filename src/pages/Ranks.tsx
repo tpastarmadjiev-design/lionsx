@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { RANKS, getRank, getRankProgress, formatLP } from '@/lib/ranks';
 import { getDivisionInfo } from '@/lib/divisions';
 import { getCountryFlag } from '@/lib/countryFlags';
 import { RankMedal } from '@/components/RankMedal';
+import { UserProfileModal } from '@/components/UserProfileModal';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { Trophy, Lock, Check, Users, Star, ChevronDown, ChevronUp } from 'lucide-react';
@@ -17,6 +19,10 @@ interface UserProfile {
   nickname: string;
   country: string;
   lp: number;
+  strength?: number;
+  endurance?: number;
+  mobility?: number;
+  avatar_url?: string | null;
 }
 
 function getRankMemberCount(rankName: string, allUsers: UserProfile[]): number {
@@ -49,13 +55,15 @@ function ExpandableLeaderboard({
   currentLP, 
   isCurrent, 
   position, 
-  rankTextClass 
+  rankTextClass,
+  onPlayerClick,
 }: { 
-  players: { nickname: string; country: string; lp: number }[];
+  players: UserProfile[];
   currentLP: number;
   isCurrent: boolean;
   position: number;
   rankTextClass: string;
+  onPlayerClick: (player: UserProfile) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const displayPlayers = expanded ? players : players.slice(0, 3);
@@ -95,14 +103,18 @@ function ExpandableLeaderboard({
           const playerPosition = players.indexOf(player) + 1;
           const displayPosition = currentLP > player.lp && isCurrent ? playerPosition + 1 : playerPosition;
           return (
-            <div key={player.nickname} className="flex items-center justify-between text-sm">
+            <button
+              key={player.id}
+              onClick={() => onPlayerClick(player)}
+              className="w-full flex items-center justify-between text-sm hover:bg-muted/50 -mx-2 px-2 py-1 rounded transition-colors"
+            >
               <div className="flex items-center gap-2">
                 <span className="w-5 text-center text-muted-foreground">#{displayPosition}</span>
                 <span className="text-foreground">{player.nickname}</span>
                 <span className="text-xs text-muted-foreground">({getCountryFlag(player.country)} {player.country})</span>
               </div>
               <span className="text-muted-foreground">{formatLP(player.lp)}</span>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -115,14 +127,19 @@ export default function Ranks() {
   const { profile, isLoading } = useProfile();
   const navigate = useNavigate();
   const currentRankRef = useRef<HTMLDivElement>(null);
+  
+  useTrackScreen('ranks');
 
-  // Fetch all users for leaderboard
+  const [selectedPlayer, setSelectedPlayer] = useState<UserProfile | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Fetch all users for leaderboard with full profile data
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['all-profiles'],
+    queryKey: ['all-profiles-full'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, nickname, country, lp')
+        .select('id, nickname, country, lp, strength, endurance, mobility, avatar_url')
         .order('lp', { ascending: false });
       
       if (error) throw error;
@@ -153,6 +170,11 @@ export default function Ranks() {
     }
   }, [authLoading, isLoading, currentRank.name]);
 
+  const handlePlayerClick = (player: UserProfile) => {
+    setSelectedPlayer(player);
+    setModalOpen(true);
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -163,6 +185,13 @@ export default function Ranks() {
 
   return (
     <AppLayout title="Rank System">
+      {/* User Profile Modal */}
+      <UserProfileModal 
+        user={selectedPlayer} 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+      />
+
       {/* Current Rank Hero */}
       <div className="lion-card p-6 mb-6 animate-fade-in text-center">
         <RankMedal 
@@ -309,6 +338,7 @@ export default function Ranks() {
                   isCurrent={isCurrent}
                   position={position}
                   rankTextClass={rank.textClass}
+                  onPlayerClick={handlePlayerClick}
                 />
               )}
             </div>

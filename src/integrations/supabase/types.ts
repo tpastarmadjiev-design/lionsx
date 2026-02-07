@@ -55,6 +55,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           country: string
           created_at: string
           daily_lp: number
@@ -72,6 +73,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           country?: string
           created_at?: string
           daily_lp?: number
@@ -89,6 +91,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           country?: string
           created_at?: string
           daily_lp?: number
@@ -115,6 +118,8 @@ export type Database = {
           lp_earned: number
           proof_type: string | null
           proof_url: string | null
+          reps_completed: number | null
+          session_duration_seconds: number | null
           user_id: string
         }
         Insert: {
@@ -124,6 +129,8 @@ export type Database = {
           lp_earned: number
           proof_type?: string | null
           proof_url?: string | null
+          reps_completed?: number | null
+          session_duration_seconds?: number | null
           user_id: string
         }
         Update: {
@@ -133,6 +140,8 @@ export type Database = {
           lp_earned?: number
           proof_type?: string | null
           proof_url?: string | null
+          reps_completed?: number | null
+          session_duration_seconds?: number | null
           user_id?: string
         }
         Relationships: [
@@ -144,6 +153,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_analytics: {
+        Row: {
+          device_type: string | null
+          id: string
+          screen_name: string | null
+          screen_resolution: string | null
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          device_type?: string | null
+          id?: string
+          screen_name?: string | null
+          screen_resolution?: string | null
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          device_type?: string | null
+          id?: string
+          screen_name?: string | null
+          screen_resolution?: string | null
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

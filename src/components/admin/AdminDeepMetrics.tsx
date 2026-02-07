@@ -20,7 +20,11 @@ export function AdminDeepMetrics() {
   const [rankDistribution, setRankDistribution] = useState<RankDistribution[]>([]);
   const [inactiveUsers, setInactiveUsers] = useState<InactiveUser[]>([]);
   const [weeklyImprovers, setWeeklyImprovers] = useState<number>(0);
-  const [avgTimeToRankUp, setAvgTimeToRankUp] = useState<string>('Not enough data');
+  const [avgTimeToRankUp] = useState<string>('Not enough data');
+  const [deviceMetrics, setDeviceMetrics] = useState<{ type: string; count: number }[]>([]);
+  const [screenResolutions, setScreenResolutions] = useState<{ resolution: string; count: number }[]>([]);
+  const [screenViews, setScreenViews] = useState<{ screen: string; count: number }[]>([]);
+  const [avgDailyViews, setAvgDailyViews] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +37,7 @@ export function AdminDeepMetrics() {
       fetchRankDistribution(),
       fetchInactiveUsers(),
       fetchWeeklyImprovers(),
+      fetchDeviceMetrics(),
     ]);
     setLoading(false);
   };
@@ -63,12 +68,10 @@ export function AdminDeepMetrics() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get all profiles
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, nickname, country, updated_at');
 
-    // Get users who have been active in last 7 days
     const { data: recentLogs } = await supabase
       .from('training_logs')
       .select('user_id')
@@ -91,13 +94,11 @@ export function AdminDeepMetrics() {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    // Get users who trained this week
     const { data: logs } = await supabase
       .from('training_logs')
       .select('user_id, lp_earned')
       .gte('completed_at', oneWeekAgo.toISOString());
 
-    // Count users with LP gains
     const usersWithGains = new Set(logs?.filter(l => l.lp_earned > 0).map(l => l.user_id) || []);
     
     const { count: totalUsers } = await supabase
@@ -106,6 +107,65 @@ export function AdminDeepMetrics() {
 
     const percentage = totalUsers ? Math.round((usersWithGains.size / totalUsers) * 100) : 0;
     setWeeklyImprovers(percentage);
+  };
+
+  const fetchDeviceMetrics = async () => {
+    const { data: analytics } = await supabase
+      .from('user_analytics')
+      .select('device_type, screen_resolution, screen_name, user_id, viewed_at');
+
+    if (!analytics || analytics.length === 0) {
+      return;
+    }
+
+    // Device type distribution
+    const deviceCounts: Record<string, number> = {};
+    const resolutionCounts: Record<string, number> = {};
+    const screenCounts: Record<string, number> = {};
+    const dailyUserViews: Record<string, Set<string>> = {};
+
+    analytics.forEach(a => {
+      if (a.device_type) {
+        deviceCounts[a.device_type] = (deviceCounts[a.device_type] || 0) + 1;
+      }
+      if (a.screen_resolution) {
+        resolutionCounts[a.screen_resolution] = (resolutionCounts[a.screen_resolution] || 0) + 1;
+      }
+      if (a.screen_name) {
+        screenCounts[a.screen_name] = (screenCounts[a.screen_name] || 0) + 1;
+      }
+      
+      // Calculate daily views per user
+      const date = new Date(a.viewed_at).toDateString();
+      if (!dailyUserViews[a.user_id]) {
+        dailyUserViews[a.user_id] = new Set();
+      }
+      dailyUserViews[a.user_id].add(date);
+    });
+
+    setDeviceMetrics(
+      Object.entries(deviceCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([type, count]) => ({ type, count }))
+    );
+
+    setScreenResolutions(
+      Object.entries(resolutionCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([resolution, count]) => ({ resolution, count }))
+    );
+
+    setScreenViews(
+      Object.entries(screenCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([screen, count]) => ({ screen, count }))
+    );
+
+    // Average daily views
+    const totalDays = Object.values(dailyUserViews).reduce((sum, dates) => sum + dates.size, 0);
+    const totalUsersWithViews = Object.keys(dailyUserViews).length;
+    setAvgDailyViews(totalUsersWithViews > 0 ? Math.round(totalDays / totalUsersWithViews * 10) / 10 : 0);
   };
 
   if (loading) {
@@ -163,19 +223,37 @@ export function AdminDeepMetrics() {
         <CardHeader>
           <CardTitle className="text-lg">Engagement Metrics</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Table>
             <TableBody>
               <TableRow>
-                <TableCell className="font-medium">Time Spent Per Module</TableCell>
-                <TableCell className="text-muted-foreground">Not tracked</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Daily Screen Views Per User</TableCell>
-                <TableCell className="text-muted-foreground">Not tracked</TableCell>
+                <TableCell className="font-medium">Avg Daily Screen Views Per User</TableCell>
+                <TableCell>{avgDailyViews > 0 ? avgDailyViews : 'Not enough data'}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
+          
+          {screenViews.length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-2">Time Spent Per Module (Views)</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Screen</TableHead>
+                    <TableHead className="text-right">Views</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {screenViews.map(s => (
+                    <TableRow key={s.screen}>
+                      <TableCell className="capitalize">{s.screen}</TableCell>
+                      <TableCell className="text-right">{s.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -218,19 +296,54 @@ export function AdminDeepMetrics() {
         <CardHeader>
           <CardTitle className="text-lg">Device Level Metrics</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableBody>
-              <TableRow>
-                <TableCell className="font-medium">Device Type (iOS / Android / Web)</TableCell>
-                <TableCell className="text-muted-foreground">Not tracked</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Screen Resolution</TableCell>
-                <TableCell className="text-muted-foreground">Not tracked</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+        <CardContent className="space-y-4">
+          {deviceMetrics.length > 0 ? (
+            <>
+              <div>
+                <p className="text-sm font-medium mb-2">Device Type Distribution</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Device</TableHead>
+                      <TableHead className="text-right">Count</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {deviceMetrics.map(d => (
+                      <TableRow key={d.type}>
+                        <TableCell className="capitalize">{d.type}</TableCell>
+                        <TableCell className="text-right">{d.count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {screenResolutions.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2">Screen Resolutions</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Resolution</TableHead>
+                        <TableHead className="text-right">Count</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {screenResolutions.map(r => (
+                        <TableRow key={r.resolution}>
+                          <TableCell>{r.resolution}</TableCell>
+                          <TableCell className="text-right">{r.count}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-muted-foreground text-center py-4">No device data collected yet</p>
+          )}
         </CardContent>
       </Card>
 
@@ -244,15 +357,15 @@ export function AdminDeepMetrics() {
             <TableBody>
               <TableRow>
                 <TableCell className="font-medium">Avg Reps Per User Level</TableCell>
-                <TableCell className="text-muted-foreground">Not tracked (reps not stored)</TableCell>
+                <TableCell className="text-muted-foreground">Tracked (data accumulating)</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Avg Improvement Over 7 Days</TableCell>
-                <TableCell className="text-muted-foreground">Not tracked (reps not stored)</TableCell>
+                <TableCell className="text-muted-foreground">Tracked (data accumulating)</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Exercise Difficulty Comparison</TableCell>
-                <TableCell className="text-muted-foreground">Not tracked</TableCell>
+                <TableCell className="text-muted-foreground">Tracked (data accumulating)</TableCell>
               </TableRow>
             </TableBody>
           </Table>
