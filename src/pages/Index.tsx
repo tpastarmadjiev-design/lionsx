@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import lionsSxSymbol from '@/assets/lionsx-symbol-new.png';
 
 const signInSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -99,50 +100,15 @@ const Index = () => {
             }}
           />
           
-          {/* SVG Symbol - Exact pattern from reference image */}
-          <div className="relative w-28 h-44 flex items-center justify-center">
-            {/* Top half - for split animation */}
-            <svg 
-              viewBox="0 0 60 100" 
-              className={`absolute w-28 h-44 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] ${
-                isTransitioning ? 'animate-symbol-open-top' : ''
-              }`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="8"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              style={{ color: 'hsl(var(--foreground))' }}
-            >
-              {/* Top horizontal: left to right */}
-              <path d="M8,8 L52,8" />
-              {/* Diagonal: top-right to bottom-left */}
-              <path d="M52,8 L8,35" />
-              {/* Short vertical down on left side */}
-              <path d="M8,35 L8,50" />
-            </svg>
-            
-            {/* Bottom half - for split animation */}
-            <svg 
-              viewBox="0 0 60 100" 
-              className={`absolute w-28 h-44 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] ${
-                isTransitioning ? 'animate-symbol-open-bottom' : ''
-              }`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="8"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              style={{ color: 'hsl(var(--foreground))' }}
-            >
-              {/* Diagonal: left to bottom-right */}
-              <path d="M8,50 L52,77" />
-              {/* Short vertical down on right side */}
-              <path d="M52,77 L52,92" />
-              {/* Bottom horizontal: right to left */}
-              <path d="M52,92 L8,92" />
-            </svg>
-          </div>
+          {/* Logo Symbol - Same as Auth screen */}
+          <img 
+            src={lionsSxSymbol}
+            alt="LionsX Symbol"
+            className={`w-32 h-48 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.08)] ${
+              isTransitioning ? 'animate-symbol-scale-up' : ''
+            }`}
+            style={{ filter: 'invert(1) contrast(1000%) brightness(2)' }}
+          />
         </div>
 
         {/* Brand text */}
