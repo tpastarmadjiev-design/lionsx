@@ -3,14 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
+import { COUNTRIES } from '@/lib/countries';
 
 const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   nickname: z.string().min(2, 'Nickname must be at least 2 characters').max(20, 'Nickname too long'),
-  country: z.string().min(2, 'Please enter your country'),
+  country: z.string().min(2, 'Please select a country'),
 });
 
 export default function Auth() {
@@ -179,13 +181,22 @@ export default function Auth() {
           </div>
 
           <div className="space-y-1">
-            <Input
-              type="text"
-              placeholder="Country"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.05] transition-all rounded-lg"
-            />
+            <Select value={country} onValueChange={setCountry}>
+              <SelectTrigger className="h-12 bg-white/[0.03] border-white/[0.08] text-white focus:border-white/20 focus:bg-white/[0.05] transition-all rounded-lg [&>span]:text-white/30 [&[data-state=open]>span]:text-white [&>span[data-placeholder]]:text-white/30">
+                <SelectValue placeholder="Select Country" />
+              </SelectTrigger>
+              <SelectContent className="bg-black/95 border-white/10 max-h-60">
+                {COUNTRIES.map((c) => (
+                  <SelectItem 
+                    key={c.code} 
+                    value={c.name}
+                    className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                  >
+                    {c.flag} {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.country && <p className="text-red-400/70 text-xs pl-1">{errors.country}</p>}
           </div>
 

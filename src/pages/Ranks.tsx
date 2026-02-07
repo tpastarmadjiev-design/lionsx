@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -8,7 +8,7 @@ import { getDivisionInfo } from '@/lib/divisions';
 import { getCountryFlag } from '@/lib/countryFlags';
 import { RankMedal } from '@/components/RankMedal';
 import { cn } from '@/lib/utils';
-import { Trophy, Lock, Check, Users, Star } from 'lucide-react';
+import { Trophy, Lock, Check, Users, Star, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Simulated profiles for each rank to show division population
 const MOCK_PROFILES = [
@@ -74,6 +74,73 @@ function getPositionInRank(userLP: number, rankName: string): { position: number
     .sort((a, b) => b.lp - a.lp);
   const position = allPlayers.findIndex(p => p.nickname === 'You') + 1;
   return { position, total: allPlayers.length };
+}
+
+// Expandable Leaderboard Component
+function ExpandableLeaderboard({ 
+  players, 
+  currentLP, 
+  isCurrent, 
+  position, 
+  rankTextClass 
+}: { 
+  players: { nickname: string; country: string; lp: number }[];
+  currentLP: number;
+  isCurrent: boolean;
+  position: number;
+  rankTextClass: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const displayPlayers = expanded ? players : players.slice(0, 3);
+
+  return (
+    <div className="border-t border-border bg-muted/30 px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-medium text-muted-foreground">Top Players</p>
+        {players.length > 3 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+          >
+            {expanded ? (
+              <>
+                Show less <ChevronUp className="w-3 h-3" />
+              </>
+            ) : (
+              <>
+                View all ({players.length}) <ChevronDown className="w-3 h-3" />
+              </>
+            )}
+          </button>
+        )}
+      </div>
+      <div className={cn("space-y-1.5", expanded && "max-h-60 overflow-y-auto")}>
+        {isCurrent && (
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-5 text-center font-bold text-primary">#{position}</span>
+              <span className="font-medium text-primary">You</span>
+            </div>
+            <span className={cn("font-medium", rankTextClass)}>{formatLP(currentLP)}</span>
+          </div>
+        )}
+        {displayPlayers.map((player) => {
+          const playerPosition = players.indexOf(player) + 1;
+          const displayPosition = currentLP > player.lp && isCurrent ? playerPosition + 1 : playerPosition;
+          return (
+            <div key={player.nickname} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-5 text-center text-muted-foreground">#{displayPosition}</span>
+                <span className="text-foreground">{player.nickname}</span>
+                <span className="text-xs text-muted-foreground">({getCountryFlag(player.country)} {player.country})</span>
+              </div>
+              <span className="text-muted-foreground">{formatLP(player.lp)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function Ranks() {
@@ -254,39 +321,13 @@ export default function Ranks() {
               
               {/* Show top players in this rank */}
               {(isCurrent || players.length > 0) && (
-                <div className="border-t border-border bg-muted/30 px-4 py-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Top Players</p>
-                  <div className="space-y-1.5">
-                    {isCurrent && (
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 text-center font-bold text-primary">#{position}</span>
-                          <span className="font-medium text-primary">You</span>
-                        </div>
-                        <span className={cn("font-medium", rank.textClass)}>{formatLP(currentLP)}</span>
-                      </div>
-                    )}
-                    {players.slice(0, 3).map((player, pIndex) => {
-                      const playerPosition = players.indexOf(player) + 1;
-                      const displayPosition = currentLP > player.lp && isCurrent ? playerPosition + 1 : playerPosition;
-                      return (
-                        <div key={player.nickname} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="w-5 text-center text-muted-foreground">#{displayPosition}</span>
-                            <span className="text-foreground">{player.nickname}</span>
-                            <span className="text-xs text-muted-foreground">({getCountryFlag(player.country)} {player.country})</span>
-                          </div>
-                          <span className="text-muted-foreground">{formatLP(player.lp)}</span>
-                        </div>
-                      );
-                    })}
-                    {players.length > 3 && (
-                      <p className="text-xs text-muted-foreground text-center pt-1">
-                        +{players.length - 3} more
-                      </p>
-                    )}
-                  </div>
-                </div>
+                <ExpandableLeaderboard
+                  players={players}
+                  currentLP={currentLP}
+                  isCurrent={isCurrent}
+                  position={position}
+                  rankTextClass={rank.textClass}
+                />
               )}
             </div>
           );
