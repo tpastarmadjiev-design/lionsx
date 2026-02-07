@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import cubMedalImage from '@/assets/cub-medal.jpg';
 import scoutMedalImage from '@/assets/scout-medal.png';
+import hunterMedalImage from '@/assets/hunter-medal.png';
 
 interface RankMedalProps {
   rank: string;
@@ -89,6 +90,7 @@ const SIZE_MAP = {
 const IMAGE_MEDALS: Record<string, string> = {
   Cub: cubMedalImage,
   Scout: scoutMedalImage,
+  Hunter: hunterMedalImage,
 };
 
 export function RankMedal({ 
