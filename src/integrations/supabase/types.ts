@@ -201,7 +201,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          country: string | null
+          created_at: string | null
+          daily_lp: number | null
+          endurance: number | null
+          id: string | null
+          lp: number | null
+          mobility: number | null
+          nickname: string | null
+          strength: number | null
+          total_exercises_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string | null
+          daily_lp?: number | null
+          endurance?: number | null
+          id?: string | null
+          lp?: number | null
+          mobility?: number | null
+          nickname?: string | null
+          strength?: number | null
+          total_exercises_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string | null
+          daily_lp?: number | null
+          endurance?: number | null
+          id?: string | null
+          lp?: number | null
+          mobility?: number | null
+          nickname?: string | null
+          strength?: number | null
+          total_exercises_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
