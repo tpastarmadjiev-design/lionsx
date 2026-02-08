@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { PoseLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
+import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 interface PoseTrackerProps {
   exercise: 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press';
@@ -269,7 +269,6 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    const drawingUtils = new DrawingUtils(ctx);
     let lastVideoTime = -1;
     
     const detectPose = () => {
@@ -282,23 +281,13 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       
       const results = poseLandmarkerRef.current.detectForVideo(video, performance.now());
       
-      // Draw video and landmarks
+      // Draw clean video feed only (no landmarks)
       ctx.save();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
+      // Track reps in background without drawing
       if (results.landmarks && results.landmarks.length > 0) {
-        for (const landmarks of results.landmarks) {
-          drawingUtils.drawLandmarks(landmarks, {
-            radius: 3,
-            color: 'hsl(47, 100%, 50%)', // Primary color
-          });
-          drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-            color: 'hsl(47, 100%, 70%)',
-            lineWidth: 2
-          });
-        }
-        
         detectRep(results.landmarks);
       }
       
