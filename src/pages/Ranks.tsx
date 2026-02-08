@@ -133,12 +133,12 @@ export default function Ranks() {
   const [selectedPlayer, setSelectedPlayer] = useState<UserProfile | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Fetch all users for leaderboard with full profile data
+  // Fetch all users for leaderboard with full profile data (using public view to exclude email)
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['all-profiles-full'],
+    queryKey: ['all-profiles-public'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('id, nickname, country, lp, strength, endurance, mobility, avatar_url')
         .order('lp', { ascending: false });
       
