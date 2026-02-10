@@ -84,6 +84,7 @@ export function TimedTrainingFlow({
     : 'ready';
   const [step, setStep] = useState<FlowStep>(initialStep);
   const [cameraActive, setCameraActive] = useState(cameraPermissionGrantedThisSession);
+  const [cameraBlocked, setCameraBlocked] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
   const [detectedReps, setDetectedReps] = useState(0);
@@ -164,11 +165,12 @@ export function TimedTrainingFlow({
     setStep('camera-ready');
   }, []);
 
-  // Step 3: Camera error -> cancel and go back to exercise list
+  // Step 3: Camera error -> show blocked message instead of silently cancelling
   const handleCameraError = useCallback(() => {
     setCameraActive(false);
-    onCancel();
-  }, [onCancel]);
+    setCameraBlocked(true);
+    setStep('ready');
+  }, []);
 
   // Step 4: User presses "Start Exercise" -> play countdown
   const handleStartCountdown = useCallback(() => {
@@ -345,15 +347,25 @@ export function TimedTrainingFlow({
               Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP} / {DAILY_LP_CAP}</span>
             </div>
 
+            {/* Camera blocked message */}
+            {cameraBlocked && (
+              <div className="text-center text-sm text-destructive p-3 rounded-lg bg-destructive/10">
+                Camera access is blocked by your browser. Please allow camera access in your browser's site settings (click the lock/camera icon in the address bar), then try again.
+              </div>
+            )}
+
             {/* Start Button */}
             <Button 
               variant="hero" 
               size="xl" 
               className="w-full"
-              onClick={handleInitCamera}
+              onClick={() => {
+                setCameraBlocked(false);
+                handleInitCamera();
+              }}
             >
               <Play className="w-5 h-5" />
-              Start 60s Challenge
+              {cameraBlocked ? 'Retry Camera Access' : 'Start 60s Challenge'}
             </Button>
           </div>
         )}
