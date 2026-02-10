@@ -29,14 +29,12 @@ import {
   type SessionSuspicionTracker,
 } from '@/lib/antiCheat';
 
-// Session-level flags: persist across exercise sessions until sign-out
+// Session-level flag: persist across exercise sessions until sign-out
 let cameraPermissionGrantedThisSession = false;
-let cameraPermissionDeniedThisSession = false;
 
-// Call this on sign-out to reset the flags
+// Call this on sign-out to reset the flag
 export function resetCameraPermissionFlag() {
   cameraPermissionGrantedThisSession = false;
-  cameraPermissionDeniedThisSession = false;
 }
 
 type FlowStep = 'ready' | 'camera-init' | 'camera-ready' | 'countdown' | 'active' | 'manual-input' | 'finish';
@@ -81,14 +79,11 @@ export function TimedTrainingFlow({
   onComplete, 
   onCancel 
 }: TimedTrainingFlowProps) {
-  // If permission was denied this session, skip straight to showing the denied message
-  const initialStep: FlowStep = cameraPermissionDeniedThisSession 
-    ? 'ready' // will show denied message
-    : cameraPermissionGrantedThisSession 
-      ? 'camera-init' 
-      : 'ready';
+  const initialStep: FlowStep = cameraPermissionGrantedThisSession 
+    ? 'camera-init' 
+    : 'ready';
   const [step, setStep] = useState<FlowStep>(initialStep);
-  const [cameraActive, setCameraActive] = useState(cameraPermissionGrantedThisSession && !cameraPermissionDeniedThisSession);
+  const [cameraActive, setCameraActive] = useState(cameraPermissionGrantedThisSession);
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
   const [detectedReps, setDetectedReps] = useState(0);
@@ -169,9 +164,8 @@ export function TimedTrainingFlow({
     setStep('camera-ready');
   }, []);
 
-  // Step 3: Camera error -> mark denied for session, cancel and go back
+  // Step 3: Camera error -> cancel and go back to exercise list
   const handleCameraError = useCallback(() => {
-    cameraPermissionDeniedThisSession = true;
     setCameraActive(false);
     onCancel();
   }, [onCancel]);
@@ -351,20 +345,12 @@ export function TimedTrainingFlow({
               Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP} / {DAILY_LP_CAP}</span>
             </div>
 
-            {/* Camera denied message */}
-            {cameraPermissionDeniedThisSession && (
-              <div className="text-center text-sm text-destructive p-3 rounded-lg bg-destructive/10">
-                Camera permission is required to start this exercise. Please enable camera access in your browser settings and try again.
-              </div>
-            )}
-
             {/* Start Button */}
             <Button 
               variant="hero" 
               size="xl" 
               className="w-full"
               onClick={handleInitCamera}
-              disabled={cameraPermissionDeniedThisSession}
             >
               <Play className="w-5 h-5" />
               Start 60s Challenge
