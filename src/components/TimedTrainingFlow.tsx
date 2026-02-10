@@ -29,6 +29,14 @@ import {
   type SessionSuspicionTracker,
 } from '@/lib/antiCheat';
 
+// Session-level flag: once camera permission is granted, skip the "ready" screen
+let cameraPermissionGrantedThisSession = false;
+
+// Call this on sign-out to reset the flag
+export function resetCameraPermissionFlag() {
+  cameraPermissionGrantedThisSession = false;
+}
+
 type FlowStep = 'ready' | 'camera-init' | 'camera-ready' | 'countdown' | 'active' | 'manual-input' | 'finish';
 
 interface TimedTrainingFlowProps {
@@ -71,13 +79,14 @@ export function TimedTrainingFlow({
   onComplete, 
   onCancel 
 }: TimedTrainingFlowProps) {
-  const [step, setStep] = useState<FlowStep>('ready');
+  const [step, setStep] = useState<FlowStep>(cameraPermissionGrantedThisSession ? 'camera-init' : 'ready');
+  const [cameraActive, setCameraActive] = useState(cameraPermissionGrantedThisSession);
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
   const [detectedReps, setDetectedReps] = useState(0);
   const [manualCount, setManualCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [cameraActive, setCameraActive] = useState(false);
+  
   const [showWarning, setShowWarning] = useState(false);
   const [countdownValue, setCountdownValue] = useState<number | string | null>(null);
   const warningShownRef = useRef(false);
@@ -148,6 +157,7 @@ export function TimedTrainingFlow({
 
   // Step 2: Camera ready callback
   const handleCameraReady = useCallback(() => {
+    cameraPermissionGrantedThisSession = true;
     setStep('camera-ready');
   }, []);
 
