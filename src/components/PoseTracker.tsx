@@ -8,11 +8,13 @@ interface PoseTrackerProps {
   onRepComplete: () => void;
   onSecondComplete?: () => void;
   suspicionTracker?: SessionSuspicionTracker;
+  onCameraReady?: () => void;
+  onCameraError?: (message: string) => void;
 }
 
 type RepPhase = 'up' | 'down' | 'neutral';
 
-export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplete, suspicionTracker }: PoseTrackerProps) {
+export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplete, suspicionTracker, onCameraReady, onCameraError }: PoseTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
@@ -81,13 +83,17 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         
         if (videoRef.current && isActive) {
           videoRef.current.srcObject = stream;
+          videoRef.current.onloadeddata = () => {
+            onCameraReady?.();
+          };
         } else if (stream) {
-          // If not active anymore, stop immediately
           stream.getTracks().forEach(track => track.stop());
         }
       } catch (err) {
         console.error('Camera access denied:', err);
-        setError('Camera access denied. Please enable camera permissions.');
+        const msg = 'Camera permission is required to start this exercise.';
+        setError(msg);
+        onCameraError?.(msg);
       }
     };
 
