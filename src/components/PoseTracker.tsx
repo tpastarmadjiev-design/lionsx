@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+import { createRepCycleState, validateRep, recordDownPhase, recordUpPhase, type ExerciseType } from '@/lib/antiCheat';
 
 interface PoseTrackerProps {
   exercise: 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press';
@@ -18,6 +19,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
   const lastPhaseRef = useRef<RepPhase>('neutral');
   const plankStartRef = useRef<number | null>(null);
   const lastPlankSecondRef = useRef<number>(0);
+  const repCycleStateRef = useRef(createRepCycleState());
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -248,9 +250,18 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       }
     }
     
-    // Count rep on phase transition (down -> up)
+    // Track phase transitions with anti-cheat validation
+    if (currentPhase === 'down' && lastPhaseRef.current !== 'down') {
+      // Entering down phase — record landmarks for validation
+      recordDownPhase(repCycleStateRef.current, pose);
+    }
+    
+    // Count rep on phase transition (down -> up) with validation
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
-      onRepComplete();
+      recordUpPhase(repCycleStateRef.current, pose);
+      if (validateRep(exercise as ExerciseType, repCycleStateRef.current, pose)) {
+        onRepComplete();
+      }
     }
     
     if (currentPhase !== 'neutral') {
