@@ -29,12 +29,14 @@ import {
   type SessionSuspicionTracker,
 } from '@/lib/antiCheat';
 
-// Session-level flag: once camera permission is granted, skip the "ready" screen
+// Session-level flags: persist across exercise sessions until sign-out
 let cameraPermissionGrantedThisSession = false;
+let cameraPermissionDeniedThisSession = false;
 
-// Call this on sign-out to reset the flag
+// Call this on sign-out to reset the flags
 export function resetCameraPermissionFlag() {
   cameraPermissionGrantedThisSession = false;
+  cameraPermissionDeniedThisSession = false;
 }
 
 type FlowStep = 'ready' | 'camera-init' | 'camera-ready' | 'countdown' | 'active' | 'manual-input' | 'finish';
@@ -79,8 +81,14 @@ export function TimedTrainingFlow({
   onComplete, 
   onCancel 
 }: TimedTrainingFlowProps) {
-  const [step, setStep] = useState<FlowStep>(cameraPermissionGrantedThisSession ? 'camera-init' : 'ready');
-  const [cameraActive, setCameraActive] = useState(cameraPermissionGrantedThisSession);
+  // If permission was denied this session, skip straight to showing the denied message
+  const initialStep: FlowStep = cameraPermissionDeniedThisSession 
+    ? 'ready' // will show denied message
+    : cameraPermissionGrantedThisSession 
+      ? 'camera-init' 
+      : 'ready';
+  const [step, setStep] = useState<FlowStep>(initialStep);
+  const [cameraActive, setCameraActive] = useState(cameraPermissionGrantedThisSession && !cameraPermissionDeniedThisSession);
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
   const [detectedReps, setDetectedReps] = useState(0);
@@ -161,8 +169,9 @@ export function TimedTrainingFlow({
     setStep('camera-ready');
   }, []);
 
-  // Step 3: Camera error -> cancel and go back
+  // Step 3: Camera error -> mark denied for session, cancel and go back
   const handleCameraError = useCallback(() => {
+    cameraPermissionDeniedThisSession = true;
     setCameraActive(false);
     onCancel();
   }, [onCancel]);
@@ -274,6 +283,35 @@ export function TimedTrainingFlow({
       {/* Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
         
+        {/* Single PoseTracker instance - persists across camera-init, camera-ready, countdown, active */}
+        {(step === 'camera-init' || step === 'camera-ready' || step === 'countdown' || step === 'active') && (
+          <div className="w-full max-w-sm mb-4 relative">
+            {step === 'camera-init' && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/60 rounded-xl">
+                <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                <p className="text-muted-foreground text-sm">Setting up camera...</p>
+              </div>
+            )}
+            <PoseTracker
+              exercise={exerciseType}
+              isActive={cameraActive}
+              onRepComplete={handleRepComplete}
+              onSecondComplete={isPlank ? handleSecondComplete : undefined}
+              suspicionTracker={suspicionTrackerRef.current}
+              onCameraReady={handleCameraReady}
+              onCameraError={handleCameraError}
+            />
+            {/* Countdown Overlay */}
+            {step === 'countdown' && countdownValue !== null && (
+              <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                <span className="text-8xl font-display font-black text-primary drop-shadow-lg animate-pulse">
+                  {countdownValue}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Ready Step */}
         {step === 'ready' && (
           <div className="w-full max-w-sm space-y-6 animate-fade-in">
@@ -313,12 +351,20 @@ export function TimedTrainingFlow({
               Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP} / {DAILY_LP_CAP}</span>
             </div>
 
+            {/* Camera denied message */}
+            {cameraPermissionDeniedThisSession && (
+              <div className="text-center text-sm text-destructive p-3 rounded-lg bg-destructive/10">
+                Camera permission is required to start this exercise. Please enable camera access in your browser settings and try again.
+              </div>
+            )}
+
             {/* Start Button */}
             <Button 
               variant="hero" 
               size="xl" 
               className="w-full"
               onClick={handleInitCamera}
+              disabled={cameraPermissionDeniedThisSession}
             >
               <Play className="w-5 h-5" />
               Start 60s Challenge
@@ -326,39 +372,9 @@ export function TimedTrainingFlow({
           </div>
         )}
 
-        {/* Camera Initializing Step */}
-        {step === 'camera-init' && (
-          <div className="w-full max-w-sm space-y-6 animate-fade-in">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              </div>
-              <h3 className="text-xl font-display font-bold text-foreground">Setting up camera...</h3>
-              <p className="text-muted-foreground mt-2 text-sm">Please allow camera access when prompted.</p>
-            </div>
-            {/* Hidden PoseTracker to init camera */}
-            <PoseTracker
-              exercise={exerciseType}
-              isActive={cameraActive}
-              onRepComplete={handleRepComplete}
-              onSecondComplete={isPlank ? handleSecondComplete : undefined}
-              suspicionTracker={suspicionTrackerRef.current}
-              onCameraReady={handleCameraReady}
-              onCameraError={handleCameraError}
-            />
-          </div>
-        )}
-
         {/* Camera Ready - Show Start Exercise button */}
         {step === 'camera-ready' && (
-          <div className="w-full max-w-sm space-y-6 animate-fade-in">
-            <PoseTracker
-              exercise={exerciseType}
-              isActive={cameraActive}
-              onRepComplete={handleRepComplete}
-              onSecondComplete={isPlank ? handleSecondComplete : undefined}
-              suspicionTracker={suspicionTrackerRef.current}
-            />
+          <div className="w-full max-w-sm space-y-4 animate-fade-in">
             <div className="text-center text-sm text-muted-foreground">
               Camera ready. Position yourself and press start!
             </div>
@@ -374,29 +390,10 @@ export function TimedTrainingFlow({
           </div>
         )}
 
-        {/* Countdown Step */}
-        {step === 'countdown' && (
-          <div className="w-full max-w-sm space-y-6 animate-fade-in">
-            <PoseTracker
-              exercise={exerciseType}
-              isActive={cameraActive}
-              onRepComplete={handleRepComplete}
-              onSecondComplete={isPlank ? handleSecondComplete : undefined}
-              suspicionTracker={suspicionTrackerRef.current}
-            />
-            {/* Countdown Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-              <span className="text-8xl font-display font-black text-primary drop-shadow-lg animate-pulse">
-                {countdownValue}
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Active Step - Timer Running */}
         {step === 'active' && (
           <div className="w-full max-w-sm space-y-4 animate-fade-in">
-            {/* Timer Display - Single timer only */}
+            {/* Timer Display */}
             <div className="text-center mb-4">
               <div 
                 key={timeRemaining <= 10 ? 'countdown' : 'normal'}
@@ -411,17 +408,6 @@ export function TimedTrainingFlow({
                 {isPlank ? 'Hold your plank!' : 'Keep going!'}
               </p>
             </div>
-
-            {/* Pose Tracker */}
-            {cameraActive && (
-              <PoseTracker
-                exercise={exerciseType}
-                isActive={cameraActive}
-                onRepComplete={handleRepComplete}
-                onSecondComplete={isPlank ? handleSecondComplete : undefined}
-                suspicionTracker={suspicionTrackerRef.current}
-              />
-            )}
 
             {/* Rep Counter */}
             <div className="lion-card p-4 flex items-center justify-between">
@@ -454,7 +440,6 @@ export function TimedTrainingFlow({
                 Adjust if needed (max +15%):
               </p>
               {(() => {
-                // Calculate max allowed reps (detected + 15%)
                 const maxManualAdd = Math.floor(repCount * 0.15);
                 const maxAllowed = repCount + maxManualAdd;
                 const currentValue = manualCount || repCount;
