@@ -29,7 +29,7 @@ import {
   type SessionSuspicionTracker,
 } from '@/lib/antiCheat';
 
-type FlowStep = 'ready' | 'active' | 'manual-input' | 'finish';
+type FlowStep = 'ready' | 'camera-init' | 'camera-ready' | 'countdown' | 'active' | 'manual-input' | 'finish';
 
 interface TimedTrainingFlowProps {
   exercise: Exercise;
@@ -74,13 +74,15 @@ export function TimedTrainingFlow({
   const [step, setStep] = useState<FlowStep>('ready');
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
-  const [detectedReps, setDetectedReps] = useState(0); // Store original detected count
+  const [detectedReps, setDetectedReps] = useState(0);
   const [manualCount, setManualCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
+  const [countdownValue, setCountdownValue] = useState<number | string | null>(null);
   const warningShownRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const suspicionTrackerRef = useRef<SessionSuspicionTracker>(createSessionSuspicionTracker());
   const { user } = useAuth();
   
@@ -138,39 +140,69 @@ export function TimedTrainingFlow({
     }
   }, [user?.id, exercise.name]);
 
-  // Start timer
-  const startTimer = useCallback(() => {
-    setStep('active');
+  // Step 1: User clicks "Start" -> request camera
+  const handleInitCamera = useCallback(() => {
+    setStep('camera-init');
     setCameraActive(true);
-    setTimeRemaining(TIMER_DURATION);
-    setRepCount(0);
-    setDetectedReps(0);
-    setManualCount(0);
-    suspicionTrackerRef.current = createSessionSuspicionTracker();
-    
-    timerRef.current = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          setCameraActive(false);
-          setDetectedReps(repCount);
-          setStep('manual-input');
-          // Log suspicion flags when timer ends
-          logSuspicionFlags();
-          return 0;
-        }
-        return prev - 1;
-      });
+  }, []);
+
+  // Step 2: Camera ready callback
+  const handleCameraReady = useCallback(() => {
+    setStep('camera-ready');
+  }, []);
+
+  // Step 3: Camera error -> cancel and go back
+  const handleCameraError = useCallback(() => {
+    setCameraActive(false);
+    onCancel();
+  }, [onCancel]);
+
+  // Step 4: User presses "Start Exercise" -> play countdown
+  const handleStartCountdown = useCallback(() => {
+    setStep('countdown');
+    let count = 3;
+    setCountdownValue(count);
+
+    countdownRef.current = setInterval(() => {
+      count -= 1;
+      if (count > 0) {
+        setCountdownValue(count);
+      } else if (count === 0) {
+        setCountdownValue('GO!');
+      } else {
+        clearInterval(countdownRef.current!);
+        setCountdownValue(null);
+        // Now start the actual exercise
+        setStep('active');
+        setTimeRemaining(TIMER_DURATION);
+        setRepCount(0);
+        setDetectedReps(0);
+        setManualCount(0);
+        suspicionTrackerRef.current = createSessionSuspicionTracker();
+
+        timerRef.current = setInterval(() => {
+          setTimeRemaining(prev => {
+            if (prev <= 1) {
+              clearInterval(timerRef.current!);
+              setCameraActive(false);
+              setDetectedReps(repCount);
+              setStep('manual-input');
+              logSuspicionFlags();
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
     }, 1000);
   }, [repCount, logSuspicionFlags]);
 
-  // Cleanup timer and camera on unmount
+  // Cleanup timer, countdown and camera on unmount
   useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      setCameraActive(false); // Ensure camera is off when component unmounts
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      setCameraActive(false);
     };
   }, []);
 
@@ -215,7 +247,8 @@ export function TimedTrainingFlow({
         <button 
           onClick={() => {
             if (timerRef.current) clearInterval(timerRef.current);
-            setCameraActive(false); // Stop camera on cancel
+            if (countdownRef.current) clearInterval(countdownRef.current);
+            setCameraActive(false);
             onCancel();
           }} 
           className="p-2 rounded-lg hover:bg-secondary"
@@ -223,7 +256,7 @@ export function TimedTrainingFlow({
           <X className="w-6 h-6 text-muted-foreground" />
         </button>
         <h2 className="text-lg font-display font-semibold text-foreground">
-          {step === 'active' ? 'GO!' : step === 'manual-input' ? 'Confirm Reps' : 'Training'}
+          {step === 'active' ? 'GO!' : step === 'manual-input' ? 'Confirm Reps' : step === 'countdown' ? 'Get Ready!' : step === 'camera-init' ? 'Setting Up...' : step === 'camera-ready' ? 'Ready' : 'Training'}
         </h2>
         <div className="w-10" />
       </div>
@@ -275,11 +308,78 @@ export function TimedTrainingFlow({
               variant="hero" 
               size="xl" 
               className="w-full"
-              onClick={startTimer}
+              onClick={handleInitCamera}
             >
               <Play className="w-5 h-5" />
               Start 60s Challenge
             </Button>
+          </div>
+        )}
+
+        {/* Camera Initializing Step */}
+        {step === 'camera-init' && (
+          <div className="w-full max-w-sm space-y-6 animate-fade-in">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-foreground">Setting up camera...</h3>
+              <p className="text-muted-foreground mt-2 text-sm">Please allow camera access when prompted.</p>
+            </div>
+            {/* Hidden PoseTracker to init camera */}
+            <PoseTracker
+              exercise={exerciseType}
+              isActive={cameraActive}
+              onRepComplete={handleRepComplete}
+              onSecondComplete={isPlank ? handleSecondComplete : undefined}
+              suspicionTracker={suspicionTrackerRef.current}
+              onCameraReady={handleCameraReady}
+              onCameraError={handleCameraError}
+            />
+          </div>
+        )}
+
+        {/* Camera Ready - Show Start Exercise button */}
+        {step === 'camera-ready' && (
+          <div className="w-full max-w-sm space-y-6 animate-fade-in">
+            <PoseTracker
+              exercise={exerciseType}
+              isActive={cameraActive}
+              onRepComplete={handleRepComplete}
+              onSecondComplete={isPlank ? handleSecondComplete : undefined}
+              suspicionTracker={suspicionTrackerRef.current}
+            />
+            <div className="text-center text-sm text-muted-foreground">
+              Camera ready. Position yourself and press start!
+            </div>
+            <Button 
+              variant="hero" 
+              size="xl" 
+              className="w-full"
+              onClick={handleStartCountdown}
+            >
+              <Play className="w-5 h-5" />
+              Start Exercise
+            </Button>
+          </div>
+        )}
+
+        {/* Countdown Step */}
+        {step === 'countdown' && (
+          <div className="w-full max-w-sm space-y-6 animate-fade-in">
+            <PoseTracker
+              exercise={exerciseType}
+              isActive={cameraActive}
+              onRepComplete={handleRepComplete}
+              onSecondComplete={isPlank ? handleSecondComplete : undefined}
+              suspicionTracker={suspicionTrackerRef.current}
+            />
+            {/* Countdown Overlay */}
+            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+              <span className="text-8xl font-display font-black text-primary drop-shadow-lg animate-pulse">
+                {countdownValue}
+              </span>
+            </div>
           </div>
         )}
 
