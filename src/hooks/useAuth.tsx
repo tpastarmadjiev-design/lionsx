@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { resetCameraPermissionFlag } from '@/components/TimedTrainingFlow';
 
 interface AuthContextType {
   user: User | null;
@@ -78,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    resetCameraPermissionFlag();
     await supabase.auth.signOut();
     toast.success('Signed out successfully');
   };
