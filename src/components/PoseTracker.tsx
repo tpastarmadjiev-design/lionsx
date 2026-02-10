@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
-import { createRepCycleState, validateRep, recordDownPhase, recordUpPhase, type ExerciseType } from '@/lib/antiCheat';
+import { createRepCycleState, validateRep, recordDownPhase, recordUpPhase, recordOrientationSample, type ExerciseType, type SessionSuspicionTracker } from '@/lib/antiCheat';
 
 interface PoseTrackerProps {
   exercise: 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press';
   isActive: boolean;
   onRepComplete: () => void;
-  onSecondComplete?: () => void; // For plank (time-based)
+  onSecondComplete?: () => void;
+  suspicionTracker?: SessionSuspicionTracker;
 }
 
 type RepPhase = 'up' | 'down' | 'neutral';
 
-export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplete }: PoseTrackerProps) {
+export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplete, suspicionTracker }: PoseTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
@@ -252,14 +253,17 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     
     // Track phase transitions with anti-cheat validation
     if (currentPhase === 'down' && lastPhaseRef.current !== 'down') {
-      // Entering down phase — record landmarks for validation
       recordDownPhase(repCycleStateRef.current, pose);
+      // Record orientation sample for suspicion tracking
+      if (suspicionTracker) {
+        recordOrientationSample(suspicionTracker, pose);
+      }
     }
     
     // Count rep on phase transition (down -> up) with validation
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
       recordUpPhase(repCycleStateRef.current, pose);
-      if (validateRep(exercise as ExerciseType, repCycleStateRef.current, pose)) {
+      if (validateRep(exercise as ExerciseType, repCycleStateRef.current, pose, suspicionTracker)) {
         onRepComplete();
       }
     }

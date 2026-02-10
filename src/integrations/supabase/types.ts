@@ -110,6 +110,60 @@ export type Database = {
         }
         Relationships: []
       }
+      suspicion_flags: {
+        Row: {
+          average_tempo: number | null
+          axis_distribution: Json | null
+          created_at: string | null
+          exercise_name: string | null
+          id: string
+          micro_movements: boolean | null
+          no_orientation_change: boolean | null
+          orientation_change: number | null
+          session_id: string | null
+          single_axis_motion: boolean | null
+          suspicion_score: number | null
+          total_reps: number | null
+          unrealistic_speed: boolean | null
+          user_id: string
+          volume_spike: boolean | null
+        }
+        Insert: {
+          average_tempo?: number | null
+          axis_distribution?: Json | null
+          created_at?: string | null
+          exercise_name?: string | null
+          id?: string
+          micro_movements?: boolean | null
+          no_orientation_change?: boolean | null
+          orientation_change?: number | null
+          session_id?: string | null
+          single_axis_motion?: boolean | null
+          suspicion_score?: number | null
+          total_reps?: number | null
+          unrealistic_speed?: boolean | null
+          user_id: string
+          volume_spike?: boolean | null
+        }
+        Update: {
+          average_tempo?: number | null
+          axis_distribution?: Json | null
+          created_at?: string | null
+          exercise_name?: string | null
+          id?: string
+          micro_movements?: boolean | null
+          no_orientation_change?: boolean | null
+          orientation_change?: number | null
+          session_id?: string | null
+          single_axis_motion?: boolean | null
+          suspicion_score?: number | null
+          total_reps?: number | null
+          unrealistic_speed?: boolean | null
+          user_id?: string
+          volume_spike?: boolean | null
+        }
+        Relationships: []
+      }
       training_logs: {
         Row: {
           completed_at: string

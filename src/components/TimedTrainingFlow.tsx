@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/hooks/useExercises';
 import { Button } from '@/components/ui/button';
 import { PoseTracker } from '@/components/PoseTracker';
+import { SuspiciousActivityWarning } from '@/components/SuspiciousActivityWarning';
 import { 
   Play, 
   Check, 
@@ -17,6 +18,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DAILY_LP_CAP } from '@/lib/ranks';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  createSessionSuspicionTracker,
+  getSuspicionFlags,
+  computeSuspicionScore,
+  getAverageAxisDistribution,
+  getAverageTempo,
+  type SessionSuspicionTracker,
+} from '@/lib/antiCheat';
 
 type FlowStep = 'ready' | 'active' | 'manual-input' | 'finish';
 
@@ -66,8 +77,12 @@ export function TimedTrainingFlow({
   const [detectedReps, setDetectedReps] = useState(0); // Store original detected count
   const [manualCount, setManualCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [cameraActive, setCameraActive] = useState(false); // Track camera state
+  const [cameraActive, setCameraActive] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
+  const warningShownRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const suspicionTrackerRef = useRef<SessionSuspicionTracker>(createSessionSuspicionTracker());
+  const { user } = useAuth();
   
   const Icon = categoryIcons[exercise.category as keyof typeof categoryIcons];
   const colors = categoryColors[exercise.category as keyof typeof categoryColors];
@@ -84,29 +99,70 @@ export function TimedTrainingFlow({
     mobility: (exercise as any).skill_mobility || 0,
   };
 
+  // Log suspicion flags to database
+  const logSuspicionFlags = useCallback(async () => {
+    if (!user?.id) return;
+    const tracker = suspicionTrackerRef.current;
+    const flags = getSuspicionFlags(tracker);
+    const score = computeSuspicionScore(flags);
+    const axisDist = getAverageAxisDistribution(tracker);
+    const avgTempo = getAverageTempo(tracker);
+    const orientationChange = tracker.orientationSamples.length > 1
+      ? Math.round(Math.max(...tracker.orientationSamples) - Math.min(...tracker.orientationSamples))
+      : null;
+
+    // Only log if any flags triggered or score > 0
+    const anyFlag = Object.values(flags).some(Boolean);
+
+    if (anyFlag || score > 0) {
+      await supabase.from('suspicion_flags').insert({
+        user_id: user.id,
+        exercise_name: exercise.name,
+        unrealistic_speed: flags.unrealisticSpeed,
+        single_axis_motion: flags.singleAxisMotion,
+        micro_movements: flags.microMovements,
+        volume_spike: flags.volumeSpike,
+        no_orientation_change: flags.noOrientationChange,
+        suspicion_score: score,
+        average_tempo: avgTempo,
+        axis_distribution: axisDist,
+        orientation_change: orientationChange,
+        total_reps: tracker.totalReps,
+      });
+
+      // Show warning once per session
+      if (!warningShownRef.current) {
+        warningShownRef.current = true;
+        setShowWarning(true);
+      }
+    }
+  }, [user?.id, exercise.name]);
+
   // Start timer
   const startTimer = useCallback(() => {
     setStep('active');
-    setCameraActive(true); // Activate camera
+    setCameraActive(true);
     setTimeRemaining(TIMER_DURATION);
     setRepCount(0);
     setDetectedReps(0);
     setManualCount(0);
+    suspicionTrackerRef.current = createSessionSuspicionTracker();
     
     timerRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          setCameraActive(false); // Deactivate camera when timer ends
-          // Store detected reps before moving to manual-input
+          setCameraActive(false);
           setDetectedReps(repCount);
           setStep('manual-input');
+          // Log suspicion flags when timer ends
+          logSuspicionFlags();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  }, [repCount]);
+  }, [repCount, logSuspicionFlags]);
 
   // Cleanup timer and camera on unmount
   useEffect(() => {
@@ -253,6 +309,7 @@ export function TimedTrainingFlow({
                 isActive={cameraActive}
                 onRepComplete={handleRepComplete}
                 onSecondComplete={isPlank ? handleSecondComplete : undefined}
+                suspicionTracker={suspicionTrackerRef.current}
               />
             )}
 
@@ -387,6 +444,9 @@ export function TimedTrainingFlow({
           </div>
         )}
       </div>
+
+      {/* Suspicious Activity Warning Popup */}
+      <SuspiciousActivityWarning open={showWarning} onClose={() => setShowWarning(false)} />
     </div>
   );
 }

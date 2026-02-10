@@ -1,5 +1,5 @@
 import { getRank } from '@/lib/ranks';
-import { Edit2, Users, TrendingUp, Activity, ClipboardCheck, Search, BarChart3, Database } from 'lucide-react';
+import { Edit2, Users, TrendingUp, Activity, ClipboardCheck, Search, BarChart3, Database, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { AdminDeepMetrics } from '@/components/admin/AdminDeepMetrics';
+import { AdminSuspiciousActivity } from '@/components/admin/AdminSuspiciousActivity';
 
 interface UserProfile {
   id: string;
@@ -145,7 +146,7 @@ export default function Admin() {
   return (
     <AppLayout title="Admin Panel">
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="dashboard" className="flex items-center gap-1">
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">Dashboard</span>
@@ -157,6 +158,10 @@ export default function Admin() {
           <TabsTrigger value="deep-metrics" className="flex items-center gap-1">
             <Database className="w-4 h-4" />
             <span className="hidden sm:inline">Deep Metrics</span>
+          </TabsTrigger>
+          <TabsTrigger value="suspicious" className="flex items-center gap-1">
+            <ShieldAlert className="w-4 h-4" />
+            <span className="hidden sm:inline">Suspicious</span>
           </TabsTrigger>
         </TabsList>
 
@@ -290,6 +295,11 @@ export default function Admin() {
         {/* Deep Metrics Tab */}
         <TabsContent value="deep-metrics">
           <AdminDeepMetrics />
+        </TabsContent>
+
+        {/* Suspicious Activity Tab */}
+        <TabsContent value="suspicious">
+          <AdminSuspiciousActivity />
         </TabsContent>
       </Tabs>
     </AppLayout>
