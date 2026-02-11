@@ -277,11 +277,11 @@ export function TimedTrainingFlow({
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
         
         {/* Single PoseTracker instance - persists across camera-init, camera-ready, countdown, active */}
         {(step === 'camera-init' || step === 'camera-ready' || step === 'countdown' || step === 'active') && (
-          <div className="w-full max-w-sm mb-4 relative">
+          <div className="w-full max-w-lg mb-3 relative" style={{ height: 'clamp(300px, 70vh, 80vh)' }}>
             {step === 'camera-init' && (
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/60 rounded-xl">
                 <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
@@ -390,27 +390,26 @@ export function TimedTrainingFlow({
 
         {/* Active Step - Timer Running */}
         {step === 'active' && (
-          <div className="w-full max-w-sm space-y-4 animate-fade-in">
-            {/* Timer Display */}
-            <div className="text-center mb-4">
+          <div className="w-full max-w-lg flex items-center gap-4 animate-fade-in">
+            {/* Compact Timer */}
+            <div className="flex items-center gap-2">
               <div 
                 key={timeRemaining <= 10 ? 'countdown' : 'normal'}
                 className={cn(
-                  "text-6xl font-display font-bold tabular-nums transition-colors duration-200",
+                  "text-3xl font-display font-bold tabular-nums transition-colors duration-200",
                   timeRemaining <= 10 ? "text-destructive" : "text-primary"
                 )}
               >
                 {formatTime(timeRemaining)}
               </div>
-              <p className="text-muted-foreground text-sm mt-1">
-                {isPlank ? 'Hold your plank!' : 'Keep going!'}
-              </p>
             </div>
 
-            {/* Rep Counter */}
-            <div className="lion-card p-4 flex items-center justify-between">
-              <span className="text-muted-foreground">
-                {isPlank ? 'Seconds Held' : 'Reps Detected'}
+            <div className="flex-1" />
+
+            {/* Compact Rep Counter */}
+            <div className="flex items-center gap-2 lion-card px-4 py-2">
+              <span className="text-sm text-muted-foreground">
+                {isPlank ? 'Sec' : 'Reps'}
               </span>
               <span className="text-3xl font-display font-bold text-primary">
                 {repCount}

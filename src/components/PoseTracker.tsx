@@ -349,7 +349,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
   }
 
   return (
-    <div className="relative w-full aspect-[4/3] bg-secondary rounded-xl overflow-hidden">
+    <div className="relative w-full h-full bg-secondary rounded-xl overflow-hidden">
       <video
         ref={videoRef}
         autoPlay
