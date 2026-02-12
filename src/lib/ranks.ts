@@ -22,6 +22,18 @@ export const RANKS: Rank[] = [
 
 export const DAILY_LP_CAP = 500;
 
+// Per-user daily LP cap overrides (user ID -> custom cap)
+const DAILY_LP_CAP_OVERRIDES: Record<string, number> = {
+  '8e41c282-8aed-4600-b63e-e3b336a1a0de': 1000, // GogoDragon**
+};
+
+export function getDailyLPCap(userId?: string): number {
+  if (userId && DAILY_LP_CAP_OVERRIDES[userId]) {
+    return DAILY_LP_CAP_OVERRIDES[userId];
+  }
+  return DAILY_LP_CAP;
+}
+
 export function getRank(lp: number): Rank {
   for (let i = RANKS.length - 1; i >= 0; i--) {
     if (lp >= RANKS[i].minLP) {

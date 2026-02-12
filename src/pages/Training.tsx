@@ -10,7 +10,7 @@ import { RunningTracker } from '@/components/RunningTracker';
 import { Button } from '@/components/ui/button';
 import { Dumbbell, Heart, Wind, Zap, Play, Timer, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DAILY_LP_CAP } from '@/lib/ranks';
+
 
 const categoryIcons = {
   strength: Dumbbell,
@@ -26,7 +26,7 @@ const categoryColors = {
 
 export default function Training() {
   const { user, loading: authLoading } = useAuth();
-  const { profile, addLP, getRemainingDailyLP } = useProfile();
+  const { profile, addLP, getRemainingDailyLP, dailyLPCap } = useProfile();
   const { exercisesByCategory, isLoading, logTraining } = useExercises();
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [showFlow, setShowFlow] = useState(false);
@@ -135,11 +135,11 @@ export default function Training() {
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div 
             className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${((DAILY_LP_CAP - remainingDaily) / DAILY_LP_CAP) * 100}%` }}
+            style={{ width: `${((dailyLPCap - remainingDaily) / dailyLPCap) * 100}%` }}
           />
         </div>
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          {DAILY_LP_CAP - remainingDaily} / {DAILY_LP_CAP} LP earned today
+          {dailyLPCap - remainingDaily} / {dailyLPCap} LP earned today
         </p>
       </div>
 
