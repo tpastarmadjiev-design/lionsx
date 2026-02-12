@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { createRepCycleState, validateRep, recordDownPhase, recordUpPhase, recordOrientationSample, type ExerciseType, type SessionSuspicionTracker } from '@/lib/antiCheat';
+import { createPushUpState, detectPushUp, checkUpperBodyVisibility } from '@/lib/pushUpDetector';
 
 interface PoseTrackerProps {
   exercise: 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press';
@@ -23,9 +24,12 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
   const plankStartRef = useRef<number | null>(null);
   const lastPlankSecondRef = useRef<number>(0);
   const repCycleStateRef = useRef(createRepCycleState());
+  const pushUpStateRef = useRef(createPushUpState());
+  const pushUpBodyVisibleRef = useRef(false);
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [visibilityWarning, setVisibilityWarning] = useState<string | null>(null);
 
   // Initialize MediaPipe
   useEffect(() => {
@@ -127,6 +131,31 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     
     const pose = landmarks[0];
     
+    // --- PUSH-UPS: dedicated detector with strong anti-cheat ---
+    if (exercise === 'push-ups') {
+      // Visibility gate: require upper body before tracking
+      const visMsg = checkUpperBodyVisibility(pose);
+      if (visMsg) {
+        if (!visibilityWarning) setVisibilityWarning(visMsg);
+        pushUpBodyVisibleRef.current = false;
+        return;
+      }
+      if (visibilityWarning) setVisibilityWarning(null);
+      pushUpBodyVisibleRef.current = true;
+
+      const { repCounted, phase } = detectPushUp(pose, pushUpStateRef.current);
+      if (repCounted) {
+        // Also feed the generic suspicion tracker for admin monitoring
+        if (suspicionTracker) {
+          suspicionTracker.totalReps++;
+          suspicionTracker.lpTimestamps.push({ time: Date.now(), lp: 1 });
+          recordOrientationSample(suspicionTracker, pose);
+        }
+        onRepComplete();
+      }
+      return; // Skip generic logic
+    }
+    
     // Key landmarks indices
     const NOSE = 0;
     const LEFT_SHOULDER = 11;
@@ -143,7 +172,6 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     let currentPhase: RepPhase = 'neutral';
     
     switch (exercise) {
-      case 'push-ups':
       case 'bench-press': {
         // Detect arm extension/flexion
         const leftElbow = pose[LEFT_ELBOW];
@@ -155,16 +183,12 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         
         if (!leftElbow || !rightElbow || !leftShoulder || !rightShoulder) break;
         
-        // Calculate elbow angle (simplified)
         const avgElbowY = (leftElbow.y + rightElbow.y) / 2;
         const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
-        const avgWristY = (leftWrist?.y + rightWrist?.y) / 2 || avgElbowY;
         
-        // Down position: elbow below shoulder
         if (avgElbowY > avgShoulderY + 0.05) {
           currentPhase = 'down';
         } 
-        // Up position: elbow at or above shoulder
         else if (avgElbowY <= avgShoulderY + 0.02) {
           currentPhase = 'up';
         }
@@ -172,15 +196,12 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       }
       
       case 'sit-ups': {
-        // Detect torso angle relative to legs
         const shoulder = pose[LEFT_SHOULDER];
         const hip = pose[LEFT_HIP];
         const knee = pose[LEFT_KNEE];
         
         if (!shoulder || !hip || !knee) break;
         
-        // Up: shoulder close to knee height
-        // Down: shoulder far from knee
         const shoulderKneeDist = Math.abs(shoulder.y - knee.y);
         
         if (shoulderKneeDist < 0.15) {
@@ -192,14 +213,11 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       }
       
       case 'jumps': {
-        // Detect vertical movement
         const hip = pose[LEFT_HIP];
         const knee = pose[LEFT_KNEE];
         
         if (!hip || !knee) break;
         
-        // Jump: hips high relative to screen
-        // Ground: hips lower
         if (hip.y < 0.4) {
           currentPhase = 'up';
         } else if (hip.y > 0.55) {
@@ -210,14 +228,11 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       
       case 'pull-ups':
       case 'dips': {
-        // Detect vertical body position
         const nose = pose[NOSE];
         const shoulder = pose[LEFT_SHOULDER];
-        const elbow = pose[LEFT_ELBOW];
         
         if (!nose || !shoulder) break;
         
-        // Up position: chin above certain threshold
         if (nose.y < 0.35) {
           currentPhase = 'up';
         } else if (nose.y > 0.5) {
@@ -227,7 +242,6 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       }
       
       case 'plank': {
-        // For plank, we track time instead of reps
         const shoulder = pose[LEFT_SHOULDER];
         const hip = pose[LEFT_HIP];
         
@@ -236,7 +250,6 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
           return;
         }
         
-        // Check if in plank position (body roughly horizontal)
         const isPlankPosition = Math.abs(shoulder.y - hip.y) < 0.15;
         
         if (isPlankPosition) {
@@ -253,14 +266,13 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         } else {
           plankStartRef.current = null;
         }
-        return; // Don't process phases for plank
+        return;
       }
     }
     
     // Track phase transitions with anti-cheat validation
     if (currentPhase === 'down' && lastPhaseRef.current !== 'down') {
       recordDownPhase(repCycleStateRef.current, pose);
-      // Record orientation sample for suspicion tracking
       if (suspicionTracker) {
         recordOrientationSample(suspicionTracker, pose);
       }
@@ -277,7 +289,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     if (currentPhase !== 'neutral') {
       lastPhaseRef.current = currentPhase;
     }
-  }, [exercise, onRepComplete, onSecondComplete]);
+  }, [exercise, onRepComplete, onSecondComplete, visibilityWarning]);
 
   // Pose detection loop
   useEffect(() => {
@@ -362,8 +374,14 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         width={640}
         height={480}
         className="w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)' }} // Mirror for user
+        style={{ transform: 'scaleX(-1)' }}
       />
+      {/* Push-up upper body visibility warning */}
+      {visibilityWarning && exercise === 'push-ups' && (
+        <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground text-xs sm:text-sm text-center px-3 py-2">
+          {visibilityWarning}
+        </div>
+      )}
     </div>
   );
 }
