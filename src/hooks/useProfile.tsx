@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
-import { DAILY_LP_CAP } from '@/lib/ranks';
+import { getDailyLPCap } from '@/lib/ranks';
 import { useEffect, useCallback } from 'react';
 
 export interface Profile {
@@ -131,7 +131,7 @@ export function useProfile() {
       }
 
       // Check daily cap
-      const remainingDaily = DAILY_LP_CAP - currentDailyLP;
+      const remainingDaily = getDailyLPCap(user.id) - currentDailyLP;
       if (remainingDaily <= 0) {
         throw new Error('Daily LP cap reached! Come back tomorrow.');
       }
@@ -191,8 +191,10 @@ export function useProfile() {
   }, [profile]);
 
   const getRemainingDailyLP = useCallback(() => {
-    return Math.max(0, DAILY_LP_CAP - getEffectiveDailyLP());
+    return Math.max(0, getDailyLPCap(user?.id) - getEffectiveDailyLP());
   }, [getEffectiveDailyLP]);
+
+  const dailyLPCap = getDailyLPCap(user?.id);
 
   return {
     profile,
@@ -204,5 +206,6 @@ export function useProfile() {
     getRemainingDailyLP,
     resetDailyLimits,
     needsDailyReset,
+    dailyLPCap,
   };
 }

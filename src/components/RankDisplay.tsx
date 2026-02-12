@@ -1,4 +1,4 @@
-import { getRank, getRankProgress, formatLP, getNextRank, DAILY_LP_CAP, RANKS, getRankIndex } from '@/lib/ranks';
+import { getRank, getRankProgress, formatLP, getNextRank, RANKS, getRankIndex } from '@/lib/ranks';
 import { getDivisionInfo } from '@/lib/divisions';
 import { RankMedal } from './RankMedal';
 import { Flame, TrendingUp, Star } from 'lucide-react';
@@ -6,13 +6,14 @@ import { Flame, TrendingUp, Star } from 'lucide-react';
 interface RankDisplayProps {
   lp: number;
   dailyLP: number;
+  dailyLPCap: number;
 }
 
-export function RankDisplay({ lp, dailyLP }: RankDisplayProps) {
+export function RankDisplay({ lp, dailyLP, dailyLPCap }: RankDisplayProps) {
   const rank = getRank(lp);
   const nextRank = getNextRank(lp);
   const progress = getRankProgress(lp);
-  const remainingDaily = Math.max(0, DAILY_LP_CAP - dailyLP);
+  const remainingDaily = Math.max(0, dailyLPCap - dailyLP);
   const rankIndex = getRankIndex(lp);
   const divisionInfo = getDivisionInfo(lp);
 
@@ -118,7 +119,7 @@ export function RankDisplay({ lp, dailyLP }: RankDisplayProps) {
         <div className="flex-1">
           <p className="text-sm font-medium text-foreground">Daily LP</p>
           <p className="text-xs text-muted-foreground">
-            {dailyLP} / {DAILY_LP_CAP} earned today
+            {dailyLP} / {dailyLPCap} earned today
           </p>
         </div>
         <div className="text-right">

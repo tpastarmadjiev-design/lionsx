@@ -6,7 +6,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { CircularSkillProgress } from '@/components/CircularSkillProgress';
 import { Crown, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
-import { DAILY_LP_CAP, getRank } from '@/lib/ranks';
+import { getRank } from '@/lib/ranks';
 
 import trainingCardBg from '@/assets/training-card-bg.jpg';
 import shopCardBg from '@/assets/shop-card-bg.jpg';
@@ -16,7 +16,7 @@ const MAX_SKILL = 10000;
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
-  const { profile, isLoading, getEffectiveDailyLP } = useProfile();
+  const { profile, isLoading, getEffectiveDailyLP, dailyLPCap } = useProfile();
   const navigate = useNavigate();
   
   useTrackScreen('dashboard');
@@ -121,7 +121,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between px-4 py-3 bg-card rounded-xl border border-border mb-6">
         <span className="text-sm font-medium text-foreground">Daily LP</span>
         <span className="text-sm text-muted-foreground">
-          {effectiveDailyLP} / {DAILY_LP_CAP} earned today
+          {effectiveDailyLP} / {dailyLPCap} earned today
         </span>
       </div>
 

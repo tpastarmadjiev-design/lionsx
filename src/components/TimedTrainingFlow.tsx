@@ -17,7 +17,7 @@ import {
   Minus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DAILY_LP_CAP } from '@/lib/ranks';
+import { getDailyLPCap } from '@/lib/ranks';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -344,7 +344,7 @@ export function TimedTrainingFlow({
             
             {/* Daily LP remaining */}
             <div className="text-center text-sm text-muted-foreground">
-              Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP} / {DAILY_LP_CAP}</span>
+              Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP} / {getDailyLPCap(user?.id)}</span>
             </div>
 
             {/* Camera blocked message */}
