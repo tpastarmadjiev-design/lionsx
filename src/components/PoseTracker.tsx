@@ -246,6 +246,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         const hip = pose[LEFT_HIP];
         
         if (!shoulder || !hip) {
+          // Lost tracking — pause scoring
           plankStartRef.current = null;
           return;
         }
@@ -258,13 +259,17 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
             lastPlankSecondRef.current = 0;
           } else {
             const elapsed = Math.floor((Date.now() - plankStartRef.current) / 1000);
-            if (elapsed > lastPlankSecondRef.current) {
-              lastPlankSecondRef.current = elapsed;
+            // Award 1 point every 2 seconds of continuous valid hold
+            const pointsEarned = Math.floor(elapsed / 2);
+            if (pointsEarned > lastPlankSecondRef.current) {
+              lastPlankSecondRef.current = pointsEarned;
               onSecondComplete?.();
             }
           }
         } else {
+          // Form broken — reset timer, no points until form restored
           plankStartRef.current = null;
+          lastPlankSecondRef.current = 0;
         }
         return;
       }
