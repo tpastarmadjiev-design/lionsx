@@ -2,9 +2,16 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { createRepCycleState, validateRep, recordDownPhase, recordUpPhase, recordOrientationSample, type ExerciseType, type SessionSuspicionTracker } from '@/lib/antiCheat';
 import { createPushUpState, detectPushUp, checkUpperBodyVisibility } from '@/lib/pushUpDetector';
+import {
+  detectSquatPhase, detectLungePhase, detectPikePushUpPhase, detectDiamondPushUpPhase,
+  detectCalfRaisePhase, detectBurpeePhase, detectMountainClimberPhase, detectHighKneePhase,
+  detectJumpingJackPhase, detectJumpRopePhase, detectToeTouchPhase, detectCatCowPhase,
+  isWallSitValid, isDeepSquatHoldValid, isShoulderStretchValid, isCobraStretchValid, isHipCircleValid,
+  resetMountainClimberState, resetHighKneeState,
+} from '@/lib/exerciseDetectors';
 
 interface PoseTrackerProps {
-  exercise: 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press';
+  exercise: ExerciseType;
   isActive: boolean;
   onRepComplete: () => void;
   onSecondComplete?: () => void;
@@ -15,14 +22,17 @@ interface PoseTrackerProps {
 
 type RepPhase = 'up' | 'down' | 'neutral';
 
+// Timed hold exercises use the plank-style scoring pattern
+const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'];
+
 export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplete, suspicionTracker, onCameraReady, onCameraError }: PoseTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
   const animationFrameRef = useRef<number>();
   const lastPhaseRef = useRef<RepPhase>('neutral');
-  const plankStartRef = useRef<number | null>(null);
-  const lastPlankSecondRef = useRef<number>(0);
+  const holdStartRef = useRef<number | null>(null);
+  const lastHoldPointRef = useRef<number>(0);
   const repCycleStateRef = useRef(createRepCycleState());
   const pushUpStateRef = useRef(createPushUpState());
   const pushUpBodyVisibleRef = useRef(false);
@@ -30,6 +40,14 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visibilityWarning, setVisibilityWarning] = useState<string | null>(null);
+
+  const isTimedHold = TIMED_HOLD_EXERCISES.includes(exercise);
+
+  // Reset alternating-leg state when exercise changes
+  useEffect(() => {
+    resetMountainClimberState();
+    resetHighKneeState();
+  }, [exercise]);
 
   // Initialize MediaPipe
   useEffect(() => {
@@ -73,7 +91,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     };
   }, []);
 
-  // Start/stop camera based on isActive prop
+  // Start/stop camera
   useEffect(() => {
     if (!videoRef.current || isLoading) return;
     
@@ -104,7 +122,6 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     if (isActive) {
       startCamera();
     } else {
-      // Stop camera when not active
       if (videoRef.current?.srcObject) {
         const currentStream = videoRef.current.srcObject as MediaStream;
         currentStream.getTracks().forEach(track => track.stop());
@@ -113,7 +130,6 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     }
     
     return () => {
-      // Cleanup: always stop the camera
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
@@ -125,15 +141,51 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     };
   }, [isLoading, isActive]);
 
+  // Get phase for rep-based exercises using the new detectors
+  const getPhaseForExercise = useCallback((pose: any[]): RepPhase => {
+    switch (exercise) {
+      case 'squats': return detectSquatPhase(pose);
+      case 'lunges': return detectLungePhase(pose);
+      case 'pike-push-ups': return detectPikePushUpPhase(pose);
+      case 'diamond-push-ups': return detectDiamondPushUpPhase(pose);
+      case 'calf-raises': return detectCalfRaisePhase(pose);
+      case 'burpees': return detectBurpeePhase(pose);
+      case 'mountain-climbers': return detectMountainClimberPhase(pose);
+      case 'high-knees': return detectHighKneePhase(pose);
+      case 'jumping-jacks': return detectJumpingJackPhase(pose);
+      case 'jump-rope': return detectJumpRopePhase(pose);
+      case 'toe-touches': return detectToeTouchPhase(pose);
+      case 'cat-cow-stretch': return detectCatCowPhase(pose);
+      default: return 'neutral';
+    }
+  }, [exercise]);
+
+  // Check timed hold validity
+  const isHoldValid = useCallback((pose: any[]): boolean => {
+    switch (exercise) {
+      case 'plank': {
+        const shoulder = pose[11];
+        const hip = pose[23];
+        if (!shoulder || !hip) return false;
+        return Math.abs(shoulder.y - hip.y) < 0.15;
+      }
+      case 'wall-sit': return isWallSitValid(pose);
+      case 'deep-squat-hold': return isDeepSquatHoldValid(pose);
+      case 'shoulder-stretch-hold': return isShoulderStretchValid(pose);
+      case 'cobra-stretch': return isCobraStretchValid(pose);
+      case 'hip-circles': return isHipCircleValid(pose);
+      default: return false;
+    }
+  }, [exercise]);
+
   // Detect rep based on exercise type
   const detectRep = useCallback((landmarks: any[]) => {
     if (!landmarks || landmarks.length === 0) return;
     
     const pose = landmarks[0];
     
-    // --- PUSH-UPS: dedicated detector with strong anti-cheat ---
+    // --- PUSH-UPS: dedicated detector ---
     if (exercise === 'push-ups') {
-      // Visibility gate: require upper body before tracking
       const visMsg = checkUpperBodyVisibility(pose);
       if (visMsg) {
         if (!visibilityWarning) setVisibilityWarning(visMsg);
@@ -143,9 +195,8 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       if (visibilityWarning) setVisibilityWarning(null);
       pushUpBodyVisibleRef.current = true;
 
-      const { repCounted, phase } = detectPushUp(pose, pushUpStateRef.current);
+      const { repCounted } = detectPushUp(pose, pushUpStateRef.current);
       if (repCounted) {
-        // Also feed the generic suspicion tracker for admin monitoring
         if (suspicionTracker) {
           suspicionTracker.totalReps++;
           suspicionTracker.lpTimestamps.push({ time: Date.now(), lp: 1 });
@@ -153,125 +204,85 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         }
         onRepComplete();
       }
-      return; // Skip generic logic
+      return;
     }
     
-    // Key landmarks indices
-    const NOSE = 0;
-    const LEFT_SHOULDER = 11;
-    const RIGHT_SHOULDER = 12;
-    const LEFT_ELBOW = 13;
-    const RIGHT_ELBOW = 14;
-    const LEFT_WRIST = 15;
-    const RIGHT_WRIST = 16;
-    const LEFT_HIP = 23;
-    const RIGHT_HIP = 24;
-    const LEFT_KNEE = 25;
-    const RIGHT_KNEE = 26;
-    
-    let currentPhase: RepPhase = 'neutral';
-    
-    switch (exercise) {
-      case 'bench-press': {
-        // Detect arm extension/flexion
-        const leftElbow = pose[LEFT_ELBOW];
-        const rightElbow = pose[RIGHT_ELBOW];
-        const leftShoulder = pose[LEFT_SHOULDER];
-        const rightShoulder = pose[RIGHT_SHOULDER];
-        const leftWrist = pose[LEFT_WRIST];
-        const rightWrist = pose[RIGHT_WRIST];
-        
-        if (!leftElbow || !rightElbow || !leftShoulder || !rightShoulder) break;
-        
-        const avgElbowY = (leftElbow.y + rightElbow.y) / 2;
-        const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
-        
-        if (avgElbowY > avgShoulderY + 0.05) {
-          currentPhase = 'down';
-        } 
-        else if (avgElbowY <= avgShoulderY + 0.02) {
-          currentPhase = 'up';
-        }
-        break;
-      }
-      
-      case 'sit-ups': {
-        const shoulder = pose[LEFT_SHOULDER];
-        const hip = pose[LEFT_HIP];
-        const knee = pose[LEFT_KNEE];
-        
-        if (!shoulder || !hip || !knee) break;
-        
-        const shoulderKneeDist = Math.abs(shoulder.y - knee.y);
-        
-        if (shoulderKneeDist < 0.15) {
-          currentPhase = 'up';
-        } else if (shoulderKneeDist > 0.25) {
-          currentPhase = 'down';
-        }
-        break;
-      }
-      
-      case 'jumps': {
-        const hip = pose[LEFT_HIP];
-        const knee = pose[LEFT_KNEE];
-        
-        if (!hip || !knee) break;
-        
-        if (hip.y < 0.4) {
-          currentPhase = 'up';
-        } else if (hip.y > 0.55) {
-          currentPhase = 'down';
-        }
-        break;
-      }
-      
-      case 'pull-ups':
-      case 'dips': {
-        const nose = pose[NOSE];
-        const shoulder = pose[LEFT_SHOULDER];
-        
-        if (!nose || !shoulder) break;
-        
-        if (nose.y < 0.35) {
-          currentPhase = 'up';
-        } else if (nose.y > 0.5) {
-          currentPhase = 'down';
-        }
-        break;
-      }
-      
-      case 'plank': {
-        const shoulder = pose[LEFT_SHOULDER];
-        const hip = pose[LEFT_HIP];
-        
-        if (!shoulder || !hip) {
-          // Lost tracking — pause scoring
-          plankStartRef.current = null;
-          return;
-        }
-        
-        const isPlankPosition = Math.abs(shoulder.y - hip.y) < 0.15;
-        
-        if (isPlankPosition) {
-          if (!plankStartRef.current) {
-            plankStartRef.current = Date.now();
-            lastPlankSecondRef.current = 0;
-          } else {
-            const elapsed = Math.floor((Date.now() - plankStartRef.current) / 1000);
-            // Award 1 point every 2 seconds of continuous valid hold
-            const pointsEarned = Math.floor(elapsed / 2);
-            if (pointsEarned > lastPlankSecondRef.current) {
-              lastPlankSecondRef.current = pointsEarned;
-              onSecondComplete?.();
-            }
-          }
+    // --- TIMED HOLD EXERCISES ---
+    if (isTimedHold) {
+      const valid = isHoldValid(pose);
+      if (valid) {
+        if (!holdStartRef.current) {
+          holdStartRef.current = Date.now();
+          lastHoldPointRef.current = 0;
         } else {
-          // Form broken — reset timer, no points until form restored
-          plankStartRef.current = null;
-          lastPlankSecondRef.current = 0;
+          const elapsed = Math.floor((Date.now() - holdStartRef.current) / 1000);
+          const pointsEarned = Math.floor(elapsed / 2);
+          if (pointsEarned > lastHoldPointRef.current) {
+            lastHoldPointRef.current = pointsEarned;
+            onSecondComplete?.();
+          }
         }
-        return;
+      } else {
+        holdStartRef.current = null;
+        lastHoldPointRef.current = 0;
+      }
+      return;
+    }
+
+    // --- LEGACY EXERCISES (sit-ups, jumps, dips, pull-ups, bench-press) ---
+    let currentPhase: RepPhase = 'neutral';
+
+    // Check new exercise detectors first
+    const detectedPhase = getPhaseForExercise(pose);
+    if (detectedPhase !== 'neutral') {
+      currentPhase = detectedPhase;
+    } else {
+      // Fallback for original exercises
+      const NOSE = 0;
+      const LEFT_SHOULDER = 11;
+      const RIGHT_SHOULDER = 12;
+      const LEFT_ELBOW = 13;
+      const RIGHT_ELBOW = 14;
+      const LEFT_HIP = 23;
+      const LEFT_KNEE = 25;
+      
+      switch (exercise) {
+        case 'bench-press': {
+          const leftElbow = pose[LEFT_ELBOW];
+          const rightElbow = pose[RIGHT_ELBOW];
+          const leftShoulder = pose[LEFT_SHOULDER];
+          const rightShoulder = pose[RIGHT_SHOULDER];
+          if (!leftElbow || !rightElbow || !leftShoulder || !rightShoulder) break;
+          const avgElbowY = (leftElbow.y + rightElbow.y) / 2;
+          const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+          if (avgElbowY > avgShoulderY + 0.05) currentPhase = 'down';
+          else if (avgElbowY <= avgShoulderY + 0.02) currentPhase = 'up';
+          break;
+        }
+        case 'sit-ups': {
+          const shoulder = pose[LEFT_SHOULDER];
+          const knee = pose[LEFT_KNEE];
+          if (!shoulder || !knee) break;
+          const shoulderKneeDist = Math.abs(shoulder.y - knee.y);
+          if (shoulderKneeDist < 0.15) currentPhase = 'up';
+          else if (shoulderKneeDist > 0.25) currentPhase = 'down';
+          break;
+        }
+        case 'jumps': {
+          const hip = pose[LEFT_HIP];
+          if (!hip) break;
+          if (hip.y < 0.4) currentPhase = 'up';
+          else if (hip.y > 0.55) currentPhase = 'down';
+          break;
+        }
+        case 'pull-ups':
+        case 'dips': {
+          const nose = pose[NOSE];
+          if (!nose) break;
+          if (nose.y < 0.35) currentPhase = 'up';
+          else if (nose.y > 0.5) currentPhase = 'down';
+          break;
+        }
       }
     }
     
@@ -283,7 +294,6 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       }
     }
     
-    // Count rep on phase transition (down -> up) with validation
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
       recordUpPhase(repCycleStateRef.current, pose);
       if (validateRep(exercise as ExerciseType, repCycleStateRef.current, pose, suspicionTracker)) {
@@ -294,7 +304,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     if (currentPhase !== 'neutral') {
       lastPhaseRef.current = currentPhase;
     }
-  }, [exercise, onRepComplete, onSecondComplete, visibilityWarning]);
+  }, [exercise, onRepComplete, onSecondComplete, visibilityWarning, isTimedHold, isHoldValid, getPhaseForExercise, suspicionTracker]);
 
   // Pose detection loop
   useEffect(() => {
@@ -319,12 +329,10 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       
       const results = poseLandmarkerRef.current.detectForVideo(video, performance.now());
       
-      // Draw clean video feed only (no landmarks)
       ctx.save();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Track reps in background without drawing
       if (results.landmarks && results.landmarks.length > 0) {
         detectRep(results.landmarks);
       }
@@ -381,7 +389,6 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         className="w-full h-full object-cover"
         style={{ transform: 'scaleX(-1)' }}
       />
-      {/* Push-up upper body visibility warning */}
       {visibilityWarning && exercise === 'push-ups' && (
         <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground text-xs sm:text-sm text-center px-3 py-2">
           {visibilityWarning}

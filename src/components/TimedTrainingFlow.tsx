@@ -3,6 +3,7 @@ import { Exercise } from '@/hooks/useExercises';
 import { Button } from '@/components/ui/button';
 import { PoseTracker } from '@/components/PoseTracker';
 import { SuspiciousActivityWarning } from '@/components/SuspiciousActivityWarning';
+import { ExerciseInstructions } from '@/components/ExerciseInstructions';
 import { 
   Play, 
   Check, 
@@ -61,8 +62,25 @@ const categoryColors = {
 const TIMER_DURATION = 60; // 60 seconds
 
 // Map exercise names to PoseTracker exercise types
-function getExerciseType(name: string): 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press' {
+function getExerciseType(name: string): import('@/lib/antiCheat').ExerciseType {
   const normalized = name.toLowerCase();
+  if (normalized === 'squats') return 'squats';
+  if (normalized === 'lunges') return 'lunges';
+  if (normalized === 'pike push-ups') return 'pike-push-ups';
+  if (normalized === 'diamond push-ups') return 'diamond-push-ups';
+  if (normalized === 'wall sit') return 'wall-sit';
+  if (normalized === 'calf raises') return 'calf-raises';
+  if (normalized === 'burpees') return 'burpees';
+  if (normalized === 'mountain climbers') return 'mountain-climbers';
+  if (normalized === 'high knees') return 'high-knees';
+  if (normalized === 'jumping jacks') return 'jumping-jacks';
+  if (normalized === 'jump rope') return 'jump-rope';
+  if (normalized === 'toe touches') return 'toe-touches';
+  if (normalized === 'hip circles') return 'hip-circles';
+  if (normalized === 'cat-cow stretch') return 'cat-cow-stretch';
+  if (normalized === 'shoulder stretch hold') return 'shoulder-stretch-hold';
+  if (normalized === 'deep squat hold') return 'deep-squat-hold';
+  if (normalized === 'cobra stretch') return 'cobra-stretch';
   if (normalized.includes('sit')) return 'sit-ups';
   if (normalized.includes('push')) return 'push-ups';
   if (normalized.includes('jump')) return 'jumps';
@@ -101,7 +119,8 @@ export function TimedTrainingFlow({
   
   const Icon = categoryIcons[exercise.category as keyof typeof categoryIcons];
   const colors = categoryColors[exercise.category as keyof typeof categoryColors];
-  const isPlank = exercise.name.toLowerCase().includes('plank');
+  const timedHoldNames = ['plank', 'wall sit', 'hip circles', 'shoulder stretch hold', 'deep squat hold', 'cobra stretch'];
+  const isTimedHold = timedHoldNames.includes(exercise.name.toLowerCase());
   const exerciseType = getExerciseType(exercise.name);
   
   // Calculate LP (capped by daily limit)
@@ -292,7 +311,7 @@ export function TimedTrainingFlow({
               exercise={exerciseType}
               isActive={cameraActive}
               onRepComplete={handleRepComplete}
-              onSecondComplete={isPlank ? handleSecondComplete : undefined}
+              onSecondComplete={isTimedHold ? handleSecondComplete : undefined}
               suspicionTracker={suspicionTrackerRef.current}
               onCameraReady={handleCameraReady}
               onCameraError={handleCameraError}
@@ -335,7 +354,7 @@ export function TimedTrainingFlow({
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Zap className="w-4 h-4" />
-                    {isPlank ? 'Each second' : 'Each rep'}
+                    {isTimedHold ? 'Each 2 sec' : 'Each rep'}
                   </span>
                   <span className="font-medium text-primary">= 1 LP</span>
                 </div>
@@ -347,7 +366,9 @@ export function TimedTrainingFlow({
               Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP} / {getDailyLPCap(user?.id)}</span>
             </div>
 
-            {/* Camera blocked message */}
+            {/* Exercise Instructions */}
+            <ExerciseInstructions exerciseName={exercise.name} />
+
             {cameraBlocked && (
               <div className="text-center text-sm text-destructive p-3 rounded-lg bg-destructive/10">
                 Camera access is blocked by your browser. Please allow camera access in your browser's site settings (click the lock/camera icon in the address bar), then try again.
@@ -409,7 +430,7 @@ export function TimedTrainingFlow({
             {/* Compact Rep Counter */}
             <div className="flex items-center gap-2 lion-card px-4 py-2">
               <span className="text-sm text-muted-foreground">
-                {isPlank ? 'Sec' : 'Reps'}
+                {isTimedHold ? 'Pts' : 'Reps'}
               </span>
               <span className="text-3xl font-display font-bold text-primary">
                 {repCount}
@@ -427,7 +448,7 @@ export function TimedTrainingFlow({
               </div>
               <h3 className="text-2xl font-display font-bold text-foreground">Time's Up!</h3>
               <p className="text-muted-foreground mt-2">
-                We detected <span className="text-primary font-bold">{repCount}</span> {isPlank ? 'seconds' : 'reps'}.
+                We detected <span className="text-primary font-bold">{repCount}</span> {isTimedHold ? 'points' : 'reps'}.
               </p>
             </div>
 
@@ -472,7 +493,7 @@ export function TimedTrainingFlow({
             {/* LP earned preview */}
             <div className="lion-card p-4 space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{isPlank ? 'Seconds' : 'Reps'} × 1 LP</span>
+                <span className="text-muted-foreground">{isTimedHold ? 'Points' : 'Reps'} × 1 LP</span>
                 <span className="font-medium text-foreground">{manualCount || repCount} LP</span>
               </div>
               {(manualCount || repCount) > remainingDailyLP && (
