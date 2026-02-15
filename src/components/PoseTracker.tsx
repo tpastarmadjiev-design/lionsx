@@ -8,6 +8,11 @@ import {
   detectJumpingJackPhase, detectJumpRopePhase, detectToeTouchPhase, detectCatCowPhase,
   isWallSitValid, isDeepSquatHoldValid, isShoulderStretchValid, isCobraStretchValid, isHipCircleValid,
   resetMountainClimberState, resetHighKneeState,
+  detectBicepCurlPhase, detectHammerCurlPhase, detectShoulderPressPhase,
+  detectLateralRaisePhase, detectFrontRaisePhase, detectBentOverRowPhase,
+  detectGobletSquatPhase, detectThrusterPhase, detectChestPressPhase,
+  detectTricepExtensionPhase, detectPunchPhase, detectRomanianDeadliftPhase,
+  detectWindmillPhase, isShoulderStabilizationValid, resetPunchState,
 } from '@/lib/exerciseDetectors';
 
 interface PoseTrackerProps {
@@ -23,7 +28,7 @@ interface PoseTrackerProps {
 type RepPhase = 'up' | 'down' | 'neutral';
 
 // Timed hold exercises use the plank-style scoring pattern
-const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'];
+const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch', 'shoulder-stabilization-hold'];
 
 export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplete, suspicionTracker, onCameraReady, onCameraError }: PoseTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -47,6 +52,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
   useEffect(() => {
     resetMountainClimberState();
     resetHighKneeState();
+    resetPunchState();
   }, [exercise]);
 
   // Initialize MediaPipe
@@ -156,6 +162,19 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       case 'jump-rope': return detectJumpRopePhase(pose);
       case 'toe-touches': return detectToeTouchPhase(pose);
       case 'cat-cow-stretch': return detectCatCowPhase(pose);
+      case 'dumbbell-bicep-curls': return detectBicepCurlPhase(pose);
+      case 'dumbbell-hammer-curls': return detectHammerCurlPhase(pose);
+      case 'dumbbell-shoulder-press': return detectShoulderPressPhase(pose);
+      case 'dumbbell-lateral-raises': return detectLateralRaisePhase(pose);
+      case 'dumbbell-front-raises': return detectFrontRaisePhase(pose);
+      case 'dumbbell-bent-over-rows': return detectBentOverRowPhase(pose);
+      case 'dumbbell-goblet-squat': return detectGobletSquatPhase(pose);
+      case 'dumbbell-thrusters': return detectThrusterPhase(pose);
+      case 'dumbbell-chest-press': return detectChestPressPhase(pose);
+      case 'dumbbell-tricep-overhead-extension': return detectTricepExtensionPhase(pose);
+      case 'dumbbell-punches': return detectPunchPhase(pose);
+      case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose);
+      case 'dumbbell-windmill': return detectWindmillPhase(pose);
       default: return 'neutral';
     }
   }, [exercise]);
@@ -174,6 +193,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
       case 'shoulder-stretch-hold': return isShoulderStretchValid(pose);
       case 'cobra-stretch': return isCobraStretchValid(pose);
       case 'hip-circles': return isHipCircleValid(pose);
+      case 'shoulder-stabilization-hold': return isShoulderStabilizationValid(pose);
       default: return false;
     }
   }, [exercise]);

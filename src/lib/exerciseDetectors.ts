@@ -329,6 +329,187 @@ export function isHipCircleValid(pose: Landmark[]): boolean {
   return shoulder.y < hip.y && hip.y < knee.y;
 }
 
+// ─── DUMBBELL EXERCISES ───
+
+/** Dumbbell Bicep Curls: elbow angle from extended to curled */
+export function detectBicepCurlPhase(pose: Landmark[]): Phase {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
+  const lElbow = pose[LEFT_ELBOW], rElbow = pose[RIGHT_ELBOW];
+  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
+  if (!lShoulder || !lElbow || !lWrist || !rShoulder || !rElbow || !rWrist) return 'neutral';
+  const leftAngle = angleBetween(lShoulder, lElbow, lWrist);
+  const rightAngle = angleBetween(rShoulder, rElbow, rWrist);
+  const avgAngle = (leftAngle + rightAngle) / 2;
+  if (avgAngle < 60) return 'up';
+  if (avgAngle > 140) return 'down';
+  return 'neutral';
+}
+
+/** Dumbbell Hammer Curls: same as bicep curls (angle-based) */
+export function detectHammerCurlPhase(pose: Landmark[]): Phase {
+  return detectBicepCurlPhase(pose);
+}
+
+/** Dumbbell Shoulder Press: wrists go from shoulder level to above head */
+export function detectShoulderPressPhase(pose: Landmark[]): Phase {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
+  const lElbow = pose[LEFT_ELBOW], rElbow = pose[RIGHT_ELBOW];
+  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
+  if (!lShoulder || !lElbow || !lWrist || !rShoulder || !rElbow || !rWrist) return 'neutral';
+  const leftAngle = angleBetween(lShoulder, lElbow, lWrist);
+  const rightAngle = angleBetween(rShoulder, rElbow, rWrist);
+  const avgAngle = (leftAngle + rightAngle) / 2;
+  const wristsAboveHead = lWrist.y < lShoulder.y - 0.1 && rWrist.y < rShoulder.y - 0.1;
+  if (wristsAboveHead && avgAngle > 150) return 'up';
+  if (avgAngle < 100) return 'down';
+  return 'neutral';
+}
+
+/** Dumbbell Lateral Raises: arms go from sides to shoulder height */
+export function detectLateralRaisePhase(pose: Landmark[]): Phase {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
+  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
+  if (!lShoulder || !rShoulder || !lWrist || !rWrist) return 'neutral';
+  const armsUp = lWrist.y < lShoulder.y + 0.03 && rWrist.y < rShoulder.y + 0.03;
+  const armsDown = lWrist.y > lShoulder.y + 0.15 && rWrist.y > rShoulder.y + 0.15;
+  if (armsUp) return 'up';
+  if (armsDown) return 'down';
+  return 'neutral';
+}
+
+/** Dumbbell Front Raises: arms go forward and up to shoulder height */
+export function detectFrontRaisePhase(pose: Landmark[]): Phase {
+  return detectLateralRaisePhase(pose); // same landmark logic
+}
+
+/** Dumbbell Bent-over Rows: elbows pull back from extended */
+export function detectBentOverRowPhase(pose: Landmark[]): Phase {
+  const shoulder = pose[LEFT_SHOULDER];
+  const elbow = pose[LEFT_ELBOW];
+  const wrist = pose[LEFT_WRIST];
+  const hip = pose[LEFT_HIP];
+  if (!shoulder || !elbow || !wrist || !hip) return 'neutral';
+  // Must be bent over: shoulder close to hip height
+  if (shoulder.y < hip.y - 0.15) return 'neutral';
+  const elbowAngle = angleBetween(shoulder, elbow, wrist);
+  if (elbowAngle < 80) return 'up';
+  if (elbowAngle > 150) return 'down';
+  return 'neutral';
+}
+
+/** Dumbbell Goblet Squat: squat with arms at chest */
+export function detectGobletSquatPhase(pose: Landmark[]): Phase {
+  return detectSquatPhase(pose); // same knee angle logic
+}
+
+/** Dumbbell Thrusters: squat + press combo */
+export function detectThrusterPhase(pose: Landmark[]): Phase {
+  const hip = pose[LEFT_HIP];
+  const knee = pose[LEFT_KNEE];
+  const ankle = pose[LEFT_ANKLE];
+  const wrist = pose[LEFT_WRIST];
+  const shoulder = pose[LEFT_SHOULDER];
+  if (!hip || !knee || !ankle || !wrist || !shoulder) return 'neutral';
+  const kneeAngle = angleBetween(hip, knee, ankle);
+  const wristAboveHead = wrist.y < shoulder.y - 0.1;
+  if (kneeAngle < 110) return 'down'; // squat phase
+  if (kneeAngle > 155 && wristAboveHead) return 'up'; // press phase
+  return 'neutral';
+}
+
+/** Dumbbell Chest Press (floor): elbow angle from bent to extended */
+export function detectChestPressPhase(pose: Landmark[]): Phase {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
+  const lElbow = pose[LEFT_ELBOW], rElbow = pose[RIGHT_ELBOW];
+  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
+  if (!lShoulder || !lElbow || !lWrist || !rShoulder || !rElbow || !rWrist) return 'neutral';
+  const leftAngle = angleBetween(lShoulder, lElbow, lWrist);
+  const rightAngle = angleBetween(rShoulder, rElbow, rWrist);
+  const avgAngle = (leftAngle + rightAngle) / 2;
+  if (avgAngle > 150) return 'up';
+  if (avgAngle < 100) return 'down';
+  return 'neutral';
+}
+
+/** Dumbbell Tricep Overhead Extension: elbow behind head */
+export function detectTricepExtensionPhase(pose: Landmark[]): Phase {
+  const shoulder = pose[LEFT_SHOULDER];
+  const elbow = pose[LEFT_ELBOW];
+  const wrist = pose[LEFT_WRIST];
+  if (!shoulder || !elbow || !wrist) return 'neutral';
+  // Elbow must be above shoulder (overhead position)
+  if (elbow.y > shoulder.y) return 'neutral';
+  const elbowAngle = angleBetween(shoulder, elbow, wrist);
+  if (elbowAngle > 150) return 'up';
+  if (elbowAngle < 80) return 'down';
+  return 'neutral';
+}
+
+/** Dumbbell Punches: alternating arm extensions */
+let lastPunchArm: 'left' | 'right' | null = null;
+
+export function detectPunchPhase(pose: Landmark[]): Phase {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
+  const lElbow = pose[LEFT_ELBOW], rElbow = pose[RIGHT_ELBOW];
+  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
+  if (!lShoulder || !rShoulder || !lElbow || !rElbow || !lWrist || !rWrist) return 'neutral';
+  const leftAngle = angleBetween(lShoulder, lElbow, lWrist);
+  const rightAngle = angleBetween(rShoulder, rElbow, rWrist);
+  if (leftAngle > 150 && lastPunchArm !== 'left') {
+    lastPunchArm = 'left';
+    return 'up';
+  }
+  if (rightAngle > 150 && lastPunchArm !== 'right') {
+    lastPunchArm = 'right';
+    return 'up';
+  }
+  if (leftAngle < 100 && rightAngle < 100) {
+    lastPunchArm = null;
+    return 'down';
+  }
+  return 'neutral';
+}
+
+export function resetPunchState() {
+  lastPunchArm = null;
+}
+
+/** Dumbbell Romanian Deadlift: hip hinge, torso forward */
+export function detectRomanianDeadliftPhase(pose: Landmark[]): Phase {
+  const shoulder = pose[LEFT_SHOULDER];
+  const hip = pose[LEFT_HIP];
+  const knee = pose[LEFT_KNEE];
+  if (!shoulder || !hip || !knee) return 'neutral';
+  const hipAngle = angleBetween(shoulder, hip, knee);
+  if (hipAngle < 100) return 'down'; // bent over
+  if (hipAngle > 160) return 'up'; // standing
+  return 'neutral';
+}
+
+/** Dumbbell Windmill: side bend with arm overhead */
+export function detectWindmillPhase(pose: Landmark[]): Phase {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
+  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
+  const lHip = pose[LEFT_HIP];
+  if (!lShoulder || !rShoulder || !lWrist || !rWrist || !lHip) return 'neutral';
+  // One wrist high, one wrist low (touching floor)
+  const spread = Math.abs(lWrist.y - rWrist.y);
+  if (spread > 0.3 && (lWrist.y > lHip.y || rWrist.y > lHip.y)) return 'down';
+  if (spread < 0.1) return 'up';
+  return 'neutral';
+}
+
+/** Shoulder Stabilization Hold: arms extended at sides */
+export function isShoulderStabilizationValid(pose: Landmark[]): boolean {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
+  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
+  if (!lShoulder || !rShoulder || !lWrist || !rWrist) return false;
+  // Wrists should be approximately at shoulder height (arms extended)
+  const leftDiff = Math.abs(lWrist.y - lShoulder.y);
+  const rightDiff = Math.abs(rWrist.y - rShoulder.y);
+  return leftDiff < 0.08 && rightDiff < 0.08;
+}
+
 // ─── Exercise instruction data ───
 export interface ExerciseInstruction {
   positioning: string;
@@ -467,5 +648,75 @@ export const exerciseInstructions: Record<string, ExerciseInstruction> = {
     positioning: 'Head outside for your run.',
     cameraGuide: 'No camera needed — GPS tracking only.',
     tips: ['Run outdoors for accurate GPS', 'Keep phone on you', 'Maintain steady pace'],
+  },
+  'dumbbell bicep curls': {
+    positioning: 'Stand upright holding dumbbells at your sides.',
+    cameraGuide: 'Place camera at waist height, 2m away. Arms must be visible.',
+    tips: ['Keep elbows pinned to sides', 'Full curl to shoulders', 'Control the lowering phase'],
+  },
+  'dumbbell hammer curls': {
+    positioning: 'Stand upright with palms facing inward holding dumbbells.',
+    cameraGuide: 'Place camera at waist height, 2m away. Arms must be visible.',
+    tips: ['Palms face each other', 'Elbows stay still', 'Full range of motion'],
+  },
+  'dumbbell shoulder press': {
+    positioning: 'Stand or sit with dumbbells at shoulder height.',
+    cameraGuide: 'Place camera at chest height, 2m away. Upper body visible.',
+    tips: ['Press straight overhead', 'Don\'t arch your back', 'Lower to shoulder level'],
+  },
+  'dumbbell lateral raises': {
+    positioning: 'Stand upright with dumbbells at your sides.',
+    cameraGuide: 'Place camera at chest height, 2-3m away. Full upper body visible.',
+    tips: ['Raise arms to shoulder height', 'Slight bend in elbows', 'Control the descent'],
+  },
+  'dumbbell front raises': {
+    positioning: 'Stand upright with dumbbells in front of your thighs.',
+    cameraGuide: 'Place camera at chest height, 2m away.',
+    tips: ['Raise to shoulder height', 'Keep arms straight', 'Alternate or both arms'],
+  },
+  'dumbbell bent-over rows': {
+    positioning: 'Bend at the hips with a flat back, dumbbells hanging.',
+    cameraGuide: 'Place camera at waist height, side view, 2m away.',
+    tips: ['Pull elbows back', 'Squeeze shoulder blades', 'Keep back flat'],
+  },
+  'dumbbell goblet squat': {
+    positioning: 'Hold one dumbbell at chest height with both hands.',
+    cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.',
+    tips: ['Elbows inside knees', 'Sit back and down', 'Chest stays up'],
+  },
+  'dumbbell thrusters': {
+    positioning: 'Hold dumbbells at shoulder height, feet shoulder-width apart.',
+    cameraGuide: 'Place camera at waist height, 3m away. Full body visible.',
+    tips: ['Squat deep then drive up', 'Press overhead at the top', 'One fluid motion'],
+  },
+  'dumbbell chest press': {
+    positioning: 'Lie on your back on the floor with dumbbells at chest level.',
+    cameraGuide: 'Place camera at floor level, side view.',
+    tips: ['Press straight up', 'Lower until elbows touch floor', 'Keep core engaged'],
+  },
+  'dumbbell tricep overhead extension': {
+    positioning: 'Stand or sit, hold one dumbbell overhead with both hands.',
+    cameraGuide: 'Place camera at chest height, 2m away. Upper body visible.',
+    tips: ['Keep elbows close to head', 'Lower behind your head', 'Extend fully'],
+  },
+  'dumbbell punches': {
+    positioning: 'Stand in a fighting stance holding light dumbbells.',
+    cameraGuide: 'Place camera at chest height, 2-3m away.',
+    tips: ['Alternate fast punches', 'Full arm extension', 'Stay light on your feet'],
+  },
+  'dumbbell romanian deadlift': {
+    positioning: 'Stand upright holding dumbbells in front of thighs.',
+    cameraGuide: 'Place camera at waist height, side view, 2m away.',
+    tips: ['Hinge at the hips', 'Keep back flat', 'Feel hamstring stretch'],
+  },
+  'dumbbell windmill': {
+    positioning: 'Stand with feet wide, one arm overhead holding dumbbell.',
+    cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.',
+    tips: ['Reach down to opposite foot', 'Keep overhead arm locked', 'Move slowly'],
+  },
+  'shoulder stabilization hold': {
+    positioning: 'Stand upright, extend arms straight out to the sides with light dumbbells.',
+    cameraGuide: 'Place camera at chest height, 3m away. Full wingspan visible.',
+    tips: ['Arms at shoulder height', 'Keep arms straight', 'Hold steady — don\'t drop'],
   },
 };

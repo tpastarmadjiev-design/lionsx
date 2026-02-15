@@ -182,7 +182,7 @@ export default function Training() {
                 const isPlank = exercise.name.toLowerCase().includes('plank');
                 const isRunning = exercise.name.toLowerCase() === 'running';
                 const isCycling = exercise.name.toLowerCase() === 'cycling';
-                const timedHoldNames = ['plank', 'wall sit', 'hip circles', 'shoulder stretch hold', 'deep squat hold', 'cobra stretch'];
+                const timedHoldNames = ['plank', 'wall sit', 'hip circles', 'shoulder stretch hold', 'deep squat hold', 'cobra stretch', 'shoulder stabilization hold'];
                 const isTimedHold = timedHoldNames.includes(exercise.name.toLowerCase());
                 
                 // Determine LP display text

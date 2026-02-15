@@ -7,7 +7,12 @@ export type ExerciseType =
   | 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press'
   | 'squats' | 'lunges' | 'pike-push-ups' | 'diamond-push-ups' | 'wall-sit' | 'calf-raises'
   | 'burpees' | 'mountain-climbers' | 'high-knees' | 'jumping-jacks' | 'jump-rope'
-  | 'toe-touches' | 'hip-circles' | 'cat-cow-stretch' | 'shoulder-stretch-hold' | 'deep-squat-hold' | 'cobra-stretch';
+  | 'toe-touches' | 'hip-circles' | 'cat-cow-stretch' | 'shoulder-stretch-hold' | 'deep-squat-hold' | 'cobra-stretch'
+  | 'dumbbell-bicep-curls' | 'dumbbell-hammer-curls' | 'dumbbell-shoulder-press'
+  | 'dumbbell-lateral-raises' | 'dumbbell-front-raises' | 'dumbbell-bent-over-rows'
+  | 'dumbbell-goblet-squat' | 'dumbbell-thrusters' | 'dumbbell-chest-press'
+  | 'dumbbell-tricep-overhead-extension' | 'dumbbell-punches' | 'dumbbell-romanian-deadlift'
+  | 'dumbbell-windmill' | 'shoulder-stabilization-hold';
 
 // Max reps per second per exercise
 const MAX_REPS_PER_SEC: Record<string, number> = {
@@ -29,6 +34,19 @@ const MAX_REPS_PER_SEC: Record<string, number> = {
   'jump-rope': 2.5,
   'toe-touches': 0.6,
   'cat-cow-stretch': 0.5,
+  'dumbbell-bicep-curls': 0.7,
+  'dumbbell-hammer-curls': 0.7,
+  'dumbbell-shoulder-press': 0.6,
+  'dumbbell-lateral-raises': 0.7,
+  'dumbbell-front-raises': 0.7,
+  'dumbbell-bent-over-rows': 0.7,
+  'dumbbell-goblet-squat': 0.6,
+  'dumbbell-thrusters': 0.5,
+  'dumbbell-chest-press': 0.7,
+  'dumbbell-tricep-overhead-extension': 0.6,
+  'dumbbell-punches': 2.0,
+  'dumbbell-romanian-deadlift': 0.5,
+  'dumbbell-windmill': 0.4,
 };
 
 // Minimum duration (ms) for one full rep cycle
@@ -51,6 +69,19 @@ const MIN_REP_DURATION_MS: Record<string, number> = {
   'jump-rope': 250,
   'toe-touches': 1000,
   'cat-cow-stretch': 1200,
+  'dumbbell-bicep-curls': 900,
+  'dumbbell-hammer-curls': 900,
+  'dumbbell-shoulder-press': 1000,
+  'dumbbell-lateral-raises': 900,
+  'dumbbell-front-raises': 900,
+  'dumbbell-bent-over-rows': 900,
+  'dumbbell-goblet-squat': 1000,
+  'dumbbell-thrusters': 1200,
+  'dumbbell-chest-press': 900,
+  'dumbbell-tricep-overhead-extension': 1000,
+  'dumbbell-punches': 300,
+  'dumbbell-romanian-deadlift': 1200,
+  'dumbbell-windmill': 1500,
 };
 
 // Minimum landmark displacement (normalized coords) to count as real movement
@@ -169,7 +200,7 @@ export function createRepCycleState(): RepCycleState {
 }
 
 // Timed exercises don't go through rep validation
-const TIMED_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'];
+const TIMED_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch', 'shoulder-stabilization-hold'];
 
 export function validateRep(
   exercise: ExerciseType,
