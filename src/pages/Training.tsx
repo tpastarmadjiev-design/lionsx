@@ -85,10 +85,10 @@ export default function Training() {
   }
 
   if (showFlow && selectedExercise) {
-    // Use RunningTracker for running exercise, otherwise use TimedTrainingFlow
     const isRunning = selectedExercise.name.toLowerCase() === 'running';
+    const isCycling = selectedExercise.name.toLowerCase() === 'cycling';
     
-    if (isRunning) {
+    if (isRunning || isCycling) {
       return (
         <RunningTracker
           exercise={selectedExercise}
@@ -181,14 +181,18 @@ export default function Training() {
                 const isSelected = selectedExercise?.id === exercise.id;
                 const isPlank = exercise.name.toLowerCase().includes('plank');
                 const isRunning = exercise.name.toLowerCase() === 'running';
+                const isCycling = exercise.name.toLowerCase() === 'cycling';
+                const timedHoldNames = ['plank', 'wall sit', 'hip circles', 'shoulder stretch hold', 'deep squat hold', 'cobra stretch'];
+                const isTimedHold = timedHoldNames.includes(exercise.name.toLowerCase());
                 
                 // Determine LP display text
                 let lpText = '1 LP/rep';
-                if (isPlank) lpText = '1 LP/sec';
-                if (isRunning) lpText = '1 LP/20m';
+                if (isTimedHold) lpText = '1 LP/2sec';
+                if (isRunning || isCycling) lpText = '1 LP/20m';
                 
-                // Use different icon for running
-                const ExerciseIcon = isRunning ? Navigation : Icon;
+                // Use different icon for running/cycling
+                const isGPS = isRunning || isCycling;
+                const ExerciseIcon = isGPS ? Navigation : Icon;
                 
                 return (
                   <button

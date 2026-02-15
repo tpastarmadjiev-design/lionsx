@@ -3,7 +3,11 @@
  * Validates rep cycles against realistic movement patterns.
  */
 
-export type ExerciseType = 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press';
+export type ExerciseType = 
+  | 'sit-ups' | 'push-ups' | 'jumps' | 'plank' | 'dips' | 'pull-ups' | 'bench-press'
+  | 'squats' | 'lunges' | 'pike-push-ups' | 'diamond-push-ups' | 'wall-sit' | 'calf-raises'
+  | 'burpees' | 'mountain-climbers' | 'high-knees' | 'jumping-jacks' | 'jump-rope'
+  | 'toe-touches' | 'hip-circles' | 'cat-cow-stretch' | 'shoulder-stretch-hold' | 'deep-squat-hold' | 'cobra-stretch';
 
 // Max reps per second per exercise
 const MAX_REPS_PER_SEC: Record<string, number> = {
@@ -13,6 +17,18 @@ const MAX_REPS_PER_SEC: Record<string, number> = {
   'jumps': 1.0,
   'dips': 0.8,
   'bench-press': 0.8,
+  'squats': 0.8,
+  'lunges': 0.6,
+  'pike-push-ups': 0.7,
+  'diamond-push-ups': 0.8,
+  'calf-raises': 1.0,
+  'burpees': 0.4,
+  'mountain-climbers': 1.5,
+  'high-knees': 2.0,
+  'jumping-jacks': 1.2,
+  'jump-rope': 2.5,
+  'toe-touches': 0.6,
+  'cat-cow-stretch': 0.5,
 };
 
 // Minimum duration (ms) for one full rep cycle
@@ -23,6 +39,18 @@ const MIN_REP_DURATION_MS: Record<string, number> = {
   'jumps': 600,
   'dips': 800,
   'bench-press': 800,
+  'squats': 800,
+  'lunges': 1000,
+  'pike-push-ups': 900,
+  'diamond-push-ups': 800,
+  'calf-raises': 600,
+  'burpees': 1500,
+  'mountain-climbers': 400,
+  'high-knees': 300,
+  'jumping-jacks': 500,
+  'jump-rope': 250,
+  'toe-touches': 1000,
+  'cat-cow-stretch': 1200,
 };
 
 // Minimum landmark displacement (normalized coords) to count as real movement
@@ -69,16 +97,10 @@ export function createSessionSuspicionTracker(): SessionSuspicionTracker {
 }
 
 export function getSuspicionFlags(tracker: SessionSuspicionTracker): SuspicionFlags {
-  // Unrealistic Speed: exceeded max reps/sec more than 3 times
   const unrealisticSpeed = tracker.speedViolations > 3;
-
-  // Single Axis Motion: >80% on one axis for more than 10 reps
   const singleAxisMotion = tracker.singleAxisCount > 10;
-
-  // Micro Movements: amplitude below threshold for 20+ consecutive reps
   const microMovements = tracker.microMovementStreak >= 20;
 
-  // Volume Spike: >150 LP within 10 seconds
   let volumeSpike = false;
   if (tracker.lpTimestamps.length > 1) {
     for (let i = 0; i < tracker.lpTimestamps.length; i++) {
@@ -91,7 +113,6 @@ export function getSuspicionFlags(tracker: SessionSuspicionTracker): SuspicionFl
     }
   }
 
-  // No Orientation Change: <10° total change across all samples
   let noOrientationChange = false;
   if (tracker.orientationSamples.length > 2) {
     const minO = Math.min(...tracker.orientationSamples);
@@ -147,21 +168,19 @@ export function createRepCycleState(): RepCycleState {
   };
 }
 
-/**
- * Validates whether a rep transition (down→up) should be counted.
- * Also records suspicious activity into the session tracker.
- */
+// Timed exercises don't go through rep validation
+const TIMED_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'];
+
 export function validateRep(
   exercise: ExerciseType,
   state: RepCycleState,
   currentLandmarks: LandmarkPoint[],
   suspicionTracker?: SessionSuspicionTracker,
 ): boolean {
-  if (exercise === 'plank') return true;
+  if (TIMED_EXERCISES.includes(exercise)) return true;
 
   const now = Date.now();
 
-  // 1. Minimum rep duration check
   const minDuration = MIN_REP_DURATION_MS[exercise] || 700;
   if (state.downStartTime !== null) {
     const repDuration = now - state.downStartTime;
@@ -169,13 +188,11 @@ export function validateRep(
       if (suspicionTracker) suspicionTracker.speedViolations++;
       return false;
     }
-    // Record tempo
     if (suspicionTracker) {
       suspicionTracker.repTempos.push(repDuration);
     }
   }
 
-  // 2. Max reps/sec rate limiting
   const maxRps = MAX_REPS_PER_SEC[exercise] || 1.0;
   const minIntervalMs = 1000 / maxRps;
   if (state.lastRepTime > 0 && (now - state.lastRepTime) < minIntervalMs) {
@@ -183,7 +200,6 @@ export function validateRep(
     return false;
   }
 
-  // 3. Minimum amplitude check
   if (state.downLandmarks && currentLandmarks.length > 0) {
     const amplitude = computeAmplitude(state.downLandmarks, currentLandmarks);
     if (amplitude < MIN_AMPLITUDE) {
@@ -196,7 +212,6 @@ export function validateRep(
     }
   }
 
-  // 4. Multi-axis motion check
   if (state.downLandmarks && currentLandmarks.length > 0) {
     const axisInfo = getAxisDistribution(state.downLandmarks, currentLandmarks);
     if (suspicionTracker) {
@@ -211,14 +226,12 @@ export function validateRep(
     }
   }
 
-  // 5. Rep accepted — update state
   state.lastRepTime = now;
   state.recentRepTimestamps.push(now);
   if (state.recentRepTimestamps.length > 10) {
     state.recentRepTimestamps.shift();
   }
 
-  // Track LP timestamp for volume spike detection
   if (suspicionTracker) {
     suspicionTracker.totalReps++;
     suspicionTracker.lpTimestamps.push({ time: now, lp: 1 });
@@ -227,7 +240,6 @@ export function validateRep(
   return true;
 }
 
-/** Record orientation sample (shoulder-to-hip angle). */
 export function recordOrientationSample(tracker: SessionSuspicionTracker, landmarks: LandmarkPoint[]) {
   if (landmarks.length < 25) return;
   const shoulder = landmarks[11];
