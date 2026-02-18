@@ -97,11 +97,8 @@ export function TimedTrainingFlow({
   onComplete, 
   onCancel 
 }: TimedTrainingFlowProps) {
-  const initialStep: FlowStep = cameraPermissionGrantedThisSession 
-    ? 'camera-init' 
-    : 'ready';
-  const [step, setStep] = useState<FlowStep>(initialStep);
-  const [cameraActive, setCameraActive] = useState(cameraPermissionGrantedThisSession);
+  const [step, setStep] = useState<FlowStep>('ready');
+  const [cameraActive, setCameraActive] = useState(false);
   const [cameraBlocked, setCameraBlocked] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
