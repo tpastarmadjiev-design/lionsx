@@ -7,27 +7,18 @@ import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { TimedTrainingFlow } from '@/components/TimedTrainingFlow';
 import { RunningTracker } from '@/components/RunningTracker';
+import { LocationSelector } from '@/components/training/LocationSelector';
+import { ExerciseGrid } from '@/components/training/ExerciseGrid';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, Heart, Wind, Zap, Play, Timer, Navigation } from 'lucide-react';
+import { Zap, Play, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-
-const categoryIcons = {
-  strength: Dumbbell,
-  endurance: Heart,
-  mobility: Wind,
-};
-
-const categoryColors = {
-  strength: 'text-strength bg-strength/20 border-strength/30',
-  endurance: 'text-endurance bg-endurance/20 border-endurance/30',
-  mobility: 'text-mobility bg-mobility/20 border-mobility/30',
-};
+import { TrainingLocation, filterExercisesByLocation } from '@/lib/exerciseLocations';
 
 export default function Training() {
   const { user, loading: authLoading } = useAuth();
   const { profile, addLP, getRemainingDailyLP, dailyLPCap } = useProfile();
-  const { exercisesByCategory, isLoading, logTraining } = useExercises();
+  const { exercises, isLoading, logTraining } = useExercises();
+  const [selectedLocation, setSelectedLocation] = useState<TrainingLocation | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [showFlow, setShowFlow] = useState(false);
   const navigate = useNavigate();
@@ -40,23 +31,10 @@ export default function Training() {
     }
   }, [user, authLoading, navigate]);
 
-  const handleStartTraining = () => {
-    if (selectedExercise) {
-      setShowFlow(true);
-    }
-  };
-
   const handleComplete = async (reps: number, skillXP: { strength: number; endurance: number; mobility: number }) => {
     if (!selectedExercise) return;
-    
     try {
-      // Add LP with skill distribution
-      await addLP.mutateAsync({
-        lp: reps,
-        skillXP,
-      });
-
-      // Log the training
+      await addLP.mutateAsync({ lp: reps, skillXP });
       await logTraining.mutateAsync({
         exerciseId: selectedExercise.id,
         lpEarned: reps,
@@ -65,7 +43,6 @@ export default function Training() {
     } catch (error) {
       console.error('Error completing training:', error);
     }
-    
     setShowFlow(false);
     setSelectedExercise(null);
   };
@@ -84,10 +61,11 @@ export default function Training() {
     );
   }
 
+  // Active training flow
   if (showFlow && selectedExercise) {
     const isRunning = selectedExercise.name.toLowerCase() === 'running';
     const isCycling = selectedExercise.name.toLowerCase() === 'cycling';
-    
+
     if (isRunning || isCycling) {
       return (
         <RunningTracker
@@ -98,7 +76,7 @@ export default function Training() {
         />
       );
     }
-    
+
     return (
       <TimedTrainingFlow
         exercise={selectedExercise}
@@ -108,6 +86,10 @@ export default function Training() {
       />
     );
   }
+
+  const filteredExercises = selectedLocation && exercises
+    ? filterExercisesByLocation(exercises, selectedLocation)
+    : [];
 
   return (
     <AppLayout title="Training">
@@ -130,10 +112,8 @@ export default function Training() {
             {remainingDaily}
           </span>
         </div>
-        
-        {/* Progress bar */}
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-primary transition-all duration-300"
             style={{ width: `${((dailyLPCap - remainingDaily) / dailyLPCap) * 100}%` }}
           />
@@ -156,81 +136,22 @@ export default function Training() {
         </div>
       </div>
 
-      {/* Exercise Categories */}
-      {(['strength', 'endurance', 'mobility'] as const).map((category, catIndex) => {
-        const Icon = categoryIcons[category];
-        const exercises = exercisesByCategory?.[category] || [];
-        
-        if (exercises.length === 0) return null;
-        
-        return (
-          <div 
-            key={category} 
-            className="mb-6 animate-fade-in"
-            style={{ animationDelay: `${0.2 + catIndex * 0.1}s` }}
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <Icon className={`w-5 h-5 ${categoryColors[category].split(' ')[0]}`} />
-              <h2 className="text-lg font-display font-semibold text-foreground capitalize">
-                {category}
-              </h2>
-            </div>
-            
-            <div className="grid gap-2">
-              {exercises.map((exercise) => {
-                const isSelected = selectedExercise?.id === exercise.id;
-                const isPlank = exercise.name.toLowerCase().includes('plank');
-                const isRunning = exercise.name.toLowerCase() === 'running';
-                const isCycling = exercise.name.toLowerCase() === 'cycling';
-                const timedHoldNames = ['plank', 'wall sit', 'hip circles', 'shoulder stretch hold', 'deep squat hold', 'cobra stretch', 'shoulder stabilization hold'];
-                const isTimedHold = timedHoldNames.includes(exercise.name.toLowerCase());
-                
-                // Determine LP display text
-                let lpText = '1 LP/rep';
-                if (isTimedHold) lpText = '1 LP/2sec';
-                if (isRunning || isCycling) lpText = '1 LP/20m';
-                
-                // Use different icon for running/cycling
-                const isGPS = isRunning || isCycling;
-                const ExerciseIcon = isGPS ? Navigation : Icon;
-                
-                return (
-                  <button
-                    key={exercise.id}
-                    onClick={() => setSelectedExercise(exercise)}
-                    disabled={remainingDaily <= 0}
-                    className={cn(
-                      "lion-card p-4 flex items-center justify-between transition-all duration-200",
-                      isSelected
-                        ? "ring-2 ring-primary"
-                        : "hover:bg-secondary/50",
-                      remainingDaily <= 0 && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "w-10 h-10 rounded-lg flex items-center justify-center border",
-                        categoryColors[category]
-                      )}>
-                        <ExerciseIcon className="w-5 h-5" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-medium text-foreground">{exercise.name}</p>
-                        <p className="text-xs text-muted-foreground">{exercise.description}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {lpText}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+      {/* Location Selection or Exercise Grid */}
+      {!selectedLocation ? (
+        <LocationSelector onSelect={setSelectedLocation} />
+      ) : (
+        <ExerciseGrid
+          exercises={filteredExercises}
+          selectedExercise={selectedExercise}
+          onSelect={setSelectedExercise}
+          onBack={() => {
+            setSelectedLocation(null);
+            setSelectedExercise(null);
+          }}
+          location={selectedLocation}
+          remainingDaily={remainingDaily}
+        />
+      )}
 
       {/* Start Button */}
       {selectedExercise && remainingDaily > 0 && (
@@ -239,7 +160,7 @@ export default function Training() {
             variant="hero"
             size="xl"
             className="w-full animate-slide-up"
-            onClick={handleStartTraining}
+            onClick={() => setShowFlow(true)}
           >
             <Play className="w-5 h-5" />
             Start {selectedExercise.name}
