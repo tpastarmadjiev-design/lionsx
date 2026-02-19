@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 import { COUNTRIES } from '@/lib/countries';
 import lionsSxSymbol from '@/assets/lionsx-symbol-new.png';
+import { gaEvents } from '@/lib/gtag';
 
 const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -56,6 +57,7 @@ export default function Auth() {
           setErrors({ general: error.message });
         }
       } else {
+        gaEvents.signUp('email');
         navigate('/dashboard');
       }
     } finally {

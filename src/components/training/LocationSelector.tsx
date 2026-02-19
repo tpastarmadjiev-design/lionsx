@@ -1,5 +1,6 @@
 import { ChevronRight, Home, TreePine, Dumbbell } from 'lucide-react';
 import type { TrainingLocation } from '@/lib/exerciseLocations';
+import { gaEvents } from '@/lib/gtag';
 
 import homeBg from '@/assets/location-home-bg.jpg';
 import streetBg from '@/assets/location-street-bg.jpg';
@@ -45,7 +46,7 @@ export function LocationSelector({ onSelect }: LocationSelectorProps) {
       {locations.map((loc, i) => (
         <button
           key={loc.id}
-          onClick={() => onSelect(loc.id)}
+          onClick={() => { gaEvents.locationSelected(loc.id); onSelect(loc.id); }}
           className="relative w-full h-32 rounded-2xl overflow-hidden group animate-fade-in"
           style={{ animationDelay: `${i * 0.1}s` }}
         >

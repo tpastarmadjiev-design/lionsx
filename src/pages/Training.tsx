@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Zap, Play, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrainingLocation, filterExercisesByLocation } from '@/lib/exerciseLocations';
+import { gaEvents } from '@/lib/gtag';
 
 export default function Training() {
   const { user, loading: authLoading } = useAuth();
@@ -40,6 +41,7 @@ export default function Training() {
         lpEarned: reps,
         proofType: 'timed',
       });
+      gaEvents.trainingCompleted(selectedExercise.name, reps, reps);
     } catch (error) {
       console.error('Error completing training:', error);
     }
@@ -48,6 +50,7 @@ export default function Training() {
   };
 
   const handleCancel = () => {
+    if (selectedExercise) gaEvents.trainingCancelled(selectedExercise.name);
     setShowFlow(false);
   };
 
