@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { resetCameraPermissionFlag } from '@/components/TimedTrainingFlow';
+import { gaEvents } from '@/lib/gtag';
 
 interface AuthContextType {
   user: User | null;
@@ -74,12 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error };
     }
 
+    gaEvents.login('email');
     toast.success('Welcome back, Lion!');
     return { error: null };
   };
 
   const signOut = async () => {
     resetCameraPermissionFlag();
+    gaEvents.logout();
     await supabase.auth.signOut();
     toast.success('Signed out successfully');
   };
