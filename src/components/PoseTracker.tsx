@@ -18,6 +18,7 @@ import {
 interface PoseTrackerProps {
   exercise: ExerciseType;
   isActive: boolean;
+  facingMode?: 'user' | 'environment';
   onRepComplete: () => void;
   onSecondComplete?: () => void;
   suspicionTracker?: SessionSuspicionTracker;
@@ -30,7 +31,7 @@ type RepPhase = 'up' | 'down' | 'neutral';
 // Timed hold exercises use the plank-style scoring pattern
 const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch', 'shoulder-stabilization-hold'];
 
-export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplete, suspicionTracker, onCameraReady, onCameraError }: PoseTrackerProps) {
+export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComplete, onSecondComplete, suspicionTracker, onCameraReady, onCameraError }: PoseTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
@@ -106,7 +107,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
     const startCamera = async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: 640, height: 480 }
+          video: { facingMode, width: 640, height: 480 }
         });
         
         if (videoRef.current && isActive) {
@@ -145,7 +146,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         videoRef.current.srcObject = null;
       }
     };
-  }, [isLoading, isActive]);
+  }, [isLoading, isActive, facingMode]);
 
   // Get phase for rep-based exercises using the new detectors
   const getPhaseForExercise = useCallback((pose: any[]): RepPhase => {
@@ -407,7 +408,7 @@ export function PoseTracker({ exercise, isActive, onRepComplete, onSecondComplet
         width={640}
         height={480}
         className="w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)' }}
+        style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }}
       />
       {visibilityWarning && exercise === 'push-ups' && (
         <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground text-xs sm:text-sm text-center px-3 py-2">

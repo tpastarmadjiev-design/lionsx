@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PoseTracker } from '@/components/PoseTracker';
 import { SuspiciousActivityWarning } from '@/components/SuspiciousActivityWarning';
 import { ExerciseInstructions } from '@/components/ExerciseInstructions';
+import { CameraSelector, type CameraFacing } from '@/components/CameraSelector';
 import { 
   Play, 
   Check, 
@@ -38,7 +39,7 @@ export function resetCameraPermissionFlag() {
   cameraPermissionGrantedThisSession = false;
 }
 
-type FlowStep = 'ready' | 'camera-init' | 'camera-ready' | 'countdown' | 'active' | 'manual-input' | 'finish';
+type FlowStep = 'ready' | 'camera-select' | 'camera-init' | 'camera-ready' | 'countdown' | 'active' | 'manual-input' | 'finish';
 
 interface TimedTrainingFlowProps {
   exercise: Exercise;
@@ -100,6 +101,7 @@ export function TimedTrainingFlow({
   const [step, setStep] = useState<FlowStep>('ready');
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraBlocked, setCameraBlocked] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<CameraFacing>('user');
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
   const [detectedReps, setDetectedReps] = useState(0);
@@ -287,7 +289,7 @@ export function TimedTrainingFlow({
           <X className="w-6 h-6 text-muted-foreground" />
         </button>
         <h2 className="text-lg font-display font-semibold text-foreground">
-          {step === 'active' ? 'GO!' : step === 'manual-input' ? 'Confirm Reps' : step === 'countdown' ? 'Get Ready!' : step === 'camera-init' ? 'Setting Up...' : step === 'camera-ready' ? 'Ready' : 'Training'}
+          {step === 'active' ? 'GO!' : step === 'manual-input' ? 'Confirm Reps' : step === 'countdown' ? 'Get Ready!' : step === 'camera-init' ? 'Setting Up...' : step === 'camera-ready' ? 'Ready' : step === 'camera-select' ? 'Choose Camera' : 'Training'}
         </h2>
         <div className="w-10" />
       </div>
@@ -307,6 +309,7 @@ export function TimedTrainingFlow({
             <PoseTracker
               exercise={exerciseType}
               isActive={cameraActive}
+              facingMode={cameraFacing}
               onRepComplete={handleRepComplete}
               onSecondComplete={isTimedHold ? handleSecondComplete : undefined}
               suspicionTracker={suspicionTrackerRef.current}
@@ -372,20 +375,31 @@ export function TimedTrainingFlow({
               </div>
             )}
 
-            {/* Start Button */}
+            {/* Start Button → goes to camera selection */}
             <Button 
               variant="hero" 
               size="xl" 
               className="w-full"
               onClick={() => {
                 setCameraBlocked(false);
-                handleInitCamera();
+                setStep('camera-select');
               }}
             >
               <Play className="w-5 h-5" />
               {cameraBlocked ? 'Retry Camera Access' : 'Start 60s Challenge'}
             </Button>
           </div>
+        )}
+
+        {/* Camera Selection Step */}
+        {step === 'camera-select' && (
+          <CameraSelector
+            onSelect={(facing) => {
+              setCameraFacing(facing);
+              handleInitCamera();
+            }}
+            onCancel={() => setStep('ready')}
+          />
         )}
 
         {/* Camera Ready - Show Start Exercise button */}
