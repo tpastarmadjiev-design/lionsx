@@ -42,6 +42,9 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   const repCycleStateRef = useRef(createRepCycleState());
   const pushUpStateRef = useRef(createPushUpState());
   const pushUpBodyVisibleRef = useRef(false);
+  const streamRef = useRef<MediaStream | null>(null);
+  const lastProcessTimeRef = useRef<number>(0);
+  const ML_INTERVAL_MS = 125; // ~8 FPS cap for pose detection
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,55 +101,64 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     };
   }, []);
 
-  // Start/stop camera
+  // Helper to fully stop any active stream
+  const stopStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  // Start/stop camera – only re-runs when isActive or facingMode actually changes
   useEffect(() => {
     if (!videoRef.current || isLoading) return;
-    
-    let stream: MediaStream | null = null;
-    
+
+    if (!isActive) {
+      stopStream();
+      return;
+    }
+
+    // Stop previous stream before starting new one
+    stopStream();
+
+    let cancelled = false;
+
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode, width: 640, height: 480 }
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode, width: { ideal: 640 }, height: { ideal: 480 } }
         });
-        
-        if (videoRef.current && isActive) {
-          videoRef.current.srcObject = stream;
+        if (cancelled) {
+          newStream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        streamRef.current = newStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = newStream;
           videoRef.current.onloadeddata = () => {
-            onCameraReady?.();
+            if (!cancelled) onCameraReady?.();
           };
-        } else if (stream) {
-          stream.getTracks().forEach(track => track.stop());
         }
       } catch (err) {
         console.error('Camera access denied:', err);
-        const msg = 'Camera permission is required to start this exercise.';
-        setError(msg);
-        onCameraError?.(msg);
+        if (!cancelled) {
+          const msg = 'Camera permission is required to start this exercise.';
+          setError(msg);
+          onCameraError?.(msg);
+        }
       }
     };
 
-    if (isActive) {
-      startCamera();
-    } else {
-      if (videoRef.current?.srcObject) {
-        const currentStream = videoRef.current.srcObject as MediaStream;
-        currentStream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
-    }
-    
+    startCamera();
+
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (videoRef.current?.srcObject) {
-        const currentStream = videoRef.current.srcObject as MediaStream;
-        currentStream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
+      cancelled = true;
+      stopStream();
     };
-  }, [isLoading, isActive, facingMode]);
+  }, [isLoading, isActive, facingMode, stopStream]);
 
   // Get phase for rep-based exercises using the new detectors
   const getPhaseForExercise = useCallback((pose: any[]): RepPhase => {
@@ -347,18 +359,23 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       }
       
       lastVideoTime = video.currentTime;
-      
-      const results = poseLandmarkerRef.current.detectForVideo(video, performance.now());
-      
+
+      // Always draw the camera feed for smooth preview
       ctx.save();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      if (results.landmarks && results.landmarks.length > 0) {
-        detectRep(results.landmarks);
-      }
-      
       ctx.restore();
+
+      // Throttle ML inference to ~8 FPS
+      const now = performance.now();
+      if (now - lastProcessTimeRef.current >= ML_INTERVAL_MS) {
+        lastProcessTimeRef.current = now;
+        const results = poseLandmarkerRef.current.detectForVideo(video, now);
+        if (results.landmarks && results.landmarks.length > 0) {
+          detectRep(results.landmarks);
+        }
+      }
+
       animationFrameRef.current = requestAnimationFrame(detectPose);
     };
     
