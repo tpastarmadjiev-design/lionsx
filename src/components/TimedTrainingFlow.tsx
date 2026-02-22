@@ -110,6 +110,8 @@ export function TimedTrainingFlow({
   
   const [showWarning, setShowWarning] = useState(false);
   const [countdownValue, setCountdownValue] = useState<number | string | null>(null);
+  const [cameraInitTimedOut, setCameraInitTimedOut] = useState(false);
+  const cameraInitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningShownRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
@@ -175,11 +177,19 @@ export function TimedTrainingFlow({
   const handleInitCamera = useCallback(() => {
     setStep('camera-init');
     setCameraActive(true);
+    setCameraInitTimedOut(false);
+    // Auto-hide loading after 3s timeout → show retry
+    if (cameraInitTimeoutRef.current) clearTimeout(cameraInitTimeoutRef.current);
+    cameraInitTimeoutRef.current = setTimeout(() => {
+      setCameraInitTimedOut(true);
+    }, 3000);
   }, []);
 
   // Step 2: Camera ready callback
   const handleCameraReady = useCallback(() => {
     cameraPermissionGrantedThisSession = true;
+    if (cameraInitTimeoutRef.current) clearTimeout(cameraInitTimeoutRef.current);
+    setCameraInitTimedOut(false);
     setStep('camera-ready');
   }, []);
 
@@ -235,6 +245,7 @@ export function TimedTrainingFlow({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
+      if (cameraInitTimeoutRef.current) clearTimeout(cameraInitTimeoutRef.current);
       setCameraActive(false);
     };
   }, []);
@@ -301,9 +312,32 @@ export function TimedTrainingFlow({
         {(step === 'camera-init' || step === 'camera-ready' || step === 'countdown' || step === 'active') && (
           <div className="w-full max-w-lg mb-3 relative" style={{ height: 'clamp(300px, 70vh, 80vh)' }}>
             {step === 'camera-init' && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/60 rounded-xl">
-                <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
-                <p className="text-muted-foreground text-sm">Setting up camera...</p>
+              <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center pointer-events-none rounded-xl">
+                {cameraInitTimedOut ? (
+                  <div className="pointer-events-auto flex flex-col items-center gap-3 p-4 rounded-xl bg-background/80 backdrop-blur-sm">
+                    <p className="text-muted-foreground text-sm">Camera didn't respond</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCameraActive(false);
+                        setTimeout(() => {
+                          setCameraActive(true);
+                          setCameraInitTimedOut(false);
+                          if (cameraInitTimeoutRef.current) clearTimeout(cameraInitTimeoutRef.current);
+                          cameraInitTimeoutRef.current = setTimeout(() => setCameraInitTimedOut(true), 3000);
+                        }, 100);
+                      }}
+                    >
+                      Retry Camera
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/60 backdrop-blur-sm">
+                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                    <p className="text-muted-foreground text-xs">Starting camera…</p>
+                  </div>
+                )}
               </div>
             )}
             <PoseTracker
