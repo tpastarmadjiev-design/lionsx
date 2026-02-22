@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { getDailyLPCap } from '@/lib/ranks';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 
 export interface Profile {
   id: string;
@@ -54,6 +54,9 @@ export function useProfile() {
     return profile.last_lp_reset !== today;
   }, [profile]);
 
+  // Guard to prevent double-firing the reset mutation
+  const resetFiredRef = useRef(false);
+
   // Reset daily limits mutation
   const resetDailyLimits = useMutation({
     mutationFn: async () => {
@@ -80,15 +83,21 @@ export function useProfile() {
     },
     onError: (error) => {
       console.error('Failed to reset daily limits:', error);
+      resetFiredRef.current = false; // allow retry on error
     },
   });
 
   // Auto-reset daily limits when profile loads and day has changed
   useEffect(() => {
-    if (profile && needsDailyReset() && !resetDailyLimits.isPending) {
+    if (profile && needsDailyReset() && !resetFiredRef.current) {
+      resetFiredRef.current = true;
       resetDailyLimits.mutate();
     }
-  }, [profile, needsDailyReset, resetDailyLimits.isPending]);
+    // Reset guard when profile date catches up
+    if (profile && !needsDailyReset()) {
+      resetFiredRef.current = false;
+    }
+  }, [profile, needsDailyReset]);
 
   const updateProfile = useMutation({
     mutationFn: async (updates: Partial<Profile>) => {
