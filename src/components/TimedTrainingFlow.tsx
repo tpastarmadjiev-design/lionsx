@@ -323,7 +323,20 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
       <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
         {/* Single PoseTracker instance - persists across camera-init, camera-ready, countdown, active */}
         {(step === "camera-init" || step === "camera-ready" || step === "countdown" || step === "active") && (
-          <div className="w-full relative" style={{ height: "clamp(260px, 55vw, 420px)", maxWidth: "100%" }}>
+          <div className="w-full max-w-lg mx-auto relative overflow-hidden rounded-xl" style={{ aspectRatio: "4/3" }}>
+            {/* Camera feed fills the container */}
+            <PoseTracker
+              exercise={exerciseType}
+              isActive={cameraActive}
+              facingMode={cameraFacing}
+              onRepComplete={handleRepComplete}
+              onSecondComplete={isTimedHold ? handleSecondComplete : undefined}
+              suspicionTracker={suspicionTrackerRef.current}
+              onCameraReady={handleCameraReady}
+              onCameraError={handleCameraError}
+            />
+
+            {/* Camera init overlay */}
             {step === "camera-init" && (
               <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center pointer-events-none rounded-xl">
                 {cameraInitTimedOut ? (
@@ -353,16 +366,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
                 )}
               </div>
             )}
-            <PoseTracker
-              exercise={exerciseType}
-              isActive={cameraActive}
-              facingMode={cameraFacing}
-              onRepComplete={handleRepComplete}
-              onSecondComplete={isTimedHold ? handleSecondComplete : undefined}
-              suspicionTracker={suspicionTrackerRef.current}
-              onCameraReady={handleCameraReady}
-              onCameraError={handleCameraError}
-            />
+
             {/* Countdown Overlay */}
             {step === "countdown" && countdownValue !== null && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
@@ -371,7 +375,8 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
                 </span>
               </div>
             )}
-            {/* Active: Timer + Reps overlaid on camera for mobile */}
+
+            {/* Active: Timer + Reps overlaid on camera */}
             {step === "active" && (
               <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
                 <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm">
