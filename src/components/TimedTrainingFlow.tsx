@@ -1,27 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Exercise } from '@/hooks/useExercises';
-import { Button } from '@/components/ui/button';
-import { PoseTracker } from '@/components/PoseTracker';
-import { SuspiciousActivityWarning } from '@/components/SuspiciousActivityWarning';
-import { ExerciseInstructions } from '@/components/ExerciseInstructions';
-import { CameraSelector, type CameraFacing } from '@/components/CameraSelector';
-import { 
-  Play, 
-  Check, 
-  X, 
-  Loader2,
-  Dumbbell,
-  Heart,
-  Wind,
-  Timer,
-  Zap,
-  Plus,
-  Minus
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { getDailyLPCap } from '@/lib/ranks';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Exercise } from "@/hooks/useExercises";
+import { Button } from "@/components/ui/button";
+import { PoseTracker } from "@/components/PoseTracker";
+import { SuspiciousActivityWarning } from "@/components/SuspiciousActivityWarning";
+import { ExerciseInstructions } from "@/components/ExerciseInstructions";
+import { CameraSelector, type CameraFacing } from "@/components/CameraSelector";
+import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { getDailyLPCap } from "@/lib/ranks";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   createSessionSuspicionTracker,
   getSuspicionFlags,
@@ -29,7 +17,7 @@ import {
   getAverageAxisDistribution,
   getAverageTempo,
   type SessionSuspicionTracker,
-} from '@/lib/antiCheat';
+} from "@/lib/antiCheat";
 
 // Session-level flag: persist across exercise sessions until sign-out
 let cameraPermissionGrantedThisSession = false;
@@ -39,7 +27,15 @@ export function resetCameraPermissionFlag() {
   cameraPermissionGrantedThisSession = false;
 }
 
-type FlowStep = 'ready' | 'camera-select' | 'camera-init' | 'camera-ready' | 'countdown' | 'active' | 'manual-input' | 'finish';
+type FlowStep =
+  | "ready"
+  | "camera-select"
+  | "camera-init"
+  | "camera-ready"
+  | "countdown"
+  | "active"
+  | "manual-input"
+  | "finish";
 
 interface TimedTrainingFlowProps {
   exercise: Exercise;
@@ -55,59 +51,54 @@ const categoryIcons = {
 };
 
 const categoryColors = {
-  strength: 'text-strength bg-strength/20 border-strength/30',
-  endurance: 'text-endurance bg-endurance/20 border-endurance/30',
-  mobility: 'text-mobility bg-mobility/20 border-mobility/30',
+  strength: "text-strength bg-strength/20 border-strength/30",
+  endurance: "text-endurance bg-endurance/20 border-endurance/30",
+  mobility: "text-mobility bg-mobility/20 border-mobility/30",
 };
 
 const TIMER_DURATION = 60; // 60 seconds
 
 // Map exercise names to PoseTracker exercise types
-function getExerciseType(name: string): import('@/lib/antiCheat').ExerciseType {
+function getExerciseType(name: string): import("@/lib/antiCheat").ExerciseType {
   const normalized = name.toLowerCase();
-  if (normalized === 'squats') return 'squats';
-  if (normalized === 'lunges') return 'lunges';
-  if (normalized === 'pike push-ups') return 'pike-push-ups';
-  if (normalized === 'diamond push-ups') return 'diamond-push-ups';
-  if (normalized === 'wall sit') return 'wall-sit';
-  if (normalized === 'calf raises') return 'calf-raises';
-  if (normalized === 'burpees') return 'burpees';
-  if (normalized === 'mountain climbers') return 'mountain-climbers';
-  if (normalized === 'high knees') return 'high-knees';
-  if (normalized === 'jumping jacks') return 'jumping-jacks';
-  if (normalized === 'jump rope') return 'jump-rope';
-  if (normalized === 'toe touches') return 'toe-touches';
-  if (normalized === 'hip circles') return 'hip-circles';
-  if (normalized === 'cat-cow stretch') return 'cat-cow-stretch';
-  if (normalized === 'shoulder stretch hold') return 'shoulder-stretch-hold';
-  if (normalized === 'deep squat hold') return 'deep-squat-hold';
-  if (normalized === 'cobra stretch') return 'cobra-stretch';
-  if (normalized.includes('sit')) return 'sit-ups';
-  if (normalized.includes('push')) return 'push-ups';
-  if (normalized.includes('jump')) return 'jumps';
-  if (normalized.includes('plank')) return 'plank';
-  if (normalized.includes('dip')) return 'dips';
-  if (normalized.includes('pull')) return 'pull-ups';
-  if (normalized.includes('bench')) return 'bench-press';
-  return 'push-ups'; // Default fallback
+  if (normalized === "squats") return "squats";
+  if (normalized === "lunges") return "lunges";
+  if (normalized === "pike push-ups") return "pike-push-ups";
+  if (normalized === "diamond push-ups") return "diamond-push-ups";
+  if (normalized === "wall sit") return "wall-sit";
+  if (normalized === "calf raises") return "calf-raises";
+  if (normalized === "burpees") return "burpees";
+  if (normalized === "mountain climbers") return "mountain-climbers";
+  if (normalized === "high knees") return "high-knees";
+  if (normalized === "jumping jacks") return "jumping-jacks";
+  if (normalized === "jump rope") return "jump-rope";
+  if (normalized === "toe touches") return "toe-touches";
+  if (normalized === "hip circles") return "hip-circles";
+  if (normalized === "cat-cow stretch") return "cat-cow-stretch";
+  if (normalized === "shoulder stretch hold") return "shoulder-stretch-hold";
+  if (normalized === "deep squat hold") return "deep-squat-hold";
+  if (normalized === "cobra stretch") return "cobra-stretch";
+  if (normalized.includes("sit")) return "sit-ups";
+  if (normalized.includes("push")) return "push-ups";
+  if (normalized.includes("jump")) return "jumps";
+  if (normalized.includes("plank")) return "plank";
+  if (normalized.includes("dip")) return "dips";
+  if (normalized.includes("pull")) return "pull-ups";
+  if (normalized.includes("bench")) return "bench-press";
+  return "push-ups"; // Default fallback
 }
 
-export function TimedTrainingFlow({ 
-  exercise, 
-  remainingDailyLP,
-  onComplete, 
-  onCancel 
-}: TimedTrainingFlowProps) {
-  const [step, setStep] = useState<FlowStep>('ready');
+export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCancel }: TimedTrainingFlowProps) {
+  const [step, setStep] = useState<FlowStep>("ready");
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraBlocked, setCameraBlocked] = useState(false);
-  const [cameraFacing, setCameraFacing] = useState<CameraFacing>('user');
+  const [cameraFacing, setCameraFacing] = useState<CameraFacing>("user");
   const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
   const [repCount, setRepCount] = useState(0);
   const [detectedReps, setDetectedReps] = useState(0);
   const [manualCount, setManualCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [showWarning, setShowWarning] = useState(false);
   const [countdownValue, setCountdownValue] = useState<number | string | null>(null);
   const [cameraInitTimedOut, setCameraInitTimedOut] = useState(false);
@@ -117,16 +108,23 @@ export function TimedTrainingFlow({
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const suspicionTrackerRef = useRef<SessionSuspicionTracker>(createSessionSuspicionTracker());
   const { user } = useAuth();
-  
+
   const Icon = categoryIcons[exercise.category as keyof typeof categoryIcons];
   const colors = categoryColors[exercise.category as keyof typeof categoryColors];
-  const timedHoldNames = ['plank', 'wall sit', 'hip circles', 'shoulder stretch hold', 'deep squat hold', 'cobra stretch'];
+  const timedHoldNames = [
+    "plank",
+    "wall sit",
+    "hip circles",
+    "shoulder stretch hold",
+    "deep squat hold",
+    "cobra stretch",
+  ];
   const isTimedHold = timedHoldNames.includes(exercise.name.toLowerCase());
   const exerciseType = getExerciseType(exercise.name);
-  
+
   // Calculate LP (capped by daily limit)
   const earnedLP = Math.min(repCount, remainingDailyLP);
-  
+
   // Calculate skill distribution from exercise
   const skillDistribution = {
     strength: (exercise as any).skill_strength || 0,
@@ -142,15 +140,16 @@ export function TimedTrainingFlow({
     const score = computeSuspicionScore(flags);
     const axisDist = getAverageAxisDistribution(tracker);
     const avgTempo = getAverageTempo(tracker);
-    const orientationChange = tracker.orientationSamples.length > 1
-      ? Math.round(Math.max(...tracker.orientationSamples) - Math.min(...tracker.orientationSamples))
-      : null;
+    const orientationChange =
+      tracker.orientationSamples.length > 1
+        ? Math.round(Math.max(...tracker.orientationSamples) - Math.min(...tracker.orientationSamples))
+        : null;
 
     // Only log if any flags triggered or score > 0
     const anyFlag = Object.values(flags).some(Boolean);
 
     if (anyFlag || score > 0) {
-      await supabase.from('suspicion_flags').insert({
+      await supabase.from("suspicion_flags").insert({
         user_id: user.id,
         exercise_name: exercise.name,
         unrealistic_speed: flags.unrealisticSpeed,
@@ -175,7 +174,7 @@ export function TimedTrainingFlow({
 
   // Step 1: User clicks "Start" -> request camera
   const handleInitCamera = useCallback(() => {
-    setStep('camera-init');
+    setStep("camera-init");
     setCameraActive(true);
     setCameraInitTimedOut(false);
     // Auto-hide loading after 3s timeout → show retry
@@ -190,19 +189,19 @@ export function TimedTrainingFlow({
     cameraPermissionGrantedThisSession = true;
     if (cameraInitTimeoutRef.current) clearTimeout(cameraInitTimeoutRef.current);
     setCameraInitTimedOut(false);
-    setStep('camera-ready');
+    setStep("camera-ready");
   }, []);
 
   // Step 3: Camera error -> show blocked message instead of silently cancelling
   const handleCameraError = useCallback(() => {
     setCameraActive(false);
     setCameraBlocked(true);
-    setStep('ready');
+    setStep("ready");
   }, []);
 
   // Step 4: User presses "Start Exercise" -> play countdown
   const handleStartCountdown = useCallback(() => {
-    setStep('countdown');
+    setStep("countdown");
     let count = 3;
     setCountdownValue(count);
 
@@ -211,12 +210,12 @@ export function TimedTrainingFlow({
       if (count > 0) {
         setCountdownValue(count);
       } else if (count === 0) {
-        setCountdownValue('GO!');
+        setCountdownValue("GO!");
       } else {
         clearInterval(countdownRef.current!);
         setCountdownValue(null);
         // Now start the actual exercise
-        setStep('active');
+        setStep("active");
         setTimeRemaining(TIMER_DURATION);
         setRepCount(0);
         setDetectedReps(0);
@@ -224,12 +223,12 @@ export function TimedTrainingFlow({
         suspicionTrackerRef.current = createSessionSuspicionTracker();
 
         timerRef.current = setInterval(() => {
-          setTimeRemaining(prev => {
+          setTimeRemaining((prev) => {
             if (prev <= 1) {
               clearInterval(timerRef.current!);
               setCameraActive(false);
               setDetectedReps(repCount);
-              setStep('manual-input');
+              setStep("manual-input");
               logSuspicionFlags();
               return 0;
             }
@@ -252,66 +251,80 @@ export function TimedTrainingFlow({
 
   // Handle rep/second detected
   const handleRepComplete = useCallback(() => {
-    setRepCount(prev => prev + 1);
+    setRepCount((prev) => prev + 1);
   }, []);
 
   // For plank - each second counts as a rep
   const handleSecondComplete = useCallback(() => {
-    setRepCount(prev => prev + 1);
+    setRepCount((prev) => prev + 1);
   }, []);
 
   // Confirm reps and complete
-  const handleConfirm = useCallback((finalCount: number) => {
-    setIsSubmitting(true);
-    
-    // Cap LP by daily remaining
-    const actualLP = Math.min(finalCount, remainingDailyLP);
-    
-    // Calculate skill XP based on distribution percentages
-    const skillXP = {
-      strength: Math.floor(actualLP * (skillDistribution.strength / 100)),
-      endurance: Math.floor(actualLP * (skillDistribution.endurance / 100)),
-      mobility: Math.floor(actualLP * (skillDistribution.mobility / 100)),
-    };
-    
-    onComplete(actualLP, skillXP);
-  }, [remainingDailyLP, skillDistribution, onComplete]);
+  const handleConfirm = useCallback(
+    (finalCount: number) => {
+      setIsSubmitting(true);
+
+      // Cap LP by daily remaining
+      const actualLP = Math.min(finalCount, remainingDailyLP);
+
+      // Calculate skill XP based on distribution percentages
+      const skillXP = {
+        strength: Math.floor(actualLP * (skillDistribution.strength / 100)),
+        endurance: Math.floor(actualLP * (skillDistribution.endurance / 100)),
+        mobility: Math.floor(actualLP * (skillDistribution.mobility / 100)),
+      };
+
+      onComplete(actualLP, skillXP);
+    },
+    [remainingDailyLP, skillDistribution, onComplete],
+  );
 
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-lg flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
-        <button 
+        <button
           onClick={() => {
             if (timerRef.current) clearInterval(timerRef.current);
             if (countdownRef.current) clearInterval(countdownRef.current);
             setCameraActive(false);
             onCancel();
-          }} 
+          }}
           className="p-2 rounded-lg hover:bg-secondary"
         >
           <X className="w-6 h-6 text-muted-foreground" />
         </button>
         <h2 className="text-lg font-display font-semibold text-foreground">
-          {step === 'active' ? 'GO!' : step === 'manual-input' ? 'Confirm Reps' : step === 'countdown' ? 'Get Ready!' : step === 'camera-init' ? 'Setting Up...' : step === 'camera-ready' ? 'Ready' : step === 'camera-select' ? 'Choose Camera' : 'Training'}
+          {step === "active"
+            ? "GO!"
+            : step === "manual-input"
+              ? "Confirm Reps"
+              : step === "countdown"
+                ? "Get Ready!"
+                : step === "camera-init"
+                  ? "Setting Up..."
+                  : step === "camera-ready"
+                    ? "Ready"
+                    : step === "camera-select"
+                      ? "Choose Camera"
+                      : "Training"}
         </h2>
         <div className="w-10" />
       </div>
 
       {/* Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
-        
         {/* Single PoseTracker instance - persists across camera-init, camera-ready, countdown, active */}
-        {(step === 'camera-init' || step === 'camera-ready' || step === 'countdown' || step === 'active') && (
-          <div className="w-full max-w-lg mb-3 relative" style={{ height: 'clamp(300px, 70vh, 80vh)' }}>
-            {step === 'camera-init' && (
+        {(step === "camera-init" || step === "camera-ready" || step === "countdown" || step === "active") && (
+          <div className="w-full relative" style={{ height: "clamp(260px, 55vw, 420px)", maxWidth: "100%" }}>
+            {step === "camera-init" && (
               <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center pointer-events-none rounded-xl">
                 {cameraInitTimedOut ? (
                   <div className="pointer-events-auto flex flex-col items-center gap-3 p-4 rounded-xl bg-background/80 backdrop-blur-sm">
@@ -351,18 +364,37 @@ export function TimedTrainingFlow({
               onCameraError={handleCameraError}
             />
             {/* Countdown Overlay */}
-            {step === 'countdown' && countdownValue !== null && (
+            {step === "countdown" && countdownValue !== null && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                 <span className="text-8xl font-display font-black text-primary drop-shadow-lg animate-pulse">
                   {countdownValue}
                 </span>
               </div>
             )}
+            {/* Active: Timer + Reps overlaid on camera for mobile */}
+            {step === "active" && (
+              <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
+                <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm">
+                  <span
+                    className={cn(
+                      "text-4xl font-display font-bold tabular-nums",
+                      timeRemaining <= 10 ? "text-red-400" : "text-white",
+                    )}
+                  >
+                    {formatTime(timeRemaining)}
+                  </span>
+                </div>
+                <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm flex items-center gap-2">
+                  <span className="text-white/70 text-sm">{isTimedHold ? "Pts" : "Reps"}</span>
+                  <span className="text-4xl font-display font-bold text-primary">{repCount}</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Ready Step */}
-        {step === 'ready' && (
+        {step === "ready" && (
           <div className="w-full max-w-sm space-y-6 animate-fade-in">
             {/* Exercise Card */}
             <div className="lion-card p-6">
@@ -375,7 +407,7 @@ export function TimedTrainingFlow({
                   <p className="text-sm text-muted-foreground capitalize">{exercise.category}</p>
                 </div>
               </div>
-              
+
               {/* Info */}
               <div className="space-y-2 p-3 rounded-lg bg-secondary/50">
                 <div className="flex items-center justify-between text-sm">
@@ -388,16 +420,19 @@ export function TimedTrainingFlow({
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Zap className="w-4 h-4" />
-                    {isTimedHold ? 'Each 2 sec' : 'Each rep'}
+                    {isTimedHold ? "Each 2 sec" : "Each rep"}
                   </span>
                   <span className="font-medium text-primary">= 1 LP</span>
                 </div>
               </div>
             </div>
-            
+
             {/* Daily LP remaining */}
             <div className="text-center text-sm text-muted-foreground">
-              Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP} / {getDailyLPCap(user?.id)}</span>
+              Daily LP remaining:{" "}
+              <span className="text-primary font-semibold">
+                {remainingDailyLP} / {getDailyLPCap(user?.id)}
+              </span>
             </div>
 
             {/* Exercise Instructions */}
@@ -405,87 +440,53 @@ export function TimedTrainingFlow({
 
             {cameraBlocked && (
               <div className="text-center text-sm text-destructive p-3 rounded-lg bg-destructive/10">
-                Camera access is blocked by your browser. Please allow camera access in your browser's site settings (click the lock/camera icon in the address bar), then try again.
+                Camera access is blocked by your browser. Please allow camera access in your browser's site settings
+                (click the lock/camera icon in the address bar), then try again.
               </div>
             )}
 
             {/* Start Button → goes to camera selection */}
-            <Button 
-              variant="hero" 
-              size="xl" 
+            <Button
+              variant="hero"
+              size="xl"
               className="w-full"
               onClick={() => {
                 setCameraBlocked(false);
-                setStep('camera-select');
+                setStep("camera-select");
               }}
             >
               <Play className="w-5 h-5" />
-              {cameraBlocked ? 'Retry Camera Access' : 'Start 60s Challenge'}
+              {cameraBlocked ? "Retry Camera Access" : "Start 60s Challenge"}
             </Button>
           </div>
         )}
 
         {/* Camera Selection Step */}
-        {step === 'camera-select' && (
+        {step === "camera-select" && (
           <CameraSelector
             onSelect={(facing) => {
               setCameraFacing(facing);
               handleInitCamera();
             }}
-            onCancel={() => setStep('ready')}
+            onCancel={() => setStep("ready")}
           />
         )}
 
         {/* Camera Ready - Show Start Exercise button */}
-        {step === 'camera-ready' && (
+        {step === "camera-ready" && (
           <div className="w-full max-w-sm space-y-4 animate-fade-in">
             <div className="text-center text-sm text-muted-foreground">
               Camera ready. Position yourself and press start!
             </div>
-            <Button 
-              variant="hero" 
-              size="xl" 
-              className="w-full"
-              onClick={handleStartCountdown}
-            >
+            <Button variant="hero" size="xl" className="w-full" onClick={handleStartCountdown}>
               <Play className="w-5 h-5" />
               Start Exercise
             </Button>
           </div>
         )}
 
-        {/* Active Step - Timer Running */}
-        {step === 'active' && (
-          <div className="w-full max-w-lg flex items-center gap-4 animate-fade-in">
-            {/* Compact Timer */}
-            <div className="flex items-center gap-2">
-              <div 
-                key={timeRemaining <= 10 ? 'countdown' : 'normal'}
-                className={cn(
-                  "text-3xl font-display font-bold tabular-nums transition-colors duration-200",
-                  timeRemaining <= 10 ? "text-destructive" : "text-primary"
-                )}
-              >
-                {formatTime(timeRemaining)}
-              </div>
-            </div>
-
-            <div className="flex-1" />
-
-            {/* Compact Rep Counter */}
-            <div className="flex items-center gap-2 lion-card px-4 py-2">
-              <span className="text-sm text-muted-foreground">
-                {isTimedHold ? 'Pts' : 'Reps'}
-              </span>
-              <span className="text-3xl font-display font-bold text-primary">
-                {repCount}
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Manual Input Step */}
-        {step === 'manual-input' && (
+        {step === "manual-input" && (
           <div className="w-full max-w-sm space-y-6 animate-fade-in">
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
@@ -493,27 +494,26 @@ export function TimedTrainingFlow({
               </div>
               <h3 className="text-2xl font-display font-bold text-foreground">Time's Up!</h3>
               <p className="text-muted-foreground mt-2">
-                We detected <span className="text-primary font-bold">{repCount}</span> {isTimedHold ? 'points' : 'reps'}.
+                We detected <span className="text-primary font-bold">{repCount}</span> {isTimedHold ? "points" : "reps"}
+                .
               </p>
             </div>
 
             {/* Manual adjustment */}
             <div className="lion-card p-4">
-              <p className="text-sm text-muted-foreground text-center mb-4">
-                Adjust if needed (max +15%):
-              </p>
+              <p className="text-sm text-muted-foreground text-center mb-4">Adjust if needed (max +15%):</p>
               {(() => {
                 const maxManualAdd = Math.floor(repCount * 0.15);
                 const maxAllowed = repCount + maxManualAdd;
                 const currentValue = manualCount || repCount;
-                
+
                 return (
                   <div className="flex items-center justify-center gap-4">
                     <Button
                       variant="outline"
                       size="icon"
                       className="h-12 w-12 rounded-full"
-                      onClick={() => setManualCount(prev => Math.max(0, (prev || repCount) - 1))}
+                      onClick={() => setManualCount((prev) => Math.max(0, (prev || repCount) - 1))}
                       disabled={currentValue <= 0}
                     >
                       <Minus className="w-5 h-5" />
@@ -525,7 +525,7 @@ export function TimedTrainingFlow({
                       variant="outline"
                       size="icon"
                       className="h-12 w-12 rounded-full"
-                      onClick={() => setManualCount(prev => Math.min(maxAllowed, (prev || repCount) + 1))}
+                      onClick={() => setManualCount((prev) => Math.min(maxAllowed, (prev || repCount) + 1))}
                       disabled={currentValue >= maxAllowed}
                     >
                       <Plus className="w-5 h-5" />
@@ -538,7 +538,7 @@ export function TimedTrainingFlow({
             {/* LP earned preview */}
             <div className="lion-card p-4 space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{isTimedHold ? 'Points' : 'Reps'} × 1 LP</span>
+                <span className="text-muted-foreground">{isTimedHold ? "Points" : "Reps"} × 1 LP</span>
                 <span className="font-medium text-foreground">{manualCount || repCount} LP</span>
               </div>
               {(manualCount || repCount) > remainingDailyLP && (
@@ -562,27 +562,36 @@ export function TimedTrainingFlow({
                 <div className="p-2 rounded-lg bg-strength/10">
                   <Dumbbell className="w-4 h-4 text-strength mx-auto mb-1" />
                   <span className="font-semibold text-strength">
-                    +{Math.floor(Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.strength / 100))}
+                    +
+                    {Math.floor(
+                      Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.strength / 100),
+                    )}
                   </span>
                 </div>
                 <div className="p-2 rounded-lg bg-endurance/10">
                   <Heart className="w-4 h-4 text-endurance mx-auto mb-1" />
                   <span className="font-semibold text-endurance">
-                    +{Math.floor(Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.endurance / 100))}
+                    +
+                    {Math.floor(
+                      Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.endurance / 100),
+                    )}
                   </span>
                 </div>
                 <div className="p-2 rounded-lg bg-mobility/10">
                   <Wind className="w-4 h-4 text-mobility mx-auto mb-1" />
                   <span className="font-semibold text-mobility">
-                    +{Math.floor(Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.mobility / 100))}
+                    +
+                    {Math.floor(
+                      Math.min(manualCount || repCount, remainingDailyLP) * (skillDistribution.mobility / 100),
+                    )}
                   </span>
                 </div>
               </div>
             </div>
 
-            <Button 
-              variant="hero" 
-              size="xl" 
+            <Button
+              variant="hero"
+              size="xl"
               className="w-full"
               onClick={() => handleConfirm(manualCount || repCount)}
               disabled={isSubmitting}
