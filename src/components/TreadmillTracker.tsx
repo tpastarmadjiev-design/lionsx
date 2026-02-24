@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Play, Square, Timer, Zap, AlertCircle, Activity, Pause } from 'lucide-react';
+import { Play, Square, Timer, Zap, AlertCircle, Activity, X } from 'lucide-react';
 import { Exercise } from '@/hooks/useExercises';
 import { cn } from '@/lib/utils';
 
@@ -228,59 +227,99 @@ export function TreadmillTracker({ exercise, remainingDailyLP, onComplete, onCan
     </>
   );
 
+  // Header shared across all steps
+  const header = (
+    <div className="flex items-center justify-between p-4 border-b border-border">
+      <button
+        onClick={() => {
+          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+          if (totalTimerRef.current) clearInterval(totalTimerRef.current);
+          if (runTimerRef.current) clearInterval(runTimerRef.current);
+          stopStream();
+          onCancel();
+        }}
+        className="p-2 rounded-lg hover:bg-secondary"
+      >
+        <X className="w-6 h-6 text-muted-foreground" />
+      </button>
+      <h2 className="text-lg font-display font-semibold text-foreground">
+        {step === 'active' ? 'Treadmill Run' : step === 'finish' ? 'Run Complete' : 'Training'}
+      </h2>
+      <div className="w-10" />
+    </div>
+  );
+
   // READY screen
   if (step === 'ready') {
     return (
-      <div className="min-h-screen bg-background p-4 flex flex-col">
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
         {hiddenMedia}
-        <Card className="flex-1 flex flex-col items-center justify-center p-6 bg-card/80 border-border/50">
-          <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-6">
-            <Activity className="w-10 h-10 text-primary" />
-          </div>
-
-          <h2 className="text-2xl font-display font-bold text-foreground mb-2">
-            Treadmill Run
-          </h2>
-
-          <p className="text-muted-foreground text-center mb-6 max-w-sm">
-            Get ready to start running! The camera will detect your movement automatically.
-          </p>
-
-          <div className="bg-secondary/50 rounded-lg p-4 mb-6 w-full max-w-sm">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <Zap className="w-4 h-4 text-primary" />
-              <span>LP Rewards</span>
-            </div>
-            <p className="text-foreground font-medium">
-              1 LP per 10 seconds of running
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Daily limit: {remainingDailyLP} LP remaining
-            </p>
-          </div>
-
-          {cameraError && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-6 w-full max-w-sm">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
+        {header}
+        <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-sm space-y-6 animate-fade-in">
+            <div className="lion-card p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center border text-endurance bg-endurance/20 border-endurance/30">
+                  <Activity className="w-7 h-7" />
+                </div>
                 <div>
-                  <p className="text-destructive font-medium text-sm">Camera Error</p>
-                  <p className="text-xs text-muted-foreground mt-1">{cameraError}</p>
+                  <h3 className="text-xl font-display font-bold text-foreground">Treadmill Run</h3>
+                  <p className="text-sm text-muted-foreground capitalize">endurance</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 p-3 rounded-lg bg-secondary/50">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Timer className="w-4 h-4" />
+                    Tracking
+                  </span>
+                  <span className="font-medium text-foreground">Motion Detection</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Zap className="w-4 h-4" />
+                    Each 10 sec running
+                  </span>
+                  <span className="font-medium text-primary">= 1 LP</span>
                 </div>
               </div>
             </div>
-          )}
 
-          <div className="flex gap-3 w-full max-w-sm">
-            <Button variant="outline" onClick={onCancel} className="flex-1">
-              Cancel
-            </Button>
-            <Button onClick={startTracking} className="flex-1 gap-2">
-              <Play className="w-4 h-4" />
-              Start Run
-            </Button>
+            <p className="text-muted-foreground text-center text-sm">
+              Get ready to start running! The camera will detect your movement automatically.
+            </p>
+
+            <div className="text-center text-sm text-muted-foreground">
+              Daily LP remaining: <span className="text-primary font-semibold">{remainingDailyLP}</span>
+            </div>
+
+            {cameraError && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-destructive font-medium text-sm">Camera Error</p>
+                    <p className="text-xs text-muted-foreground mt-1">{cameraError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </Card>
+        </div>
+
+        {/* Bottom action */}
+        <div className="p-4 border-t border-border bg-primary">
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full"
+            onClick={startTracking}
+          >
+            <Play className="w-5 h-5" />
+            Start Run
+          </Button>
+        </div>
       </div>
     );
   }
@@ -288,9 +327,10 @@ export function TreadmillTracker({ exercise, remainingDailyLP, onComplete, onCan
   // ACTIVE screen
   if (step === 'active') {
     return (
-      <div className="min-h-screen bg-background p-4 flex flex-col">
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
         {hiddenMedia}
-        <Card className="flex-1 flex flex-col p-6 bg-card/80 border-border/50">
+        {header}
+        <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
           {/* Running/Stopped indicator */}
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className={cn(
@@ -311,53 +351,52 @@ export function TreadmillTracker({ exercise, remainingDailyLP, onComplete, onCan
             </span>
           </div>
 
-          {/* Main Stats */}
-          <div className="flex-1 flex flex-col items-center justify-center">
-            {/* Running time - Main display */}
-            <div className="text-center mb-8">
-              <p className="text-muted-foreground text-sm mb-1">Running Time</p>
-              <p className="text-6xl font-display font-bold text-primary tabular-nums">
-                {formatTime(runningTime)}
-              </p>
-            </div>
+          {/* Running time - Main display */}
+          <div className="text-center mb-8">
+            <p className="text-muted-foreground text-sm mb-1">Running Time</p>
+            <p className="text-6xl font-display font-bold text-primary tabular-nums">
+              {formatTime(runningTime)}
+            </p>
+          </div>
 
-            {/* Secondary Stats */}
-            <div className="grid grid-cols-3 gap-6 w-full max-w-sm mb-8">
-              <div className="text-center">
-                <Timer className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
-                <p className="text-2xl font-bold text-foreground tabular-nums">{formatTime(totalTime)}</p>
-                <p className="text-xs text-muted-foreground">Total Time</p>
-              </div>
-              <div className="text-center">
-                <Activity className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
-                <p className="text-2xl font-bold text-foreground">{cycles}</p>
-                <p className="text-xs text-muted-foreground">Run/Stop</p>
-              </div>
-              <div className="text-center">
-                <Zap className="w-6 h-6 text-primary mx-auto mb-1" />
-                <p className="text-2xl font-bold text-primary">{earnedLP}</p>
-                <p className="text-xs text-muted-foreground">LP Earned</p>
-              </div>
+          {/* Secondary Stats */}
+          <div className="grid grid-cols-3 gap-6 w-full max-w-sm mb-8">
+            <div className="text-center">
+              <Timer className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
+              <p className="text-2xl font-bold text-foreground tabular-nums">{formatTime(totalTime)}</p>
+              <p className="text-xs text-muted-foreground">Total Time</p>
             </div>
-
-            {/* Camera preview (small) */}
-            <div className="w-32 h-24 rounded-lg overflow-hidden border border-border/50 bg-secondary mb-6">
-              <video
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }}
-                ref={(el) => {
-                  if (el && streamRef.current) {
-                    el.srcObject = streamRef.current;
-                  }
-                }}
-              />
+            <div className="text-center">
+              <Activity className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
+              <p className="text-2xl font-bold text-foreground">{cycles}</p>
+              <p className="text-xs text-muted-foreground">Run/Stop</p>
+            </div>
+            <div className="text-center">
+              <Zap className="w-6 h-6 text-primary mx-auto mb-1" />
+              <p className="text-2xl font-bold text-primary">{earnedLP}</p>
+              <p className="text-xs text-muted-foreground">LP Earned</p>
             </div>
           </div>
 
-          {/* Finish Button */}
+          {/* Camera preview (small) */}
+          <div className="w-32 h-24 rounded-lg overflow-hidden border border-border/50 bg-secondary">
+            <video
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }}
+              ref={(el) => {
+                if (el && streamRef.current) {
+                  el.srcObject = streamRef.current;
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Bottom action */}
+        <div className="p-4 border-t border-border">
           <Button
             variant="destructive"
             size="lg"
@@ -367,91 +406,97 @@ export function TreadmillTracker({ exercise, remainingDailyLP, onComplete, onCan
             <Square className="w-5 h-5" />
             Finish Run
           </Button>
-        </Card>
+        </div>
       </div>
     );
   }
 
   // FINISH screen
   return (
-    <div className="min-h-screen bg-background p-4 flex flex-col">
-      <Card className="flex-1 flex flex-col items-center justify-center p-6 bg-card/80 border-border/50">
-        <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-6">
-          <Activity className="w-10 h-10 text-primary" />
-        </div>
-
-        <h2 className="text-2xl font-display font-bold text-foreground mb-6">
-          Treadmill Run Complete! 🏃
-        </h2>
-
-        {/* Stats Summary */}
-        <div className="grid grid-cols-2 gap-4 w-full max-w-sm mb-6">
-          <div className="bg-secondary/50 rounded-lg p-4 text-center">
-            <p className="text-muted-foreground text-sm">Running Time</p>
-            <p className="text-xl font-bold text-foreground">{formatTime(runningTime)}</p>
-          </div>
-          <div className="bg-secondary/50 rounded-lg p-4 text-center">
-            <p className="text-muted-foreground text-sm">Total Time</p>
-            <p className="text-xl font-bold text-foreground">{formatTime(totalTime)}</p>
-          </div>
-          <div className="bg-secondary/50 rounded-lg p-4 text-center">
-            <p className="text-muted-foreground text-sm">Run/Stop Cycles</p>
-            <p className="text-xl font-bold text-foreground">{cycles}</p>
-          </div>
-          <div className="bg-primary/20 rounded-lg p-4 text-center">
-            <p className="text-primary text-sm">LP Earned</p>
-            <p className="text-xl font-bold text-primary">{cappedLP}</p>
-          </div>
-        </div>
-
-        {earnedLP > remainingDailyLP && (
-          <p className="text-amber-500 text-sm mb-4">
-            ⚠️ Daily LP cap reached. {earnedLP - cappedLP} LP not counted.
-          </p>
-        )}
-
-        {/* Skill Preview */}
-        <div className="bg-secondary/30 rounded-lg p-4 w-full max-w-sm mb-6">
-          <p className="text-sm text-muted-foreground mb-2">Skill XP Preview</p>
-          <div className="flex justify-around">
-            <div className="text-center">
-              <p className="text-foreground font-medium">+{exercise.skill_strength * cappedLP}</p>
-              <p className="text-xs text-muted-foreground">Strength</p>
-            </div>
-            <div className="text-center">
-              <p className="text-primary font-medium">+{exercise.skill_endurance * cappedLP}</p>
-              <p className="text-xs text-muted-foreground">Endurance</p>
-            </div>
-            <div className="text-center">
-              <p className="text-foreground font-medium">+{exercise.skill_mobility * cappedLP}</p>
-              <p className="text-xs text-muted-foreground">Mobility</p>
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      {header}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
+        <div className="w-full max-w-sm space-y-6 animate-fade-in">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
+              <Activity className="w-10 h-10 text-primary" />
             </div>
           </div>
-        </div>
 
-        <div className="flex gap-3 w-full max-w-sm">
-          <Button variant="outline" onClick={onCancel} className="flex-1">
-            Discard
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={isSubmitting || cappedLP === 0}
-            className="flex-1 gap-2"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4" />
-                Confirm +{cappedLP} LP
-              </>
-            )}
-          </Button>
+          <h2 className="text-2xl font-display font-bold text-foreground text-center">
+            Treadmill Run Complete! 🏃
+          </h2>
+
+          {/* Stats Summary */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-secondary/50 rounded-lg p-4 text-center">
+              <p className="text-muted-foreground text-sm">Running Time</p>
+              <p className="text-xl font-bold text-foreground">{formatTime(runningTime)}</p>
+            </div>
+            <div className="bg-secondary/50 rounded-lg p-4 text-center">
+              <p className="text-muted-foreground text-sm">Total Time</p>
+              <p className="text-xl font-bold text-foreground">{formatTime(totalTime)}</p>
+            </div>
+            <div className="bg-secondary/50 rounded-lg p-4 text-center">
+              <p className="text-muted-foreground text-sm">Run/Stop Cycles</p>
+              <p className="text-xl font-bold text-foreground">{cycles}</p>
+            </div>
+            <div className="bg-primary/20 rounded-lg p-4 text-center">
+              <p className="text-primary text-sm">LP Earned</p>
+              <p className="text-xl font-bold text-primary">{cappedLP}</p>
+            </div>
+          </div>
+
+          {earnedLP > remainingDailyLP && (
+            <p className="text-destructive text-sm text-center">
+              ⚠️ Daily LP cap reached. {earnedLP - cappedLP} LP not counted.
+            </p>
+          )}
+
+          {/* Skill Preview */}
+          <div className="bg-secondary/30 rounded-lg p-4">
+            <p className="text-sm text-muted-foreground mb-2">Skill XP Preview</p>
+            <div className="flex justify-around">
+              <div className="text-center">
+                <p className="text-foreground font-medium">+{exercise.skill_strength * cappedLP}</p>
+                <p className="text-xs text-muted-foreground">Strength</p>
+              </div>
+              <div className="text-center">
+                <p className="text-primary font-medium">+{exercise.skill_endurance * cappedLP}</p>
+                <p className="text-xs text-muted-foreground">Endurance</p>
+              </div>
+              <div className="text-center">
+                <p className="text-foreground font-medium">+{exercise.skill_mobility * cappedLP}</p>
+                <p className="text-xs text-muted-foreground">Mobility</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </Card>
+      </div>
+
+      {/* Bottom actions */}
+      <div className="p-4 border-t border-border flex gap-3">
+        <Button variant="outline" onClick={onCancel} className="flex-1">
+          Discard
+        </Button>
+        <Button
+          onClick={handleConfirm}
+          disabled={isSubmitting || cappedLP === 0}
+          className="flex-1 gap-2"
+        >
+          {isSubmitting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Zap className="w-4 h-4" />
+              Confirm +{cappedLP} LP
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
