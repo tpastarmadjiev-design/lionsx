@@ -7,6 +7,7 @@ import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { TimedTrainingFlow } from '@/components/TimedTrainingFlow';
 import { RunningTracker } from '@/components/RunningTracker';
+import { TreadmillTracker } from '@/components/TreadmillTracker';
 import { LocationSelector } from '@/components/training/LocationSelector';
 import { ExerciseGrid } from '@/components/training/ExerciseGrid';
 import { Button } from '@/components/ui/button';
@@ -66,8 +67,21 @@ export default function Training() {
 
   // Active training flow
   if (showFlow && selectedExercise) {
-    const isRunning = selectedExercise.name.toLowerCase() === 'running';
-    const isCycling = selectedExercise.name.toLowerCase() === 'cycling';
+    const nameLower = selectedExercise.name.toLowerCase();
+    const isRunning = nameLower === 'running';
+    const isCycling = nameLower === 'cycling';
+    const isTreadmill = nameLower === 'treadmill run';
+
+    if (isTreadmill) {
+      return (
+        <TreadmillTracker
+          exercise={selectedExercise}
+          remainingDailyLP={remainingDaily}
+          onComplete={handleComplete}
+          onCancel={handleCancel}
+        />
+      );
+    }
 
     if (isRunning || isCycling) {
       return (
