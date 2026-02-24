@@ -43,6 +43,7 @@ const STREET_EXERCISES = [
 // Gym-only exercises (heavy equipment / machines)
 const GYM_ONLY_EXERCISES = [
   'Bench Press',
+  'Treadmill Run',
 ];
 
 // Home exercises = bodyweight + mobility + dumbbell
