@@ -96,8 +96,23 @@ export function AdminAnalytics() {
     const uniqueUsers30Days = new Set(monthLogs?.map(l => l.user_id) || []);
     const retention30 = totalUsers ? Math.round((uniqueUsers30Days.size / totalUsers) * 100) : 0;
 
+    // Calculate avg session duration from training_logs
+    const { data: durationLogs } = await supabase
+      .from('training_logs')
+      .select('session_duration_seconds')
+      .not('session_duration_seconds', 'is', null);
+
+    let avgDuration = 'No data';
+    if (durationLogs && durationLogs.length > 0) {
+      const totalSeconds = durationLogs.reduce((sum, l) => sum + (l.session_duration_seconds || 0), 0);
+      const avgSeconds = Math.round(totalSeconds / durationLogs.length);
+      const mins = Math.floor(avgSeconds / 60);
+      const secs = avgSeconds % 60;
+      avgDuration = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+    }
+
     setUserMetrics({
-      avgSessionDuration: 'Not tracked',
+      avgSessionDuration: avgDuration,
       avgDailyActiveUsers: avgDAU,
       retention7Day: retention7,
       retention30Day: retention30,

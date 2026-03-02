@@ -40,6 +40,8 @@ export default function Training() {
       await logTraining.mutateAsync({
         exerciseId: selectedExercise.id,
         lpEarned: reps,
+        repsCompleted: reps,
+        sessionDurationSeconds: 60,
         proofType: 'timed',
       });
       gaEvents.trainingCompleted(selectedExercise.name, reps, reps);
