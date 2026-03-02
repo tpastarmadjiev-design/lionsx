@@ -323,7 +323,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
       <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
         {/* Single PoseTracker instance - persists across camera-init, camera-ready, countdown, active */}
         {(step === "camera-init" || step === "camera-ready" || step === "countdown" || step === "active") && (
-          <div className="w-full max-w-lg mx-auto relative overflow-hidden rounded-xl" style={{ aspectRatio: "4/3" }}>
+          <div className="w-full max-w-lg mx-auto relative overflow-hidden rounded-xl" style={{ aspectRatio: "3/4" }}>
             {/* Camera feed fills the container */}
             <PoseTracker
               exercise={exerciseType}
