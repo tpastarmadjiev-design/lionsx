@@ -37,11 +37,15 @@ export function useExercises() {
     mutationFn: async ({ 
       exerciseId, 
       lpEarned,
+      repsCompleted,
+      sessionDurationSeconds,
       proofUrl,
       proofType 
     }: { 
       exerciseId: string; 
       lpEarned: number;
+      repsCompleted?: number;
+      sessionDurationSeconds?: number;
       proofUrl?: string;
       proofType?: 'none' | 'photo' | 'video' | 'timed';
     }) => {
@@ -53,6 +57,8 @@ export function useExercises() {
           user_id: user.id,
           exercise_id: exerciseId,
           lp_earned: lpEarned,
+          reps_completed: repsCompleted ?? lpEarned,
+          session_duration_seconds: sessionDurationSeconds ?? 60,
           proof_url: proofUrl || null,
           proof_type: proofType || 'timed',
         });
