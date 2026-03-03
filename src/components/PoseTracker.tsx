@@ -14,6 +14,10 @@ import {
   detectTricepExtensionPhase, detectPunchPhase, detectRomanianDeadliftPhase,
   detectWindmillPhase, isShoulderStabilizationValid, resetPunchState,
 } from '@/lib/exerciseDetectors';
+import {
+  detectBenchPressPhaseSmoothed,
+  getSmoothedFeedback, resetSmoothedDetector, SMOOTHED_EXERCISES,
+} from '@/lib/smoothedDetectors';
 
 interface PoseTrackerProps {
   exercise: ExerciseType;
@@ -49,6 +53,8 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visibilityWarning, setVisibilityWarning] = useState<string | null>(null);
+  const [exerciseFeedback, setExerciseFeedback] = useState<string | null>(null);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const isTimedHold = TIMED_HOLD_EXERCISES.includes(exercise);
 
@@ -57,6 +63,8 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     resetMountainClimberState();
     resetHighKneeState();
     resetPunchState();
+    resetSmoothedDetector(exercise);
+    setExerciseFeedback(null);
   }, [exercise]);
 
   // Initialize MediaPipe
@@ -163,6 +171,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   // Get phase for rep-based exercises using the new detectors
   const getPhaseForExercise = useCallback((pose: any[]): RepPhase => {
     switch (exercise) {
+      case 'bench-press': return detectBenchPressPhaseSmoothed(pose);
       case 'squats': return detectSquatPhase(pose);
       case 'lunges': return detectLungePhase(pose);
       case 'pike-push-ups': return detectPikePushUpPhase(pose);
@@ -281,15 +290,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       
       switch (exercise) {
         case 'bench-press': {
-          const leftElbow = pose[LEFT_ELBOW];
-          const rightElbow = pose[RIGHT_ELBOW];
-          const leftShoulder = pose[LEFT_SHOULDER];
-          const rightShoulder = pose[RIGHT_SHOULDER];
-          if (!leftElbow || !rightElbow || !leftShoulder || !rightShoulder) break;
-          const avgElbowY = (leftElbow.y + rightElbow.y) / 2;
-          const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
-          if (avgElbowY > avgShoulderY + 0.05) currentPhase = 'down';
-          else if (avgElbowY <= avgShoulderY + 0.02) currentPhase = 'up';
+          // Handled by smoothed detector in getPhaseForExercise
           break;
         }
         case 'sit-ups': {
@@ -336,6 +337,16 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     
     if (currentPhase !== 'neutral') {
       lastPhaseRef.current = currentPhase;
+    }
+
+    // Update smoothed-detector feedback overlay
+    if (SMOOTHED_EXERCISES.includes(exercise)) {
+      const fb = getSmoothedFeedback(exercise);
+      if (fb) {
+        setExerciseFeedback(fb);
+        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+        feedbackTimeoutRef.current = setTimeout(() => setExerciseFeedback(null), 1500);
+      }
     }
   }, [exercise, onRepComplete, onSecondComplete, visibilityWarning, isTimedHold, isHoldValid, getPhaseForExercise, suspicionTracker]);
 
@@ -430,6 +441,17 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       {visibilityWarning && exercise === 'push-ups' && (
         <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground text-xs sm:text-sm text-center px-3 py-2">
           {visibilityWarning}
+        </div>
+      )}
+      {exerciseFeedback && SMOOTHED_EXERCISES.includes(exercise) && (
+        <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none">
+          <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-lg ${
+            exerciseFeedback === 'Rep Completed!'
+              ? 'bg-green-500/90 text-white'
+              : 'bg-primary/80 text-primary-foreground'
+          }`}>
+            {exerciseFeedback}
+          </span>
         </div>
       )}
     </div>
