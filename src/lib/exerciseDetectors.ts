@@ -331,24 +331,11 @@ export function isHipCircleValid(pose: Landmark[]): boolean {
 
 // ─── DUMBBELL EXERCISES ───
 
-/** Dumbbell Bicep Curls: elbow angle from extended to curled */
-export function detectBicepCurlPhase(pose: Landmark[]): Phase {
-  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
-  const lElbow = pose[LEFT_ELBOW], rElbow = pose[RIGHT_ELBOW];
-  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
-  if (!lShoulder || !lElbow || !lWrist || !rShoulder || !rElbow || !rWrist) return 'neutral';
-  const leftAngle = angleBetween(lShoulder, lElbow, lWrist);
-  const rightAngle = angleBetween(rShoulder, rElbow, rWrist);
-  const avgAngle = (leftAngle + rightAngle) / 2;
-  if (avgAngle < 60) return 'up';
-  if (avgAngle > 140) return 'down';
-  return 'neutral';
-}
+/** Dumbbell Bicep Curls: delegates to smoothed detector */
+export { detectBicepCurlPhaseSmoothed as detectBicepCurlPhase } from './smoothedDetectors';
 
 /** Dumbbell Hammer Curls: same as bicep curls (angle-based) */
-export function detectHammerCurlPhase(pose: Landmark[]): Phase {
-  return detectBicepCurlPhase(pose);
-}
+export { detectBicepCurlPhaseSmoothed as detectHammerCurlPhase } from './smoothedDetectors';
 
 /** Dumbbell Shoulder Press: wrists go from shoulder level to above head */
 export function detectShoulderPressPhase(pose: Landmark[]): Phase {
@@ -382,20 +369,8 @@ export function detectFrontRaisePhase(pose: Landmark[]): Phase {
   return detectLateralRaisePhase(pose); // same landmark logic
 }
 
-/** Dumbbell Bent-over Rows: elbows pull back from extended */
-export function detectBentOverRowPhase(pose: Landmark[]): Phase {
-  const shoulder = pose[LEFT_SHOULDER];
-  const elbow = pose[LEFT_ELBOW];
-  const wrist = pose[LEFT_WRIST];
-  const hip = pose[LEFT_HIP];
-  if (!shoulder || !elbow || !wrist || !hip) return 'neutral';
-  // Must be bent over: shoulder close to hip height
-  if (shoulder.y < hip.y - 0.15) return 'neutral';
-  const elbowAngle = angleBetween(shoulder, elbow, wrist);
-  if (elbowAngle < 80) return 'up';
-  if (elbowAngle > 150) return 'down';
-  return 'neutral';
-}
+/** Dumbbell Bent-over Rows: delegates to smoothed detector */
+export { detectBentOverRowPhaseSmoothed as detectBentOverRowPhase } from './smoothedDetectors';
 
 /** Dumbbell Goblet Squat: squat with arms at chest */
 export function detectGobletSquatPhase(pose: Landmark[]): Phase {
@@ -417,19 +392,8 @@ export function detectThrusterPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
-/** Dumbbell Chest Press (floor): elbow angle from bent to extended */
-export function detectChestPressPhase(pose: Landmark[]): Phase {
-  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
-  const lElbow = pose[LEFT_ELBOW], rElbow = pose[RIGHT_ELBOW];
-  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
-  if (!lShoulder || !lElbow || !lWrist || !rShoulder || !rElbow || !rWrist) return 'neutral';
-  const leftAngle = angleBetween(lShoulder, lElbow, lWrist);
-  const rightAngle = angleBetween(rShoulder, rElbow, rWrist);
-  const avgAngle = (leftAngle + rightAngle) / 2;
-  if (avgAngle > 150) return 'up';
-  if (avgAngle < 100) return 'down';
-  return 'neutral';
-}
+/** Dumbbell Chest Press: delegates to smoothed detector (same as bench press) */
+export { detectChestPressPhaseSmoothed as detectChestPressPhase } from './smoothedDetectors';
 
 /** Dumbbell Tricep Overhead Extension: elbow behind head */
 export function detectTricepExtensionPhase(pose: Landmark[]): Phase {
