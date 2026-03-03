@@ -334,8 +334,8 @@ export function isHipCircleValid(pose: Landmark[]): boolean {
 /** Dumbbell Bicep Curls: delegates to smoothed detector */
 export { detectBicepCurlPhaseSmoothed as detectBicepCurlPhase } from './smoothedDetectors';
 
-/** Dumbbell Hammer Curls: same as bicep curls (angle-based) */
-export { detectBicepCurlPhaseSmoothed as detectHammerCurlPhase } from './smoothedDetectors';
+/** Dumbbell Hammer Curls: simplified wrist-vs-elbow smoothed detector */
+export { detectHammerCurlPhaseSmoothed as detectHammerCurlPhase } from './smoothedDetectors';
 
 /** Dumbbell Shoulder Press: wrists go from shoulder level to above head */
 export function detectShoulderPressPhase(pose: Landmark[]): Phase {
@@ -352,30 +352,17 @@ export function detectShoulderPressPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
-/** Dumbbell Lateral Raises: arms go from sides to shoulder height */
-export function detectLateralRaisePhase(pose: Landmark[]): Phase {
-  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
-  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
-  if (!lShoulder || !rShoulder || !lWrist || !rWrist) return 'neutral';
-  const armsUp = lWrist.y < lShoulder.y + 0.03 && rWrist.y < rShoulder.y + 0.03;
-  const armsDown = lWrist.y > lShoulder.y + 0.15 && rWrist.y > rShoulder.y + 0.15;
-  if (armsUp) return 'up';
-  if (armsDown) return 'down';
-  return 'neutral';
-}
+/** Dumbbell Lateral Raises: delegates to smoothed detector */
+export { detectLateralRaisePhaseSmoothed as detectLateralRaisePhase } from './smoothedDetectors';
 
-/** Dumbbell Front Raises: arms go forward and up to shoulder height */
-export function detectFrontRaisePhase(pose: Landmark[]): Phase {
-  return detectLateralRaisePhase(pose); // same landmark logic
-}
+/** Dumbbell Front Raises: delegates to smoothed detector */
+export { detectFrontRaisePhaseSmoothed as detectFrontRaisePhase } from './smoothedDetectors';
 
 /** Dumbbell Bent-over Rows: delegates to smoothed detector */
 export { detectBentOverRowPhaseSmoothed as detectBentOverRowPhase } from './smoothedDetectors';
 
-/** Dumbbell Goblet Squat: squat with arms at chest */
-export function detectGobletSquatPhase(pose: Landmark[]): Phase {
-  return detectSquatPhase(pose); // same knee angle logic
-}
+/** Dumbbell Goblet Squat: delegates to smoothed detector (hip/knee vertical motion) */
+export { detectGobletSquatPhaseSmoothed as detectGobletSquatPhase } from './smoothedDetectors';
 
 /** Dumbbell Thrusters: squat + press combo */
 export function detectThrusterPhase(pose: Landmark[]): Phase {
