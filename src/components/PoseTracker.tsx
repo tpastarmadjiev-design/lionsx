@@ -16,6 +16,8 @@ import {
 } from '@/lib/exerciseDetectors';
 import {
   detectBenchPressPhaseSmoothed,
+  detectFrontRaisePhaseSmoothed, detectGobletSquatPhaseSmoothed,
+  detectHammerCurlPhaseSmoothed, detectLateralRaisePhaseSmoothed,
   getSmoothedFeedback, resetSmoothedDetector, SMOOTHED_EXERCISES,
 } from '@/lib/smoothedDetectors';
 
@@ -185,12 +187,12 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       case 'toe-touches': return detectToeTouchPhase(pose);
       case 'cat-cow-stretch': return detectCatCowPhase(pose);
       case 'dumbbell-bicep-curls': return detectBicepCurlPhase(pose);
-      case 'dumbbell-hammer-curls': return detectHammerCurlPhase(pose);
+      case 'dumbbell-hammer-curls': return detectHammerCurlPhaseSmoothed(pose);
       case 'dumbbell-shoulder-press': return detectShoulderPressPhase(pose);
-      case 'dumbbell-lateral-raises': return detectLateralRaisePhase(pose);
-      case 'dumbbell-front-raises': return detectFrontRaisePhase(pose);
+      case 'dumbbell-lateral-raises': return detectLateralRaisePhaseSmoothed(pose);
+      case 'dumbbell-front-raises': return detectFrontRaisePhaseSmoothed(pose);
       case 'dumbbell-bent-over-rows': return detectBentOverRowPhase(pose);
-      case 'dumbbell-goblet-squat': return detectGobletSquatPhase(pose);
+      case 'dumbbell-goblet-squat': return detectGobletSquatPhaseSmoothed(pose);
       case 'dumbbell-thrusters': return detectThrusterPhase(pose);
       case 'dumbbell-chest-press': return detectChestPressPhase(pose);
       case 'dumbbell-tricep-overhead-extension': return detectTricepExtensionPhase(pose);
