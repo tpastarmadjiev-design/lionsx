@@ -12,7 +12,7 @@ import {
   detectLateralRaisePhase, detectFrontRaisePhase, detectBentOverRowPhase,
   detectGobletSquatPhase, detectThrusterPhase, detectChestPressPhase,
   detectTricepExtensionPhase, detectPunchPhase, detectRomanianDeadliftPhase,
-  detectWindmillPhase, isShoulderStabilizationValid, resetPunchState,
+  detectWindmillPhase, resetPunchState,
 } from '@/lib/exerciseDetectors';
 import {
   detectBenchPressPhaseSmoothed,
@@ -35,7 +35,7 @@ interface PoseTrackerProps {
 type RepPhase = 'up' | 'down' | 'neutral';
 
 // Timed hold exercises use the plank-style scoring pattern
-const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch', 'shoulder-stabilization-hold'];
+const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'];
 
 export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComplete, onSecondComplete, suspicionTracker, onCameraReady, onCameraError }: PoseTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -217,7 +217,6 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       case 'shoulder-stretch-hold': return isShoulderStretchValid(pose);
       case 'cobra-stretch': return isCobraStretchValid(pose);
       case 'hip-circles': return isHipCircleValid(pose);
-      case 'shoulder-stabilization-hold': return isShoulderStabilizationValid(pose);
       default: return false;
     }
   }, [exercise]);

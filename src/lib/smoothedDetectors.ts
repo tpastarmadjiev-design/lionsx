@@ -656,12 +656,10 @@ export function getLateralRaiseFeedback(): string { return _lateralRaiseState.fe
 export function resetLateralRaiseState() { Object.assign(_lateralRaiseState, createLateralRaiseState()); }
 
 // ═══════════════════════════════════════════
-// DEADLIFT (hip hinge via hips 23/24)
+// DEADLIFT (hip vertical motion via 23/24)
 // ═══════════════════════════════════════════
-// Landmarks: LEFT_HIP=23, RIGHT_HIP=24
-// DOWN: hip.y increases (hips drop as user hinges)
-// UP: hip.y returns to baseline
-// Rep: up → down → up
+// Only hips. DOWN: hip.y increases 20% from baseline. UP: returns to baseline.
+// Rep: up → down → up. Works with single hip visible.
 
 interface DeadliftState {
   leftSmooth: SmoothBuffer;
@@ -687,24 +685,26 @@ const _deadliftState = createDeadliftState();
 
 export function detectDeadliftPhaseSmoothed(pose: Landmark[]): Phase {
   const lHip = pose[23], rHip = pose[24];
-  if (!lHip || !rHip) return 'neutral';
+  if (!lHip && !rHip) return 'neutral';
 
-  const bodyHeight = estimateBodyHeight(pose);
-  const avgHipY = (_deadliftState.leftSmooth.push(lHip.y) + _deadliftState.rightSmooth.push(rHip.y)) / 2;
+  let smoothedY: number;
+  if (lHip && rHip) {
+    smoothedY = (_deadliftState.leftSmooth.push(lHip.y) + _deadliftState.rightSmooth.push(rHip.y)) / 2;
+  } else if (lHip) {
+    smoothedY = _deadliftState.leftSmooth.push(lHip.y);
+  } else {
+    smoothedY = _deadliftState.rightSmooth.push(rHip!.y);
+  }
 
-  // Set baseline on first reading (standing position)
   if (_deadliftState.baselineY === null) {
-    _deadliftState.baselineY = avgHipY;
+    _deadliftState.baselineY = smoothedY;
     return 'neutral';
   }
 
   const bl = _deadliftState.baselineY;
-  // DOWN: hips drop by ≥ 8% of body height (tolerant for different bend depths)
-  const downThreshold = 0.08 * bodyHeight;
-  // UP: hips return within 3% of baseline
-  const upThreshold = 0.03 * bodyHeight;
-
-  const displacement = avgHipY - bl;
+  const downThreshold = bl * 0.20;
+  const upThreshold = bl * 0.05;
+  const displacement = smoothedY - bl;
 
   let rawPhase: Phase = 'neutral';
   if (displacement >= downThreshold) rawPhase = 'down';
@@ -718,11 +718,7 @@ export function detectDeadliftPhaseSmoothed(pose: Landmark[]): Phase {
     _deadliftState.feedback = 'Rep Completed!';
   }
 
-  // Update baseline when standing
-  if (confirmed === 'up') {
-    _deadliftState.baselineY = avgHipY;
-  }
-
+  if (confirmed === 'up') _deadliftState.baselineY = smoothedY;
   if (confirmed !== 'neutral') _deadliftState.phase = confirmed;
   return confirmed;
 }
@@ -730,10 +726,152 @@ export function detectDeadliftPhaseSmoothed(pose: Landmark[]): Phase {
 export function getDeadliftFeedback(): string { return _deadliftState.feedback; }
 export function resetDeadliftState() { Object.assign(_deadliftState, createDeadliftState()); }
 
+// ═══════════════════════════════════════════
+// DUMBBELL SHOULDER PRESS (wrist-only vertical)
+// ═══════════════════════════════════════════
+// Only wrists 15/16. UP: wrist.y rises 25% above baseline. DOWN: returns to baseline.
+// Works with single wrist. Seated or standing.
+
+interface ShoulderPressState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  baselineY: number | null;
+  feedback: string;
+}
+
+function createShoulderPressState(): ShoulderPressState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    baselineY: null,
+    feedback: '',
+  };
+}
+
+const _shoulderPressState = createShoulderPressState();
+
+export function detectShoulderPressPhaseSmoothed(pose: Landmark[]): Phase {
+  const lWrist = pose[15], rWrist = pose[16];
+  if (!lWrist && !rWrist) return 'neutral';
+
+  let smoothedY: number;
+  if (lWrist && rWrist) {
+    smoothedY = (_shoulderPressState.leftSmooth.push(lWrist.y) + _shoulderPressState.rightSmooth.push(rWrist.y)) / 2;
+  } else if (lWrist) {
+    smoothedY = _shoulderPressState.leftSmooth.push(lWrist.y);
+  } else {
+    smoothedY = _shoulderPressState.rightSmooth.push(rWrist!.y);
+  }
+
+  if (_shoulderPressState.baselineY === null) {
+    _shoulderPressState.baselineY = smoothedY;
+    return 'neutral';
+  }
+
+  const bl = _shoulderPressState.baselineY;
+  const upThreshold = bl * 0.25;
+  const downThreshold = bl * 0.05;
+  const displacement = bl - smoothedY; // positive = wrists went up
+
+  let rawPhase: Phase = 'neutral';
+  if (displacement >= upThreshold) rawPhase = 'up';
+  if (Math.abs(displacement) <= downThreshold) rawPhase = 'down';
+
+  const confirmed = _shoulderPressState.confirmer.update(rawPhase);
+
+  if (_shoulderPressState.phase === 'down' && confirmed === 'up') {
+    _shoulderPressState.feedback = 'Press!';
+  } else if (_shoulderPressState.phase === 'up' && confirmed === 'down') {
+    _shoulderPressState.feedback = 'Rep Completed!';
+  }
+
+  if (confirmed === 'down') _shoulderPressState.baselineY = smoothedY;
+  if (confirmed !== 'neutral') _shoulderPressState.phase = confirmed;
+  return confirmed;
+}
+
+export function getShoulderPressFeedback(): string { return _shoulderPressState.feedback; }
+export function resetShoulderPressState() { Object.assign(_shoulderPressState, createShoulderPressState()); }
+
+// ═══════════════════════════════════════════
+// DUMBBELL TRICEP OVERHEAD EXTENSION (elbow-only vertical)
+// ═══════════════════════════════════════════
+// Only elbows 13/14. DOWN: elbow.y increases 15% from baseline. UP: returns.
+// Rep: down → up → down. Works with single elbow.
+
+interface TricepExtState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  baselineY: number | null;
+  feedback: string;
+}
+
+function createTricepExtState(): TricepExtState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    baselineY: null,
+    feedback: '',
+  };
+}
+
+const _tricepExtState = createTricepExtState();
+
+export function detectTricepExtPhaseSmoothed(pose: Landmark[]): Phase {
+  const lElbow = pose[13], rElbow = pose[14];
+  if (!lElbow && !rElbow) return 'neutral';
+
+  let smoothedY: number;
+  if (lElbow && rElbow) {
+    smoothedY = (_tricepExtState.leftSmooth.push(lElbow.y) + _tricepExtState.rightSmooth.push(rElbow.y)) / 2;
+  } else if (lElbow) {
+    smoothedY = _tricepExtState.leftSmooth.push(lElbow.y);
+  } else {
+    smoothedY = _tricepExtState.rightSmooth.push(rElbow!.y);
+  }
+
+  if (_tricepExtState.baselineY === null) {
+    _tricepExtState.baselineY = smoothedY;
+    return 'neutral';
+  }
+
+  const bl = _tricepExtState.baselineY;
+  const downThreshold = bl * 0.15;
+  const upThreshold = bl * 0.05;
+  const displacement = smoothedY - bl;
+
+  let rawPhase: Phase = 'neutral';
+  if (displacement >= downThreshold) rawPhase = 'down';
+  if (Math.abs(displacement) <= upThreshold) rawPhase = 'up';
+
+  const confirmed = _tricepExtState.confirmer.update(rawPhase);
+
+  if (_tricepExtState.phase === 'up' && confirmed === 'down') {
+    _tricepExtState.feedback = 'Lower';
+  } else if (_tricepExtState.phase === 'down' && confirmed === 'up') {
+    _tricepExtState.feedback = 'Rep Completed!';
+  }
+
+  if (confirmed === 'up') _tricepExtState.baselineY = smoothedY;
+  if (confirmed !== 'neutral') _tricepExtState.phase = confirmed;
+  return confirmed;
+}
+
+export function getTricepExtFeedback(): string { return _tricepExtState.feedback; }
+export function resetTricepExtState() { Object.assign(_tricepExtState, createTricepExtState()); }
+
 // ─── Master feedback getter ───
 export type SmoothedExercise = 'bench-press' | 'dumbbell-chest-press' | 'dumbbell-bent-over-rows' | 'dumbbell-bicep-curls'
   | 'dumbbell-front-raises' | 'dumbbell-goblet-squat' | 'dumbbell-hammer-curls' | 'dumbbell-lateral-raises'
-  | 'dumbbell-romanian-deadlift';
+  | 'dumbbell-romanian-deadlift' | 'dumbbell-shoulder-press' | 'dumbbell-tricep-overhead-extension';
 
 export function getSmoothedFeedback(exercise: string): string | null {
   switch (exercise) {
@@ -746,6 +884,8 @@ export function getSmoothedFeedback(exercise: string): string | null {
     case 'dumbbell-hammer-curls': return getHammerCurlFeedback();
     case 'dumbbell-lateral-raises': return getLateralRaiseFeedback();
     case 'dumbbell-romanian-deadlift': return getDeadliftFeedback();
+    case 'dumbbell-shoulder-press': return getShoulderPressFeedback();
+    case 'dumbbell-tricep-overhead-extension': return getTricepExtFeedback();
     default: return null;
   }
 }
@@ -761,6 +901,8 @@ export function resetSmoothedDetector(exercise: string) {
     case 'dumbbell-hammer-curls': resetHammerCurlState(); break;
     case 'dumbbell-lateral-raises': resetLateralRaiseState(); break;
     case 'dumbbell-romanian-deadlift': resetDeadliftState(); break;
+    case 'dumbbell-shoulder-press': resetShoulderPressState(); break;
+    case 'dumbbell-tricep-overhead-extension': resetTricepExtState(); break;
   }
 }
 
@@ -768,5 +910,5 @@ export function resetSmoothedDetector(exercise: string) {
 export const SMOOTHED_EXERCISES: string[] = [
   'bench-press', 'dumbbell-chest-press', 'dumbbell-bent-over-rows', 'dumbbell-bicep-curls',
   'dumbbell-front-raises', 'dumbbell-goblet-squat', 'dumbbell-hammer-curls', 'dumbbell-lateral-raises',
-  'dumbbell-romanian-deadlift',
+  'dumbbell-romanian-deadlift', 'dumbbell-shoulder-press', 'dumbbell-tricep-overhead-extension',
 ];

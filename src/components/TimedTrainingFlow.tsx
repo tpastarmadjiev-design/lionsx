@@ -78,6 +78,21 @@ function getExerciseType(name: string): import("@/lib/antiCheat").ExerciseType {
   if (normalized === "shoulder stretch hold") return "shoulder-stretch-hold";
   if (normalized === "deep squat hold") return "deep-squat-hold";
   if (normalized === "cobra stretch") return "cobra-stretch";
+  // Dumbbell exercises
+  if (normalized === "dumbbell bicep curls") return "dumbbell-bicep-curls";
+  if (normalized === "dumbbell hammer curls") return "dumbbell-hammer-curls";
+  if (normalized === "dumbbell shoulder press") return "dumbbell-shoulder-press";
+  if (normalized === "dumbbell lateral raises") return "dumbbell-lateral-raises";
+  if (normalized === "dumbbell front raises") return "dumbbell-front-raises";
+  if (normalized === "dumbbell bent-over rows") return "dumbbell-bent-over-rows";
+  if (normalized === "dumbbell goblet squat") return "dumbbell-goblet-squat";
+  if (normalized === "dumbbell thrusters") return "dumbbell-thrusters";
+  if (normalized === "dumbbell chest press") return "dumbbell-chest-press";
+  if (normalized === "dumbbell tricep overhead extension") return "dumbbell-tricep-overhead-extension";
+  if (normalized === "dumbbell punches") return "dumbbell-punches";
+  if (normalized === "deadlift") return "dumbbell-romanian-deadlift";
+  if (normalized === "dumbbell windmill") return "dumbbell-windmill";
+  // Generic fallbacks
   if (normalized.includes("sit")) return "sit-ups";
   if (normalized.includes("push")) return "push-ups";
   if (normalized.includes("jump")) return "jumps";
