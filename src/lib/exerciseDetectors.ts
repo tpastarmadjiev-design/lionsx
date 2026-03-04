@@ -425,17 +425,8 @@ export function resetPunchState() {
   lastPunchArm = null;
 }
 
-/** Dumbbell Romanian Deadlift: hip hinge, torso forward */
-export function detectRomanianDeadliftPhase(pose: Landmark[]): Phase {
-  const shoulder = pose[LEFT_SHOULDER];
-  const hip = pose[LEFT_HIP];
-  const knee = pose[LEFT_KNEE];
-  if (!shoulder || !hip || !knee) return 'neutral';
-  const hipAngle = angleBetween(shoulder, hip, knee);
-  if (hipAngle < 100) return 'down'; // bent over
-  if (hipAngle > 160) return 'up'; // standing
-  return 'neutral';
-}
+/** Deadlift (Dumbbell Romanian Deadlift): delegates to smoothed hip-based detector */
+export { detectDeadliftPhaseSmoothed as detectRomanianDeadliftPhase } from './smoothedDetectors';
 
 /** Dumbbell Windmill: side bend with arm overhead */
 export function detectWindmillPhase(pose: Landmark[]): Phase {
@@ -657,8 +648,8 @@ export const exerciseInstructions: Record<string, ExerciseInstruction> = {
   },
   'dumbbell romanian deadlift': {
     positioning: 'Stand upright holding dumbbells in front of thighs.',
-    cameraGuide: 'Place camera at waist height, side view, 2m away.',
-    tips: ['Hinge at the hips', 'Keep back flat', 'Feel hamstring stretch'],
+    cameraGuide: 'Place camera at waist height, 2-3m away. Hips must be visible.',
+    tips: ['Hinge at the hips', 'Let hips move back and down', 'Stand back up fully'],
   },
   'dumbbell windmill': {
     positioning: 'Stand with feet wide, one arm overhead holding dumbbell.',

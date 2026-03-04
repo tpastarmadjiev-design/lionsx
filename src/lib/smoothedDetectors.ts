@@ -655,9 +655,85 @@ export function detectLateralRaisePhaseSmoothed(pose: Landmark[]): Phase {
 export function getLateralRaiseFeedback(): string { return _lateralRaiseState.feedback; }
 export function resetLateralRaiseState() { Object.assign(_lateralRaiseState, createLateralRaiseState()); }
 
+// ═══════════════════════════════════════════
+// DEADLIFT (hip hinge via hips 23/24)
+// ═══════════════════════════════════════════
+// Landmarks: LEFT_HIP=23, RIGHT_HIP=24
+// DOWN: hip.y increases (hips drop as user hinges)
+// UP: hip.y returns to baseline
+// Rep: up → down → up
+
+interface DeadliftState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  baselineY: number | null;
+  feedback: string;
+}
+
+function createDeadliftState(): DeadliftState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    baselineY: null,
+    feedback: '',
+  };
+}
+
+const _deadliftState = createDeadliftState();
+
+export function detectDeadliftPhaseSmoothed(pose: Landmark[]): Phase {
+  const lHip = pose[23], rHip = pose[24];
+  if (!lHip || !rHip) return 'neutral';
+
+  const bodyHeight = estimateBodyHeight(pose);
+  const avgHipY = (_deadliftState.leftSmooth.push(lHip.y) + _deadliftState.rightSmooth.push(rHip.y)) / 2;
+
+  // Set baseline on first reading (standing position)
+  if (_deadliftState.baselineY === null) {
+    _deadliftState.baselineY = avgHipY;
+    return 'neutral';
+  }
+
+  const bl = _deadliftState.baselineY;
+  // DOWN: hips drop by ≥ 8% of body height (tolerant for different bend depths)
+  const downThreshold = 0.08 * bodyHeight;
+  // UP: hips return within 3% of baseline
+  const upThreshold = 0.03 * bodyHeight;
+
+  const displacement = avgHipY - bl;
+
+  let rawPhase: Phase = 'neutral';
+  if (displacement >= downThreshold) rawPhase = 'down';
+  if (Math.abs(displacement) <= upThreshold) rawPhase = 'up';
+
+  const confirmed = _deadliftState.confirmer.update(rawPhase);
+
+  if (_deadliftState.phase === 'up' && confirmed === 'down') {
+    _deadliftState.feedback = 'Lower';
+  } else if (_deadliftState.phase === 'down' && confirmed === 'up') {
+    _deadliftState.feedback = 'Rep Completed!';
+  }
+
+  // Update baseline when standing
+  if (confirmed === 'up') {
+    _deadliftState.baselineY = avgHipY;
+  }
+
+  if (confirmed !== 'neutral') _deadliftState.phase = confirmed;
+  return confirmed;
+}
+
+export function getDeadliftFeedback(): string { return _deadliftState.feedback; }
+export function resetDeadliftState() { Object.assign(_deadliftState, createDeadliftState()); }
+
 // ─── Master feedback getter ───
 export type SmoothedExercise = 'bench-press' | 'dumbbell-chest-press' | 'dumbbell-bent-over-rows' | 'dumbbell-bicep-curls'
-  | 'dumbbell-front-raises' | 'dumbbell-goblet-squat' | 'dumbbell-hammer-curls' | 'dumbbell-lateral-raises';
+  | 'dumbbell-front-raises' | 'dumbbell-goblet-squat' | 'dumbbell-hammer-curls' | 'dumbbell-lateral-raises'
+  | 'dumbbell-romanian-deadlift';
 
 export function getSmoothedFeedback(exercise: string): string | null {
   switch (exercise) {
@@ -669,6 +745,7 @@ export function getSmoothedFeedback(exercise: string): string | null {
     case 'dumbbell-goblet-squat': return getGobletSquatFeedback();
     case 'dumbbell-hammer-curls': return getHammerCurlFeedback();
     case 'dumbbell-lateral-raises': return getLateralRaiseFeedback();
+    case 'dumbbell-romanian-deadlift': return getDeadliftFeedback();
     default: return null;
   }
 }
@@ -683,6 +760,7 @@ export function resetSmoothedDetector(exercise: string) {
     case 'dumbbell-goblet-squat': resetGobletSquatState(); break;
     case 'dumbbell-hammer-curls': resetHammerCurlState(); break;
     case 'dumbbell-lateral-raises': resetLateralRaiseState(); break;
+    case 'dumbbell-romanian-deadlift': resetDeadliftState(); break;
   }
 }
 
@@ -690,4 +768,5 @@ export function resetSmoothedDetector(exercise: string) {
 export const SMOOTHED_EXERCISES: string[] = [
   'bench-press', 'dumbbell-chest-press', 'dumbbell-bent-over-rows', 'dumbbell-bicep-curls',
   'dumbbell-front-raises', 'dumbbell-goblet-squat', 'dumbbell-hammer-curls', 'dumbbell-lateral-raises',
+  'dumbbell-romanian-deadlift',
 ];

@@ -197,7 +197,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       case 'dumbbell-chest-press': return detectChestPressPhase(pose);
       case 'dumbbell-tricep-overhead-extension': return detectTricepExtensionPhase(pose);
       case 'dumbbell-punches': return detectPunchPhase(pose);
-      case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose);
+      case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose); // now uses smoothed hip detector
       case 'dumbbell-windmill': return detectWindmillPhase(pose);
       default: return 'neutral';
     }
