@@ -10,14 +10,15 @@ import {
   resetMountainClimberState, resetHighKneeState,
   detectBicepCurlPhase, detectHammerCurlPhase, detectShoulderPressPhase,
   detectLateralRaisePhase, detectFrontRaisePhase, detectBentOverRowPhase,
-  detectGobletSquatPhase, detectThrusterPhase, detectChestPressPhase,
-  detectTricepExtensionPhase, detectPunchPhase, detectRomanianDeadliftPhase,
-  detectWindmillPhase, resetPunchState,
+  detectGobletSquatPhase, detectChestPressPhase,
+  detectRomanianDeadliftPhase,
+  detectWindmillPhase,
 } from '@/lib/exerciseDetectors';
 import {
   detectBenchPressPhaseSmoothed,
   detectFrontRaisePhaseSmoothed, detectGobletSquatPhaseSmoothed,
   detectHammerCurlPhaseSmoothed, detectLateralRaisePhaseSmoothed,
+  detectPunchPhaseSmoothed, detectThrusterPhaseSmoothed, detectTricepExtPhaseSmoothed,
   getSmoothedFeedback, resetSmoothedDetector, SMOOTHED_EXERCISES,
 } from '@/lib/smoothedDetectors';
 
@@ -64,7 +65,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   useEffect(() => {
     resetMountainClimberState();
     resetHighKneeState();
-    resetPunchState();
+    resetSmoothedDetector('dumbbell-punches');
     resetSmoothedDetector(exercise);
     setExerciseFeedback(null);
   }, [exercise]);
@@ -193,10 +194,10 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       case 'dumbbell-front-raises': return detectFrontRaisePhaseSmoothed(pose);
       case 'dumbbell-bent-over-rows': return detectBentOverRowPhase(pose);
       case 'dumbbell-goblet-squat': return detectGobletSquatPhaseSmoothed(pose);
-      case 'dumbbell-thrusters': return detectThrusterPhase(pose);
+      case 'dumbbell-thrusters': return detectThrusterPhaseSmoothed(pose);
       case 'dumbbell-chest-press': return detectChestPressPhase(pose);
-      case 'dumbbell-tricep-overhead-extension': return detectTricepExtensionPhase(pose);
-      case 'dumbbell-punches': return detectPunchPhase(pose);
+      case 'dumbbell-tricep-overhead-extension': return detectTricepExtPhaseSmoothed(pose);
+      case 'dumbbell-punches': return detectPunchPhaseSmoothed(pose);
       case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose); // now uses smoothed hip detector
       case 'dumbbell-windmill': return detectWindmillPhase(pose);
       default: return 'neutral';

@@ -868,10 +868,204 @@ export function detectTricepExtPhaseSmoothed(pose: Landmark[]): Phase {
 export function getTricepExtFeedback(): string { return _tricepExtState.feedback; }
 export function resetTricepExtState() { Object.assign(_tricepExtState, createTricepExtState()); }
 
+// ═══════════════════════════════════════════
+// DUMBBELL PUNCHES (angle + Z-based)
+// ═══════════════════════════════════════════
+// Landmarks: shoulder(11,12), elbow(13,14), wrist(15,16)
+// Punch = elbow angle ≥ 160° AND wrist Z forward ≥ 0.08
+// Retracted = elbow angle ≤ 110°
+// Rep: bottom → top → bottom per arm; total = min(left, right)
+
+interface PunchState {
+  leftAngleSmooth: SmoothBuffer;
+  rightAngleSmooth: SmoothBuffer;
+  leftZSmooth: SmoothBuffer;
+  rightZSmooth: SmoothBuffer;
+  confirmerLeft: PhaseConfirmer;
+  confirmerRight: PhaseConfirmer;
+  phaseLeft: Phase;
+  phaseRight: Phase;
+  leftReps: number;
+  rightReps: number;
+  baselineLeftZ: number | null;
+  baselineRightZ: number | null;
+  feedback: string;
+}
+
+function createPunchState(): PunchState {
+  return {
+    leftAngleSmooth: new SmoothBuffer(4),
+    rightAngleSmooth: new SmoothBuffer(4),
+    leftZSmooth: new SmoothBuffer(4),
+    rightZSmooth: new SmoothBuffer(4),
+    confirmerLeft: new PhaseConfirmer(2),
+    confirmerRight: new PhaseConfirmer(2),
+    phaseLeft: 'neutral',
+    phaseRight: 'neutral',
+    leftReps: 0,
+    rightReps: 0,
+    baselineLeftZ: null,
+    baselineRightZ: null,
+    feedback: '',
+  };
+}
+
+const _punchState = createPunchState();
+
+export function detectPunchPhaseSmoothed(pose: Landmark[]): Phase {
+  const lShoulder = pose[11], rShoulder = pose[12];
+  const lElbow = pose[13], rElbow = pose[14];
+  const lWrist = pose[15], rWrist = pose[16];
+
+  let leftValid = !!(lShoulder && lElbow && lWrist);
+  let rightValid = !!(rShoulder && rElbow && rWrist);
+  if (!leftValid && !rightValid) return 'neutral';
+
+  // Initialize baselines
+  if (leftValid && _punchState.baselineLeftZ === null && lWrist.z != null) {
+    _punchState.baselineLeftZ = lWrist.z;
+  }
+  if (rightValid && _punchState.baselineRightZ === null && rWrist.z != null) {
+    _punchState.baselineRightZ = rWrist.z;
+  }
+
+  // --- Left arm ---
+  if (leftValid) {
+    const angle = _punchState.leftAngleSmooth.push(angleBetween(lShoulder!, lElbow!, lWrist!));
+    const zForward = (_punchState.baselineLeftZ != null && lWrist!.z != null)
+      ? _punchState.leftZSmooth.push(_punchState.baselineLeftZ - lWrist!.z)
+      : 0;
+
+    let rawLeft: Phase = 'neutral';
+    if (angle >= 160 && zForward >= 0.08) rawLeft = 'up'; // punch extended
+    if (angle <= 110) rawLeft = 'down'; // retracted
+
+    const confirmedLeft = _punchState.confirmerLeft.update(rawLeft);
+    if (_punchState.phaseLeft === 'down' && confirmedLeft === 'up') {
+      _punchState.feedback = 'Punch!';
+    } else if (_punchState.phaseLeft === 'up' && confirmedLeft === 'down') {
+      _punchState.leftReps++;
+      _punchState.feedback = 'Reset!';
+    }
+    if (confirmedLeft !== 'neutral') _punchState.phaseLeft = confirmedLeft;
+  }
+
+  // --- Right arm ---
+  if (rightValid) {
+    const angle = _punchState.rightAngleSmooth.push(angleBetween(rShoulder!, rElbow!, rWrist!));
+    const zForward = (_punchState.baselineRightZ != null && rWrist!.z != null)
+      ? _punchState.rightZSmooth.push(_punchState.baselineRightZ - rWrist!.z)
+      : 0;
+
+    let rawRight: Phase = 'neutral';
+    if (angle >= 160 && zForward >= 0.08) rawRight = 'up';
+    if (angle <= 110) rawRight = 'down';
+
+    const confirmedRight = _punchState.confirmerRight.update(rawRight);
+    if (_punchState.phaseRight === 'down' && confirmedRight === 'up') {
+      _punchState.feedback = 'Punch!';
+    } else if (_punchState.phaseRight === 'up' && confirmedRight === 'down') {
+      _punchState.rightReps++;
+      _punchState.feedback = 'Reset!';
+    }
+    if (confirmedRight !== 'neutral') _punchState.phaseRight = confirmedRight;
+  }
+
+  // Total reps = min of both arms
+  const minReps = Math.min(_punchState.leftReps, _punchState.rightReps);
+  if (minReps > 0 && (_punchState.feedback === 'Reset!')) {
+    _punchState.feedback = 'Rep Completed!';
+  }
+
+  // Return combined phase for PoseTracker compatibility
+  if (_punchState.phaseLeft === 'up' || _punchState.phaseRight === 'up') return 'up';
+  if (_punchState.phaseLeft === 'down' || _punchState.phaseRight === 'down') return 'down';
+  return 'neutral';
+}
+
+export function getPunchFeedback(): string { return _punchState.feedback; }
+export function resetPunchSmoothedState() { Object.assign(_punchState, createPunchState()); }
+
+// ═══════════════════════════════════════════
+// DUMBBELL THRUSTERS (elbow angle only)
+// ═══════════════════════════════════════════
+// Landmarks: shoulder(11,12), elbow(13,14), wrist(15,16)
+// BOTTOM: elbow angle ≤ 110°
+// TOP: elbow angle ≥ 165°
+// Rep: bottom → top → bottom; total = min(left, right)
+
+interface ThrusterState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  leftReps: number;
+  rightReps: number;
+  feedback: string;
+}
+
+function createThrusterState(): ThrusterState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    leftReps: 0,
+    rightReps: 0,
+    feedback: '',
+  };
+}
+
+const _thrusterState = createThrusterState();
+
+export function detectThrusterPhaseSmoothed(pose: Landmark[]): Phase {
+  const lShoulder = pose[11], rShoulder = pose[12];
+  const lElbow = pose[13], rElbow = pose[14];
+  const lWrist = pose[15], rWrist = pose[16];
+
+  const leftValid = !!(lShoulder && lElbow && lWrist);
+  const rightValid = !!(rShoulder && rElbow && rWrist);
+  if (!leftValid && !rightValid) return 'neutral';
+
+  let leftAngle = 0, rightAngle = 0;
+  if (leftValid) leftAngle = _thrusterState.leftSmooth.push(angleBetween(lShoulder!, lElbow!, lWrist!));
+  if (rightValid) rightAngle = _thrusterState.rightSmooth.push(angleBetween(rShoulder!, rElbow!, rWrist!));
+
+  const leftTop = leftValid && leftAngle >= 165;
+  const rightTop = rightValid && rightAngle >= 165;
+  const leftBottom = leftValid && leftAngle <= 110;
+  const rightBottom = rightValid && rightAngle <= 110;
+
+  let rawPhase: Phase = 'neutral';
+  if (leftTop || rightTop) rawPhase = 'up';
+  if (leftBottom || rightBottom) rawPhase = 'down';
+
+  const confirmed = _thrusterState.confirmer.update(rawPhase);
+
+  if (_thrusterState.phase === 'down' && confirmed === 'up') {
+    _thrusterState.feedback = 'Press up!';
+    if (leftTop) _thrusterState.leftReps++;
+    if (rightTop) _thrusterState.rightReps++;
+    const minReps = Math.min(_thrusterState.leftReps, _thrusterState.rightReps);
+    if (minReps > 0) {
+      _thrusterState.feedback = 'Rep Completed!';
+    }
+  } else if (_thrusterState.phase === 'up' && confirmed === 'down') {
+    _thrusterState.feedback = 'Lower!';
+  }
+
+  if (confirmed !== 'neutral') _thrusterState.phase = confirmed;
+  return confirmed;
+}
+
+export function getThrusterFeedback(): string { return _thrusterState.feedback; }
+export function resetThrusterState() { Object.assign(_thrusterState, createThrusterState()); }
+
 // ─── Master feedback getter ───
 export type SmoothedExercise = 'bench-press' | 'dumbbell-chest-press' | 'dumbbell-bent-over-rows' | 'dumbbell-bicep-curls'
   | 'dumbbell-front-raises' | 'dumbbell-goblet-squat' | 'dumbbell-hammer-curls' | 'dumbbell-lateral-raises'
-  | 'dumbbell-romanian-deadlift' | 'dumbbell-shoulder-press' | 'dumbbell-tricep-overhead-extension';
+  | 'dumbbell-romanian-deadlift' | 'dumbbell-shoulder-press' | 'dumbbell-tricep-overhead-extension'
+  | 'dumbbell-punches' | 'dumbbell-thrusters';
 
 export function getSmoothedFeedback(exercise: string): string | null {
   switch (exercise) {
@@ -886,6 +1080,8 @@ export function getSmoothedFeedback(exercise: string): string | null {
     case 'dumbbell-romanian-deadlift': return getDeadliftFeedback();
     case 'dumbbell-shoulder-press': return getShoulderPressFeedback();
     case 'dumbbell-tricep-overhead-extension': return getTricepExtFeedback();
+    case 'dumbbell-punches': return getPunchFeedback();
+    case 'dumbbell-thrusters': return getThrusterFeedback();
     default: return null;
   }
 }
@@ -903,6 +1099,8 @@ export function resetSmoothedDetector(exercise: string) {
     case 'dumbbell-romanian-deadlift': resetDeadliftState(); break;
     case 'dumbbell-shoulder-press': resetShoulderPressState(); break;
     case 'dumbbell-tricep-overhead-extension': resetTricepExtState(); break;
+    case 'dumbbell-punches': resetPunchSmoothedState(); break;
+    case 'dumbbell-thrusters': resetThrusterState(); break;
   }
 }
 
@@ -911,4 +1109,5 @@ export const SMOOTHED_EXERCISES: string[] = [
   'bench-press', 'dumbbell-chest-press', 'dumbbell-bent-over-rows', 'dumbbell-bicep-curls',
   'dumbbell-front-raises', 'dumbbell-goblet-squat', 'dumbbell-hammer-curls', 'dumbbell-lateral-raises',
   'dumbbell-romanian-deadlift', 'dumbbell-shoulder-press', 'dumbbell-tricep-overhead-extension',
+  'dumbbell-punches', 'dumbbell-thrusters',
 ];
