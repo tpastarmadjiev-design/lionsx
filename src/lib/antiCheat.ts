@@ -12,7 +12,7 @@ export type ExerciseType =
   | 'dumbbell-lateral-raises' | 'dumbbell-front-raises' | 'dumbbell-bent-over-rows'
   | 'dumbbell-goblet-squat' | 'dumbbell-thrusters' | 'dumbbell-chest-press'
   | 'dumbbell-tricep-overhead-extension' | 'dumbbell-punches' | 'dumbbell-romanian-deadlift'
-  | 'dumbbell-windmill' | 'shoulder-stabilization-hold';
+  | 'dumbbell-windmill';
 
 // Max reps per second per exercise
 const MAX_REPS_PER_SEC: Record<string, number> = {
@@ -200,7 +200,7 @@ export function createRepCycleState(): RepCycleState {
 }
 
 // Timed exercises don't go through rep validation
-const TIMED_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch', 'shoulder-stabilization-hold'];
+const TIMED_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'];
 
 export function validateRep(
   exercise: ExerciseType,

@@ -16,9 +16,8 @@ const DUMBBELL_EXERCISES = [
   'Dumbbell Chest Press',
   'Dumbbell Tricep Overhead Extension',
   'Dumbbell Punches',
-  'Dumbbell Romanian Deadlift',
+  'Deadlift',
   'Dumbbell Windmill',
-  'Shoulder Stabilization Hold',
 ];
 
 // Street-specific exercises (calisthenics / outdoor)

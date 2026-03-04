@@ -337,20 +337,8 @@ export { detectBicepCurlPhaseSmoothed as detectBicepCurlPhase } from './smoothed
 /** Dumbbell Hammer Curls: simplified wrist-vs-elbow smoothed detector */
 export { detectHammerCurlPhaseSmoothed as detectHammerCurlPhase } from './smoothedDetectors';
 
-/** Dumbbell Shoulder Press: wrists go from shoulder level to above head */
-export function detectShoulderPressPhase(pose: Landmark[]): Phase {
-  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
-  const lElbow = pose[LEFT_ELBOW], rElbow = pose[RIGHT_ELBOW];
-  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
-  if (!lShoulder || !lElbow || !lWrist || !rShoulder || !rElbow || !rWrist) return 'neutral';
-  const leftAngle = angleBetween(lShoulder, lElbow, lWrist);
-  const rightAngle = angleBetween(rShoulder, rElbow, rWrist);
-  const avgAngle = (leftAngle + rightAngle) / 2;
-  const wristsAboveHead = lWrist.y < lShoulder.y - 0.1 && rWrist.y < rShoulder.y - 0.1;
-  if (wristsAboveHead && avgAngle > 150) return 'up';
-  if (avgAngle < 100) return 'down';
-  return 'neutral';
-}
+/** Dumbbell Shoulder Press: delegates to smoothed wrist-only detector */
+export { detectShoulderPressPhaseSmoothed as detectShoulderPressPhase } from './smoothedDetectors';
 
 /** Dumbbell Lateral Raises: delegates to smoothed detector */
 export { detectLateralRaisePhaseSmoothed as detectLateralRaisePhase } from './smoothedDetectors';
@@ -382,19 +370,8 @@ export function detectThrusterPhase(pose: Landmark[]): Phase {
 /** Dumbbell Chest Press: delegates to smoothed detector (same as bench press) */
 export { detectChestPressPhaseSmoothed as detectChestPressPhase } from './smoothedDetectors';
 
-/** Dumbbell Tricep Overhead Extension: elbow behind head */
-export function detectTricepExtensionPhase(pose: Landmark[]): Phase {
-  const shoulder = pose[LEFT_SHOULDER];
-  const elbow = pose[LEFT_ELBOW];
-  const wrist = pose[LEFT_WRIST];
-  if (!shoulder || !elbow || !wrist) return 'neutral';
-  // Elbow must be above shoulder (overhead position)
-  if (elbow.y > shoulder.y) return 'neutral';
-  const elbowAngle = angleBetween(shoulder, elbow, wrist);
-  if (elbowAngle > 150) return 'up';
-  if (elbowAngle < 80) return 'down';
-  return 'neutral';
-}
+/** Dumbbell Tricep Overhead Extension: delegates to smoothed elbow-only detector */
+export { detectTricepExtPhaseSmoothed as detectTricepExtensionPhase } from './smoothedDetectors';
 
 /** Dumbbell Punches: alternating arm extensions */
 let lastPunchArm: 'left' | 'right' | null = null;
@@ -441,16 +418,7 @@ export function detectWindmillPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
-/** Shoulder Stabilization Hold: arms extended at sides */
-export function isShoulderStabilizationValid(pose: Landmark[]): boolean {
-  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
-  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
-  if (!lShoulder || !rShoulder || !lWrist || !rWrist) return false;
-  // Wrists should be approximately at shoulder height (arms extended)
-  const leftDiff = Math.abs(lWrist.y - lShoulder.y);
-  const rightDiff = Math.abs(rWrist.y - rShoulder.y);
-  return leftDiff < 0.08 && rightDiff < 0.08;
-}
+// Shoulder Stabilization Hold: removed
 
 // ─── Exercise instruction data ───
 export interface ExerciseInstruction {
@@ -646,7 +614,7 @@ export const exerciseInstructions: Record<string, ExerciseInstruction> = {
     cameraGuide: 'Place camera at chest height, 2-3m away.',
     tips: ['Alternate fast punches', 'Full arm extension', 'Stay light on your feet'],
   },
-  'dumbbell romanian deadlift': {
+  'deadlift': {
     positioning: 'Stand upright holding dumbbells in front of thighs.',
     cameraGuide: 'Place camera at waist height, 2-3m away. Hips must be visible.',
     tips: ['Hinge at the hips', 'Let hips move back and down', 'Stand back up fully'],
@@ -655,10 +623,5 @@ export const exerciseInstructions: Record<string, ExerciseInstruction> = {
     positioning: 'Stand with feet wide, one arm overhead holding dumbbell.',
     cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.',
     tips: ['Reach down to opposite foot', 'Keep overhead arm locked', 'Move slowly'],
-  },
-  'shoulder stabilization hold': {
-    positioning: 'Stand upright, extend arms straight out to the sides with light dumbbells.',
-    cameraGuide: 'Place camera at chest height, 3m away. Full wingspan visible.',
-    tips: ['Arms at shoulder height', 'Keep arms straight', 'Hold steady — don\'t drop'],
   },
 };
