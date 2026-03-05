@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { createRepCycleState, validateRep, recordDownPhase, recordUpPhase, recordOrientationSample, type ExerciseType, type SessionSuspicionTracker } from '@/lib/antiCheat';
+import { getFeedback } from '@/lib/exerciseFeedbackMap';
 import { createPushUpState, detectPushUp, checkUpperBodyVisibility } from '@/lib/pushUpDetector';
 import {
   detectSquatPhase, detectLungePhase, detectPikePushUpPhase, detectDiamondPushUpPhase,
@@ -243,17 +244,22 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
         if (!holdStartRef.current) {
           holdStartRef.current = Date.now();
           lastHoldPointRef.current = 0;
+          setExerciseFeedback(getFeedback(exercise, 'HOLD'));
         } else {
           const elapsed = Math.floor((Date.now() - holdStartRef.current) / 1000);
           const pointsEarned = Math.floor(elapsed / 2);
           if (pointsEarned > lastHoldPointRef.current) {
             lastHoldPointRef.current = pointsEarned;
             onSecondComplete?.();
+            setExerciseFeedback(getFeedback(exercise, 'GOOD'));
+            if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+            feedbackTimeoutRef.current = setTimeout(() => setExerciseFeedback(getFeedback(exercise, 'HOLD')), 1500);
           }
         }
       } else {
         holdStartRef.current = null;
         lastHoldPointRef.current = 0;
+        setExerciseFeedback(null);
       }
       return;
     }
@@ -404,10 +410,10 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
           {visibilityWarning}
         </div>
       )}
-      {exerciseFeedback && SMOOTHED_EXERCISES.includes(exercise) && (
+      {exerciseFeedback && (SMOOTHED_EXERCISES.includes(exercise) || isTimedHold) && (
         <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none">
           <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-lg ${
-            exerciseFeedback === 'Rep Completed!'
+            exerciseFeedback === 'Rep Completed!' || exerciseFeedback === getFeedback(exercise, 'GOOD')
               ? 'bg-green-500/90 text-white'
               : 'bg-primary/80 text-primary-foreground'
           }`}>
