@@ -1061,11 +1061,373 @@ export function detectThrusterPhaseSmoothed(pose: Landmark[]): Phase {
 export function getThrusterFeedback(): string { return _thrusterState.feedback; }
 export function resetThrusterState() { Object.assign(_thrusterState, createThrusterState()); }
 
+// ═══════════════════════════════════════════
+// PUSH-UPS (elbow angle, bilateral)
+// ═══════════════════════════════════════════
+// Landmarks: shoulder(11,12), elbow(13,14), wrist(15,16)
+// TOP: elbow angle ≥ 160°   BOTTOM: elbow angle ≤ 95°
+// Rep: TOP → BOTTOM → TOP; use min arm reps
+
+interface PushUpSmoothedState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  leftReps: number;
+  rightReps: number;
+  feedback: string;
+}
+
+function createPushUpSmoothedState(): PushUpSmoothedState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    leftReps: 0,
+    rightReps: 0,
+    feedback: '',
+  };
+}
+
+const _pushUpSmoothedState = createPushUpSmoothedState();
+
+export function detectPushUpPhaseSmoothed(pose: Landmark[]): Phase {
+  const lShoulder = pose[11], rShoulder = pose[12];
+  const lElbow = pose[13], rElbow = pose[14];
+  const lWrist = pose[15], rWrist = pose[16];
+
+  const leftValid = !!(lShoulder && lElbow && lWrist);
+  const rightValid = !!(rShoulder && rElbow && rWrist);
+  if (!leftValid && !rightValid) return 'neutral';
+
+  let leftAngle = 0, rightAngle = 0;
+  if (leftValid) leftAngle = _pushUpSmoothedState.leftSmooth.push(angleBetween(lShoulder!, lElbow!, lWrist!));
+  if (rightValid) rightAngle = _pushUpSmoothedState.rightSmooth.push(angleBetween(rShoulder!, rElbow!, rWrist!));
+
+  const leftTop = leftValid && leftAngle >= 160;
+  const rightTop = rightValid && rightAngle >= 160;
+  const leftBottom = leftValid && leftAngle <= 95;
+  const rightBottom = rightValid && rightAngle <= 95;
+
+  let rawPhase: Phase = 'neutral';
+  if (leftTop || rightTop) rawPhase = 'up';
+  if (leftBottom || rightBottom) rawPhase = 'down';
+
+  const confirmed = _pushUpSmoothedState.confirmer.update(rawPhase);
+
+  if (_pushUpSmoothedState.phase === 'up' && confirmed === 'down') {
+    _pushUpSmoothedState.feedback = 'Down!';
+  } else if (_pushUpSmoothedState.phase === 'down' && confirmed === 'up') {
+    _pushUpSmoothedState.feedback = 'Push!';
+    if (leftTop) _pushUpSmoothedState.leftReps++;
+    if (rightTop) _pushUpSmoothedState.rightReps++;
+    const minReps = Math.min(_pushUpSmoothedState.leftReps, _pushUpSmoothedState.rightReps);
+    if (minReps > 0) {
+      _pushUpSmoothedState.feedback = 'Rep Completed!';
+    }
+  }
+
+  if (confirmed !== 'neutral') _pushUpSmoothedState.phase = confirmed;
+  return confirmed;
+}
+
+export function getPushUpFeedback(): string { return _pushUpSmoothedState.feedback; }
+export function resetPushUpSmoothedState() { Object.assign(_pushUpSmoothedState, createPushUpSmoothedState()); }
+
+// ═══════════════════════════════════════════
+// PIKE PUSH-UPS (elbow angle, bilateral)
+// ═══════════════════════════════════════════
+// Same landmarks as push-ups. BOTTOM: ≤ 100°  TOP: ≥ 160°
+// Rep: TOP → BOTTOM → TOP
+
+interface PikePushUpState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  leftReps: number;
+  rightReps: number;
+  feedback: string;
+}
+
+function createPikePushUpState(): PikePushUpState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    leftReps: 0,
+    rightReps: 0,
+    feedback: '',
+  };
+}
+
+const _pikePushUpState = createPikePushUpState();
+
+export function detectPikePushUpPhaseSmoothed(pose: Landmark[]): Phase {
+  const lShoulder = pose[11], rShoulder = pose[12];
+  const lElbow = pose[13], rElbow = pose[14];
+  const lWrist = pose[15], rWrist = pose[16];
+
+  const leftValid = !!(lShoulder && lElbow && lWrist);
+  const rightValid = !!(rShoulder && rElbow && rWrist);
+  if (!leftValid && !rightValid) return 'neutral';
+
+  let leftAngle = 0, rightAngle = 0;
+  if (leftValid) leftAngle = _pikePushUpState.leftSmooth.push(angleBetween(lShoulder!, lElbow!, lWrist!));
+  if (rightValid) rightAngle = _pikePushUpState.rightSmooth.push(angleBetween(rShoulder!, rElbow!, rWrist!));
+
+  const leftTop = leftValid && leftAngle >= 160;
+  const rightTop = rightValid && rightAngle >= 160;
+  const leftBottom = leftValid && leftAngle <= 100;
+  const rightBottom = rightValid && rightAngle <= 100;
+
+  let rawPhase: Phase = 'neutral';
+  if (leftTop || rightTop) rawPhase = 'up';
+  if (leftBottom || rightBottom) rawPhase = 'down';
+
+  const confirmed = _pikePushUpState.confirmer.update(rawPhase);
+
+  if (_pikePushUpState.phase === 'up' && confirmed === 'down') {
+    _pikePushUpState.feedback = 'Lower';
+  } else if (_pikePushUpState.phase === 'down' && confirmed === 'up') {
+    _pikePushUpState.feedback = 'Push!';
+    if (leftTop) _pikePushUpState.leftReps++;
+    if (rightTop) _pikePushUpState.rightReps++;
+    const minReps = Math.min(_pikePushUpState.leftReps, _pikePushUpState.rightReps);
+    if (minReps > 0) {
+      _pikePushUpState.feedback = 'Rep Completed!';
+    }
+  }
+
+  if (confirmed !== 'neutral') _pikePushUpState.phase = confirmed;
+  return confirmed;
+}
+
+export function getPikePushUpFeedback(): string { return _pikePushUpState.feedback; }
+export function resetPikePushUpState() { Object.assign(_pikePushUpState, createPikePushUpState()); }
+
+// ═══════════════════════════════════════════
+// SQUATS (knee angle, bilateral)
+// ═══════════════════════════════════════════
+// Landmarks: hip(23,24), knee(25,26), ankle(27,28)
+// BOTTOM: knee angle ≤ 95°   TOP: ≥ 165°
+// Rep: TOP → BOTTOM → TOP; use min leg reps
+
+interface SquatSmoothedState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  leftReps: number;
+  rightReps: number;
+  feedback: string;
+}
+
+function createSquatSmoothedState(): SquatSmoothedState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    leftReps: 0,
+    rightReps: 0,
+    feedback: '',
+  };
+}
+
+const _squatSmoothedState = createSquatSmoothedState();
+
+export function detectSquatPhaseSmoothed(pose: Landmark[]): Phase {
+  const lHip = pose[23], rHip = pose[24];
+  const lKnee = pose[25], rKnee = pose[26];
+  const lAnkle = pose[27], rAnkle = pose[28];
+
+  const leftValid = !!(lHip && lKnee && lAnkle);
+  const rightValid = !!(rHip && rKnee && rAnkle);
+  if (!leftValid && !rightValid) return 'neutral';
+
+  let leftAngle = 0, rightAngle = 0;
+  if (leftValid) leftAngle = _squatSmoothedState.leftSmooth.push(angleBetween(lHip!, lKnee!, lAnkle!));
+  if (rightValid) rightAngle = _squatSmoothedState.rightSmooth.push(angleBetween(rHip!, rKnee!, rAnkle!));
+
+  const leftTop = leftValid && leftAngle >= 165;
+  const rightTop = rightValid && rightAngle >= 165;
+  const leftBottom = leftValid && leftAngle <= 95;
+  const rightBottom = rightValid && rightAngle <= 95;
+
+  let rawPhase: Phase = 'neutral';
+  if (leftTop || rightTop) rawPhase = 'up';
+  if (leftBottom || rightBottom) rawPhase = 'down';
+
+  const confirmed = _squatSmoothedState.confirmer.update(rawPhase);
+
+  if (_squatSmoothedState.phase === 'up' && confirmed === 'down') {
+    _squatSmoothedState.feedback = 'Down';
+  } else if (_squatSmoothedState.phase === 'down' && confirmed === 'up') {
+    _squatSmoothedState.feedback = 'Stand';
+    if (leftTop) _squatSmoothedState.leftReps++;
+    if (rightTop) _squatSmoothedState.rightReps++;
+    const minReps = Math.min(_squatSmoothedState.leftReps, _squatSmoothedState.rightReps);
+    if (minReps > 0) {
+      _squatSmoothedState.feedback = 'Rep Completed!';
+    }
+  }
+
+  if (confirmed !== 'neutral') _squatSmoothedState.phase = confirmed;
+  return confirmed;
+}
+
+export function getSquatFeedback(): string { return _squatSmoothedState.feedback; }
+export function resetSquatSmoothedState() { Object.assign(_squatSmoothedState, createSquatSmoothedState()); }
+
+// ═══════════════════════════════════════════
+// LUNGES (knee angle, either leg)
+// ═══════════════════════════════════════════
+// Landmarks: hip(23,24), knee(25,26), ankle(27,28)
+// BOTTOM: any knee ≤ 90°   TOP: both knees ≥ 160°
+// Rep: TOP → BOTTOM → TOP
+
+interface LungeSmoothedState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  reps: number;
+  feedback: string;
+}
+
+function createLungeSmoothedState(): LungeSmoothedState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    reps: 0,
+    feedback: '',
+  };
+}
+
+const _lungeSmoothedState = createLungeSmoothedState();
+
+export function detectLungePhaseSmoothed(pose: Landmark[]): Phase {
+  const lHip = pose[23], rHip = pose[24];
+  const lKnee = pose[25], rKnee = pose[26];
+  const lAnkle = pose[27], rAnkle = pose[28];
+
+  const leftValid = !!(lHip && lKnee && lAnkle);
+  const rightValid = !!(rHip && rKnee && rAnkle);
+  if (!leftValid && !rightValid) return 'neutral';
+
+  let leftAngle = 180, rightAngle = 180;
+  if (leftValid) leftAngle = _lungeSmoothedState.leftSmooth.push(angleBetween(lHip!, lKnee!, lAnkle!));
+  if (rightValid) rightAngle = _lungeSmoothedState.rightSmooth.push(angleBetween(rHip!, rKnee!, rAnkle!));
+
+  const anyBottom = leftAngle <= 90 || rightAngle <= 90;
+  const bothTop = leftAngle >= 160 && rightAngle >= 160;
+
+  let rawPhase: Phase = 'neutral';
+  if (bothTop) rawPhase = 'up';
+  if (anyBottom) rawPhase = 'down';
+
+  const confirmed = _lungeSmoothedState.confirmer.update(rawPhase);
+
+  if (_lungeSmoothedState.phase === 'up' && confirmed === 'down') {
+    _lungeSmoothedState.feedback = 'Step';
+  } else if (_lungeSmoothedState.phase === 'down' && confirmed === 'up') {
+    _lungeSmoothedState.reps++;
+    _lungeSmoothedState.feedback = 'Rep Completed!';
+  }
+
+  if (confirmed !== 'neutral') _lungeSmoothedState.phase = confirmed;
+  return confirmed;
+}
+
+export function getLungeFeedback(): string { return _lungeSmoothedState.feedback; }
+export function resetLungeSmoothedState() { Object.assign(_lungeSmoothedState, createLungeSmoothedState()); }
+
+// ═══════════════════════════════════════════
+// CALF RAISES (ankle Y vertical movement)
+// ═══════════════════════════════════════════
+// Landmarks: ankle(27,28)
+// TOP: ankle rises ≥ 0.05 from baseline   BOTTOM: returns to baseline
+// Rep: BOTTOM → TOP → BOTTOM; use averaged ankles
+
+interface CalfRaiseState {
+  leftSmooth: SmoothBuffer;
+  rightSmooth: SmoothBuffer;
+  confirmer: PhaseConfirmer;
+  phase: Phase;
+  baselineY: number | null;
+  reps: number;
+  feedback: string;
+}
+
+function createCalfRaiseState(): CalfRaiseState {
+  return {
+    leftSmooth: new SmoothBuffer(4),
+    rightSmooth: new SmoothBuffer(4),
+    confirmer: new PhaseConfirmer(2),
+    phase: 'neutral',
+    baselineY: null,
+    reps: 0,
+    feedback: '',
+  };
+}
+
+const _calfRaiseState = createCalfRaiseState();
+
+export function detectCalfRaisePhaseSmoothed(pose: Landmark[]): Phase {
+  const lAnkle = pose[27], rAnkle = pose[28];
+  if (!lAnkle && !rAnkle) return 'neutral';
+
+  let smoothedY: number;
+  if (lAnkle && rAnkle) {
+    smoothedY = (_calfRaiseState.leftSmooth.push(lAnkle.y) + _calfRaiseState.rightSmooth.push(rAnkle.y)) / 2;
+  } else if (lAnkle) {
+    smoothedY = _calfRaiseState.leftSmooth.push(lAnkle.y);
+  } else {
+    smoothedY = _calfRaiseState.rightSmooth.push(rAnkle!.y);
+  }
+
+  if (_calfRaiseState.baselineY === null) {
+    _calfRaiseState.baselineY = smoothedY;
+    return 'neutral';
+  }
+
+  const bl = _calfRaiseState.baselineY;
+  // In screen coords, up = smaller Y. Rise = baseline - current
+  const rise = bl - smoothedY;
+
+  let rawPhase: Phase = 'neutral';
+  if (rise >= 0.05) rawPhase = 'up';
+  if (Math.abs(rise) < 0.02) rawPhase = 'down';
+
+  const confirmed = _calfRaiseState.confirmer.update(rawPhase);
+
+  if (_calfRaiseState.phase === 'down' && confirmed === 'up') {
+    _calfRaiseState.feedback = 'Up!';
+  } else if (_calfRaiseState.phase === 'up' && confirmed === 'down') {
+    _calfRaiseState.reps++;
+    _calfRaiseState.feedback = 'Rep Completed!';
+  }
+
+  // Update baseline when at rest
+  if (confirmed === 'down') _calfRaiseState.baselineY = smoothedY;
+  if (confirmed !== 'neutral') _calfRaiseState.phase = confirmed;
+  return confirmed;
+}
+
+export function getCalfRaiseFeedback(): string { return _calfRaiseState.feedback; }
+export function resetCalfRaiseState() { Object.assign(_calfRaiseState, createCalfRaiseState()); }
+
 // ─── Master feedback getter ───
 export type SmoothedExercise = 'bench-press' | 'dumbbell-chest-press' | 'dumbbell-bent-over-rows' | 'dumbbell-bicep-curls'
   | 'dumbbell-front-raises' | 'dumbbell-goblet-squat' | 'dumbbell-hammer-curls' | 'dumbbell-lateral-raises'
   | 'dumbbell-romanian-deadlift' | 'dumbbell-shoulder-press' | 'dumbbell-tricep-overhead-extension'
-  | 'dumbbell-punches' | 'dumbbell-thrusters';
+  | 'dumbbell-punches' | 'dumbbell-thrusters'
+  | 'push-ups' | 'pike-push-ups' | 'squats' | 'lunges' | 'calf-raises';
 
 export function getSmoothedFeedback(exercise: string): string | null {
   switch (exercise) {
@@ -1082,6 +1444,11 @@ export function getSmoothedFeedback(exercise: string): string | null {
     case 'dumbbell-tricep-overhead-extension': return getTricepExtFeedback();
     case 'dumbbell-punches': return getPunchFeedback();
     case 'dumbbell-thrusters': return getThrusterFeedback();
+    case 'push-ups': return getPushUpFeedback();
+    case 'pike-push-ups': return getPikePushUpFeedback();
+    case 'squats': return getSquatFeedback();
+    case 'lunges': return getLungeFeedback();
+    case 'calf-raises': return getCalfRaiseFeedback();
     default: return null;
   }
 }
@@ -1101,6 +1468,11 @@ export function resetSmoothedDetector(exercise: string) {
     case 'dumbbell-tricep-overhead-extension': resetTricepExtState(); break;
     case 'dumbbell-punches': resetPunchSmoothedState(); break;
     case 'dumbbell-thrusters': resetThrusterState(); break;
+    case 'push-ups': resetPushUpSmoothedState(); break;
+    case 'pike-push-ups': resetPikePushUpState(); break;
+    case 'squats': resetSquatSmoothedState(); break;
+    case 'lunges': resetLungeSmoothedState(); break;
+    case 'calf-raises': resetCalfRaiseState(); break;
   }
 }
 
@@ -1110,4 +1482,5 @@ export const SMOOTHED_EXERCISES: string[] = [
   'dumbbell-front-raises', 'dumbbell-goblet-squat', 'dumbbell-hammer-curls', 'dumbbell-lateral-raises',
   'dumbbell-romanian-deadlift', 'dumbbell-shoulder-press', 'dumbbell-tricep-overhead-extension',
   'dumbbell-punches', 'dumbbell-thrusters',
+  'push-ups', 'pike-push-ups', 'squats', 'lunges', 'calf-raises',
 ];
