@@ -21,6 +21,12 @@ import {
   detectPunchPhaseSmoothed, detectThrusterPhaseSmoothed, detectTricepExtPhaseSmoothed,
   detectPushUpPhaseSmoothed, detectPikePushUpPhaseSmoothed,
   detectSquatPhaseSmoothed, detectLungePhaseSmoothed, detectCalfRaisePhaseSmoothed,
+  detectBurpeePhaseSmoothed, detectMountainClimberPhaseSmoothed,
+  detectJumpingJackPhaseSmoothed, detectHighKneePhaseSmoothed, detectJumpRopePhaseSmoothed,
+  detectJumpPhaseSmoothed, detectSitUpPhaseSmoothed, detectCatCowPhaseSmoothed,
+  detectToeTouchPhaseSmoothed, detectDiamondPushUpPhaseSmoothed,
+  detectCobraPhaseSmoothed, detectHipCirclePhaseSmoothed,
+  isPlankValidSmoothed, isWallSitValidSmoothed, isDeepSquatHoldValidSmoothed, isShoulderStretchValidSmoothed,
   getSmoothedFeedback, resetSmoothedDetector, SMOOTHED_EXERCISES,
 } from '@/lib/smoothedDetectors';
 
@@ -38,7 +44,7 @@ interface PoseTrackerProps {
 type RepPhase = 'up' | 'down' | 'neutral';
 
 // Timed hold exercises use the plank-style scoring pattern
-const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'];
+const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'shoulder-stretch-hold', 'deep-squat-hold'];
 
 export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComplete, onSecondComplete, suspicionTracker, onCameraReady, onCameraError }: PoseTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -182,14 +188,18 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       case 'lunges': return detectLungePhaseSmoothed(pose);
       case 'calf-raises': return detectCalfRaisePhaseSmoothed(pose);
       case 'bench-press': return detectBenchPressPhaseSmoothed(pose);
-      case 'diamond-push-ups': return detectDiamondPushUpPhase(pose);
-      case 'burpees': return detectBurpeePhase(pose);
-      case 'mountain-climbers': return detectMountainClimberPhase(pose);
-      case 'high-knees': return detectHighKneePhase(pose);
-      case 'jumping-jacks': return detectJumpingJackPhase(pose);
-      case 'jump-rope': return detectJumpRopePhase(pose);
-      case 'toe-touches': return detectToeTouchPhase(pose);
-      case 'cat-cow-stretch': return detectCatCowPhase(pose);
+      case 'diamond-push-ups': return detectDiamondPushUpPhaseSmoothed(pose);
+      case 'burpees': return detectBurpeePhaseSmoothed(pose);
+      case 'mountain-climbers': return detectMountainClimberPhaseSmoothed(pose);
+      case 'high-knees': return detectHighKneePhaseSmoothed(pose);
+      case 'jumping-jacks': return detectJumpingJackPhaseSmoothed(pose);
+      case 'jump-rope': return detectJumpRopePhaseSmoothed(pose);
+      case 'toe-touches': return detectToeTouchPhaseSmoothed(pose);
+      case 'cat-cow-stretch': return detectCatCowPhaseSmoothed(pose);
+      case 'jumps': return detectJumpPhaseSmoothed(pose);
+      case 'sit-ups': return detectSitUpPhaseSmoothed(pose);
+      case 'cobra-stretch': return detectCobraPhaseSmoothed(pose);
+      case 'hip-circles': return detectHipCirclePhaseSmoothed(pose);
       case 'dumbbell-bicep-curls': return detectBicepCurlPhase(pose);
       case 'dumbbell-hammer-curls': return detectHammerCurlPhaseSmoothed(pose);
       case 'dumbbell-shoulder-press': return detectShoulderPressPhase(pose);
@@ -210,17 +220,10 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   // Check timed hold validity
   const isHoldValid = useCallback((pose: any[]): boolean => {
     switch (exercise) {
-      case 'plank': {
-        const shoulder = pose[11];
-        const hip = pose[23];
-        if (!shoulder || !hip) return false;
-        return Math.abs(shoulder.y - hip.y) < 0.15;
-      }
-      case 'wall-sit': return isWallSitValid(pose);
-      case 'deep-squat-hold': return isDeepSquatHoldValid(pose);
-      case 'shoulder-stretch-hold': return isShoulderStretchValid(pose);
-      case 'cobra-stretch': return isCobraStretchValid(pose);
-      case 'hip-circles': return isHipCircleValid(pose);
+      case 'plank': return isPlankValidSmoothed(pose);
+      case 'wall-sit': return isWallSitValidSmoothed(pose);
+      case 'deep-squat-hold': return isDeepSquatHoldValidSmoothed(pose);
+      case 'shoulder-stretch-hold': return isShoulderStretchValidSmoothed(pose);
       default: return false;
     }
   }, [exercise]);
@@ -255,44 +258,18 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       return;
     }
 
-    // --- LEGACY EXERCISES (sit-ups, jumps, dips, pull-ups, bench-press) ---
+    // --- REP-BASED EXERCISES ---
     let currentPhase: RepPhase = 'neutral';
 
-    // Check new exercise detectors first
+    // Check smoothed/new exercise detectors first
     const detectedPhase = getPhaseForExercise(pose);
     if (detectedPhase !== 'neutral') {
       currentPhase = detectedPhase;
     } else {
-      // Fallback for original exercises
+      // Fallback for remaining legacy exercises
       const NOSE = 0;
-      const LEFT_SHOULDER = 11;
-      const RIGHT_SHOULDER = 12;
-      const LEFT_ELBOW = 13;
-      const RIGHT_ELBOW = 14;
-      const LEFT_HIP = 23;
-      const LEFT_KNEE = 25;
       
       switch (exercise) {
-        case 'bench-press': {
-          // Handled by smoothed detector in getPhaseForExercise
-          break;
-        }
-        case 'sit-ups': {
-          const shoulder = pose[LEFT_SHOULDER];
-          const knee = pose[LEFT_KNEE];
-          if (!shoulder || !knee) break;
-          const shoulderKneeDist = Math.abs(shoulder.y - knee.y);
-          if (shoulderKneeDist < 0.15) currentPhase = 'up';
-          else if (shoulderKneeDist > 0.25) currentPhase = 'down';
-          break;
-        }
-        case 'jumps': {
-          const hip = pose[LEFT_HIP];
-          if (!hip) break;
-          if (hip.y < 0.4) currentPhase = 'up';
-          else if (hip.y > 0.55) currentPhase = 'down';
-          break;
-        }
         case 'pull-ups':
         case 'dips': {
           const nose = pose[NOSE];
