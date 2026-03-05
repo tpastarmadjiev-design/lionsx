@@ -19,6 +19,8 @@ import {
   detectFrontRaisePhaseSmoothed, detectGobletSquatPhaseSmoothed,
   detectHammerCurlPhaseSmoothed, detectLateralRaisePhaseSmoothed,
   detectPunchPhaseSmoothed, detectThrusterPhaseSmoothed, detectTricepExtPhaseSmoothed,
+  detectPushUpPhaseSmoothed, detectPikePushUpPhaseSmoothed,
+  detectSquatPhaseSmoothed, detectLungePhaseSmoothed, detectCalfRaisePhaseSmoothed,
   getSmoothedFeedback, resetSmoothedDetector, SMOOTHED_EXERCISES,
 } from '@/lib/smoothedDetectors';
 
@@ -174,12 +176,13 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   // Get phase for rep-based exercises using the new detectors
   const getPhaseForExercise = useCallback((pose: any[]): RepPhase => {
     switch (exercise) {
+      case 'push-ups': return detectPushUpPhaseSmoothed(pose);
+      case 'pike-push-ups': return detectPikePushUpPhaseSmoothed(pose);
+      case 'squats': return detectSquatPhaseSmoothed(pose);
+      case 'lunges': return detectLungePhaseSmoothed(pose);
+      case 'calf-raises': return detectCalfRaisePhaseSmoothed(pose);
       case 'bench-press': return detectBenchPressPhaseSmoothed(pose);
-      case 'squats': return detectSquatPhase(pose);
-      case 'lunges': return detectLungePhase(pose);
-      case 'pike-push-ups': return detectPikePushUpPhase(pose);
       case 'diamond-push-ups': return detectDiamondPushUpPhase(pose);
-      case 'calf-raises': return detectCalfRaisePhase(pose);
       case 'burpees': return detectBurpeePhase(pose);
       case 'mountain-climbers': return detectMountainClimberPhase(pose);
       case 'high-knees': return detectHighKneePhase(pose);
@@ -198,7 +201,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       case 'dumbbell-chest-press': return detectChestPressPhase(pose);
       case 'dumbbell-tricep-overhead-extension': return detectTricepExtPhaseSmoothed(pose);
       case 'dumbbell-punches': return detectPunchPhaseSmoothed(pose);
-      case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose); // now uses smoothed hip detector
+      case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose);
       case 'dumbbell-windmill': return detectWindmillPhase(pose);
       default: return 'neutral';
     }
@@ -228,28 +231,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     
     const pose = landmarks[0];
     
-    // --- PUSH-UPS: dedicated detector ---
-    if (exercise === 'push-ups') {
-      const visMsg = checkUpperBodyVisibility(pose);
-      if (visMsg) {
-        if (!visibilityWarning) setVisibilityWarning(visMsg);
-        pushUpBodyVisibleRef.current = false;
-        return;
-      }
-      if (visibilityWarning) setVisibilityWarning(null);
-      pushUpBodyVisibleRef.current = true;
-
-      const { repCounted } = detectPushUp(pose, pushUpStateRef.current);
-      if (repCounted) {
-        if (suspicionTracker) {
-          suspicionTracker.totalReps++;
-          suspicionTracker.lpTimestamps.push({ time: Date.now(), lp: 1 });
-          recordOrientationSample(suspicionTracker, pose);
-        }
-        onRepComplete();
-      }
-      return;
-    }
+    // Push-ups now handled by smoothed detector in getPhaseForExercise
     
     // --- TIMED HOLD EXERCISES ---
     if (isTimedHold) {
