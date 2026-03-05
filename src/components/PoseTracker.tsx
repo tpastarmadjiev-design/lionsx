@@ -3,6 +3,8 @@ import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { createRepCycleState, validateRep, recordDownPhase, recordUpPhase, recordOrientationSample, type ExerciseType, type SessionSuspicionTracker } from '@/lib/antiCheat';
 import { getFeedback } from '@/lib/exerciseFeedbackMap';
 import { createPushUpState, detectPushUp, checkUpperBodyVisibility } from '@/lib/pushUpDetector';
+import { checkPositioning, type PositioningResult } from '@/lib/positioningCheck';
+import { createAdaptiveState, updateAdaptive, shouldCountRep, getAdaptiveMessage, isCalibrating, type AdaptiveState } from '@/lib/adaptiveThreshold';
 import {
   detectSquatPhase, detectLungePhase, detectPikePushUpPhase, detectDiamondPushUpPhase,
   detectCalfRaisePhase, detectBurpeePhase, detectMountainClimberPhase, detectHighKneePhase,
@@ -62,6 +64,15 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   const lastProcessTimeRef = useRef<number>(0);
   const ML_INTERVAL_MS = 125; // ~8 FPS cap for pose detection
   
+  // Positioning check state
+  const [positioningReady, setPositioningReady] = useState(false);
+  const positioningReadyRef = useRef(false);
+  const [positioningResult, setPositioningResult] = useState<PositioningResult | null>(null);
+  
+  // Adaptive threshold state
+  const adaptiveStateRef = useRef<AdaptiveState>(createAdaptiveState(exercise));
+  const [adaptiveMessage, setAdaptiveMessage] = useState<string | null>('Learning your movement...');
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visibilityWarning, setVisibilityWarning] = useState<string | null>(null);
@@ -77,6 +88,11 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     resetSmoothedDetector('dumbbell-punches');
     resetSmoothedDetector(exercise);
     setExerciseFeedback(null);
+    setPositioningReady(false);
+    positioningReadyRef.current = false;
+    setPositioningResult(null);
+    adaptiveStateRef.current = createAdaptiveState(exercise);
+    setAdaptiveMessage('Learning your movement...');
   }, [exercise]);
 
   // Initialize MediaPipe
@@ -235,7 +251,30 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     
     const pose = landmarks[0];
     
-    // Push-ups now handled by smoothed detector in getPhaseForExercise
+    // ── POSITIONING CHECK ──
+    // Must pass before any rep counting begins
+    if (!positioningReadyRef.current) {
+      const result = checkPositioning(pose);
+      setPositioningResult(result);
+      if (result.isReady) {
+        positioningReadyRef.current = true;
+        setPositioningReady(true);
+      }
+      return; // Don't count anything until positioned
+    }
+
+    // ── ADAPTIVE THRESHOLD: feed data ──
+    // Extract current phase for adaptive tracking (without affecting rep counting)
+    const prePhase = getPhaseForExercise(pose);
+    updateAdaptive(adaptiveStateRef.current, pose, prePhase);
+    
+    // Update adaptive message
+    const msg = getAdaptiveMessage(adaptiveStateRef.current);
+    if (msg !== null) {
+      setAdaptiveMessage(msg);
+    } else if (adaptiveStateRef.current.calibrated) {
+      setAdaptiveMessage(null);
+    }
     
     // --- TIMED HOLD EXERCISES ---
     if (isTimedHold) {
@@ -298,7 +337,10 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
       recordUpPhase(repCycleStateRef.current, pose);
       if (validateRep(exercise as ExerciseType, repCycleStateRef.current, pose, suspicionTracker)) {
-        onRepComplete();
+        // ── ADAPTIVE THRESHOLD: filter tiny movements ──
+        if (shouldCountRep(adaptiveStateRef.current, pose)) {
+          onRepComplete();
+        }
       }
     }
     
@@ -405,6 +447,51 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
         className="w-full h-full object-cover"
         style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }}
       />
+
+      {/* Positioning Check Indicator */}
+      {!positioningReady && positioningResult && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+          <div className={`px-6 py-4 rounded-2xl backdrop-blur-sm flex flex-col items-center gap-2 ${
+            positioningResult.isReady
+              ? 'bg-green-500/20 border border-green-500/40'
+              : 'bg-destructive/20 border border-destructive/40'
+          }`}>
+            <div className={`w-4 h-4 rounded-full ${
+              positioningResult.isReady ? 'bg-green-500' : 'bg-destructive'
+            }`} />
+            <p className={`text-sm font-semibold ${
+              positioningResult.isReady ? 'text-green-400' : 'text-destructive'
+            }`}>
+              {positioningResult.message}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {positioningResult.visibleCount}/{positioningResult.requiredCount} landmarks visible
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Positioning not yet checked - waiting for first frame */}
+      {!positioningReady && !positioningResult && isActive && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+          <div className="px-6 py-4 rounded-2xl backdrop-blur-sm bg-secondary/60 border border-border flex flex-col items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-muted-foreground animate-pulse" />
+            <p className="text-sm font-semibold text-muted-foreground">
+              Checking position...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Adaptive Threshold Calibration Message */}
+      {positioningReady && adaptiveMessage && (
+        <div className="absolute top-12 inset-x-0 flex justify-center pointer-events-none z-10">
+          <span className="px-4 py-2 rounded-full text-xs font-semibold shadow-lg bg-accent/80 text-accent-foreground">
+            {adaptiveMessage}
+          </span>
+        </div>
+      )}
+
       {visibilityWarning && exercise === 'push-ups' && (
         <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground text-xs sm:text-sm text-center px-3 py-2">
           {visibilityWarning}
