@@ -1660,12 +1660,11 @@ export function detectJumpPhaseSmoothed(pose: Landmark[]): Phase {
   if (_jumpState2.baselineY === null) { _jumpState2.baselineY = smoothed; return 'neutral'; }
   const rise = _jumpState2.baselineY - smoothed;
   let raw: Phase = 'neutral';
-  if (rise >= 0.06) raw = 'up';
-  if (Math.abs(rise) < 0.02) raw = 'down';
+  if (rise >= 0.20) raw = 'up';
+  if (Math.abs(rise) < 0.04) { raw = 'down'; _jumpState2.baselineY = smoothed; }
   const confirmed = _jumpState2.confirmer.update(raw);
   if (_jumpState2.phase === 'down' && confirmed === 'up') _jumpState2.feedback = 'Jump!';
   else if (_jumpState2.phase === 'up' && confirmed === 'down') _jumpState2.feedback = 'Rep Completed!';
-  if (confirmed === 'down') _jumpState2.baselineY = smoothed;
   if (confirmed !== 'neutral') _jumpState2.phase = confirmed;
   return confirmed;
 }
@@ -1680,22 +1679,24 @@ interface SitUpSmoothedState {
   smooth: SmoothBuffer;
   confirmer: PhaseConfirmer;
   phase: Phase;
+  baselineY: number | null;
   feedback: string;
 }
 function createSitUpSmoothedState(): SitUpSmoothedState {
-  return { smooth: new SmoothBuffer(4), confirmer: new PhaseConfirmer(2), phase: 'neutral', feedback: '' };
+  return { smooth: new SmoothBuffer(4), confirmer: new PhaseConfirmer(2), phase: 'neutral', baselineY: null, feedback: '' };
 }
 const _sitUpState2 = createSitUpSmoothedState();
 
 export function detectSitUpPhaseSmoothed(pose: Landmark[]): Phase {
-  const lShoulder = pose[11], rShoulder = pose[12], lHip = pose[23], rHip = pose[24];
-  if ((!lShoulder && !rShoulder) || (!lHip && !rHip)) return 'neutral';
+  const lShoulder = pose[11], rShoulder = pose[12];
+  if (!lShoulder && !rShoulder) return 'neutral';
   const shoulderY = lShoulder && rShoulder ? (lShoulder.y + rShoulder.y) / 2 : (lShoulder || rShoulder)!.y;
-  const hipY = lHip && rHip ? (lHip.y + rHip.y) / 2 : (lHip || rHip)!.y;
-  const dist = _sitUpState2.smooth.push(Math.abs(shoulderY - hipY));
+  const smoothed = _sitUpState2.smooth.push(shoulderY);
+  if (_sitUpState2.baselineY === null) { _sitUpState2.baselineY = smoothed; return 'neutral'; }
+  const rise = _sitUpState2.baselineY - smoothed;
   let raw: Phase = 'neutral';
-  if (dist < 0.12) raw = 'up';
-  if (dist > 0.22) raw = 'down';
+  if (rise >= 0.15) raw = 'up';
+  if (Math.abs(rise) < 0.04) { raw = 'down'; _sitUpState2.baselineY = smoothed; }
   const confirmed = _sitUpState2.confirmer.update(raw);
   if (_sitUpState2.phase === 'down' && confirmed === 'up') _sitUpState2.feedback = 'Up!';
   else if (_sitUpState2.phase === 'up' && confirmed === 'down') _sitUpState2.feedback = 'Rep Completed!';
@@ -1726,12 +1727,12 @@ export function detectCatCowPhaseSmoothed(pose: Landmark[]): Phase {
   if ((!lShoulder && !rShoulder) || (!lHip && !rHip)) return 'neutral';
   const shoulderY = lShoulder && rShoulder ? (lShoulder.y + rShoulder.y) / 2 : (lShoulder || rShoulder)!.y;
   const hipY = lHip && rHip ? (lHip.y + rHip.y) / 2 : (lHip || rHip)!.y;
-  const rel = _catCowState2.smooth.push(hipY - shoulderY);
+  const rel = _catCowState2.smooth.push(shoulderY - hipY);
   if (_catCowState2.baselineRel === null) { _catCowState2.baselineRel = rel; return 'neutral'; }
   const change = rel - _catCowState2.baselineRel;
   let raw: Phase = 'neutral';
-  if (change < -0.05) raw = 'up';
-  if (change > 0.05) raw = 'down';
+  if (change >= 0.08) raw = 'up';   // CAT: shoulders rise relative to hips
+  if (change <= -0.08) raw = 'down'; // COW: shoulders drop relative to hips
   const confirmed = _catCowState2.confirmer.update(raw);
   if (_catCowState2.phase === 'down' && confirmed === 'up') _catCowState2.feedback = 'Arch!';
   else if (_catCowState2.phase === 'up' && confirmed === 'down') _catCowState2.feedback = 'Rep Completed!';
@@ -1839,20 +1840,18 @@ function createCobraSmoothedState(): CobraSmoothedState {
 const _cobraState2 = createCobraSmoothedState();
 
 export function detectCobraPhaseSmoothed(pose: Landmark[]): Phase {
-  const lShoulder = pose[11], rShoulder = pose[12], lHip = pose[23], rHip = pose[24];
-  if ((!lShoulder && !rShoulder) || (!lHip && !rHip)) return 'neutral';
+  const lShoulder = pose[11], rShoulder = pose[12];
+  if (!lShoulder && !rShoulder) return 'neutral';
   const shoulderY = lShoulder && rShoulder ? (lShoulder.y + rShoulder.y) / 2 : (lShoulder || rShoulder)!.y;
-  const hipY = lHip && rHip ? (lHip.y + rHip.y) / 2 : (lHip || rHip)!.y;
-  const rel = _cobraState2.smooth.push(shoulderY - hipY);
-  if (_cobraState2.baselineRel === null) { _cobraState2.baselineRel = rel; return 'neutral'; }
-  const change = _cobraState2.baselineRel - rel;
+  const smoothed = _cobraState2.smooth.push(shoulderY);
+  if (_cobraState2.baselineRel === null) { _cobraState2.baselineRel = smoothed; return 'neutral'; }
+  const rise = _cobraState2.baselineRel - smoothed;
   let raw: Phase = 'neutral';
-  if (change >= 0.08) raw = 'up';
-  if (Math.abs(change) < 0.03) raw = 'down';
+  if (rise >= 0.12) raw = 'up';
+  if (Math.abs(rise) < 0.04) { raw = 'down'; _cobraState2.baselineRel = smoothed; }
   const confirmed = _cobraState2.confirmer.update(raw);
   if (_cobraState2.phase === 'down' && confirmed === 'up') _cobraState2.feedback = 'Lift chest!';
   else if (_cobraState2.phase === 'up' && confirmed === 'down') _cobraState2.feedback = 'Rep Completed!';
-  if (confirmed === 'down') _cobraState2.baselineRel = rel;
   if (confirmed !== 'neutral') _cobraState2.phase = confirmed;
   return confirmed;
 }
