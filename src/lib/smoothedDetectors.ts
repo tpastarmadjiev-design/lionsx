@@ -9,6 +9,8 @@
  *   LEFT_HIP=23, RIGHT_HIP=24
  */
 
+import { getFeedback } from './exerciseFeedbackMap';
+
 interface Landmark {
   x: number;
   y: number;
@@ -110,7 +112,7 @@ export function createBenchPressState(): BenchPressState {
 const _benchPressState = createBenchPressState();
 const _chestPressState = createBenchPressState();
 
-function detectBenchPressInternal(pose: Landmark[], state: BenchPressState): { phase: Phase; feedback: string } {
+function detectBenchPressInternal(pose: Landmark[], state: BenchPressState, exerciseKey: string): { phase: Phase; feedback: string } {
   const lShoulder = pose[11], rShoulder = pose[12];
   const lElbow = pose[13], rElbow = pose[14];
   if (!lShoulder || !rShoulder || !lElbow || !rElbow) return { phase: 'neutral', feedback: state.feedback };
@@ -139,16 +141,14 @@ function detectBenchPressInternal(pose: Landmark[], state: BenchPressState): { p
   let feedback = state.feedback;
   // Detect transitions
   if (state.phase === 'up' && confirmedPhase === 'down') {
-    feedback = 'Lower';
+    feedback = getFeedback(exerciseKey, 'DOWN');
   } else if (state.phase === 'down' && confirmedPhase === 'up') {
-    feedback = 'Push';
-    // Count per-arm reps
+    feedback = getFeedback(exerciseKey, 'UP');
     if (leftAtTop) state.leftReps++;
     if (rightAtTop) state.rightReps++;
-    // A full rep is the min of both arms
     const minReps = Math.min(state.leftReps, state.rightReps);
     if (minReps > 0) {
-      feedback = 'Rep Completed!';
+      feedback = getFeedback(exerciseKey, 'REP_COMPLETE');
     }
   }
 
@@ -162,7 +162,7 @@ function detectBenchPressInternal(pose: Landmark[], state: BenchPressState): { p
 
 // Track total counted reps separately so PoseTracker can use the standard down→up flow
 export function detectBenchPressPhaseSmoothed(pose: Landmark[]): Phase {
-  const { phase } = detectBenchPressInternal(pose, _benchPressState);
+  const { phase } = detectBenchPressInternal(pose, _benchPressState, 'bench-press');
   return phase;
 }
 
@@ -175,7 +175,7 @@ export function resetBenchPressState() {
 }
 
 export function detectChestPressPhaseSmoothed(pose: Landmark[]): Phase {
-  const { phase } = detectBenchPressInternal(pose, _chestPressState);
+  const { phase } = detectBenchPressInternal(pose, _chestPressState, 'dumbbell-chest-press');
   return phase;
 }
 
@@ -246,15 +246,15 @@ export function detectBentOverRowPhaseSmoothed(pose: Landmark[]): Phase {
 
   // Feedback
   if (_rowState.phase === 'down' && confirmed === 'up') {
-    _rowState.feedback = 'Pull!';
+    _rowState.feedback = getFeedback('dumbbell-bent-over-rows', 'UP');
     if (leftAtTop) _rowState.leftReps++;
     if (rightAtTop) _rowState.rightReps++;
     const minReps = Math.min(_rowState.leftReps, _rowState.rightReps);
     if (minReps > 0) {
-      _rowState.feedback = 'Rep Completed!';
+      _rowState.feedback = getFeedback('dumbbell-bent-over-rows', 'REP_COMPLETE');
     }
   } else if (_rowState.phase === 'up' && confirmed === 'down') {
-    _rowState.feedback = 'Lower';
+    _rowState.feedback = getFeedback('dumbbell-bent-over-rows', 'DOWN');
   }
 
   if (confirmed !== 'neutral') _rowState.phase = confirmed;
@@ -324,15 +324,15 @@ export function detectBicepCurlPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _curlState.confirmer.update(rawPhase);
 
   if (_curlState.phase === 'down' && confirmed === 'up') {
-    _curlState.feedback = 'Curl!';
+    _curlState.feedback = getFeedback('dumbbell-bicep-curls', 'UP');
     if (leftAtTop) _curlState.leftReps++;
     if (rightAtTop) _curlState.rightReps++;
     const minReps = Math.min(_curlState.leftReps, _curlState.rightReps);
     if (minReps > 0) {
-      _curlState.feedback = 'Rep Completed!';
+      _curlState.feedback = getFeedback('dumbbell-bicep-curls', 'REP_COMPLETE');
     }
   } else if (_curlState.phase === 'up' && confirmed === 'down') {
-    _curlState.feedback = 'Lower';
+    _curlState.feedback = getFeedback('dumbbell-bicep-curls', 'DOWN');
   }
 
   if (confirmed !== 'neutral') _curlState.phase = confirmed;
@@ -404,15 +404,15 @@ export function detectFrontRaisePhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _frontRaiseState.confirmer.update(rawPhase);
 
   if (_frontRaiseState.phase === 'down' && confirmed === 'up') {
-    _frontRaiseState.feedback = 'Raise!';
+    _frontRaiseState.feedback = getFeedback('dumbbell-front-raises', 'UP');
     if (leftUp) _frontRaiseState.leftReps++;
     if (rightUp) _frontRaiseState.rightReps++;
     const minReps = Math.min(_frontRaiseState.leftReps, _frontRaiseState.rightReps);
     if (minReps > 0 || _frontRaiseState.leftReps > 0 || _frontRaiseState.rightReps > 0) {
-      _frontRaiseState.feedback = 'Rep Completed!';
+      _frontRaiseState.feedback = getFeedback('dumbbell-front-raises', 'REP_COMPLETE');
     }
   } else if (_frontRaiseState.phase === 'up' && confirmed === 'down') {
-    _frontRaiseState.feedback = 'Lower';
+    _frontRaiseState.feedback = getFeedback('dumbbell-front-raises', 'DOWN');
   }
 
   if (confirmed !== 'neutral') _frontRaiseState.phase = confirmed;
@@ -487,9 +487,9 @@ export function detectGobletSquatPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _gobletSquatState.confirmer.update(rawPhase);
 
   if (_gobletSquatState.phase === 'down' && confirmed === 'up') {
-    _gobletSquatState.feedback = 'Rep Completed!';
+    _gobletSquatState.feedback = getFeedback('dumbbell-goblet-squat', 'REP_COMPLETE');
   } else if (_gobletSquatState.phase === 'up' && confirmed === 'down') {
-    _gobletSquatState.feedback = 'Squat!';
+    _gobletSquatState.feedback = getFeedback('dumbbell-goblet-squat', 'DOWN');
   }
 
   // Continuously update baseline toward standing position
@@ -562,14 +562,14 @@ export function detectHammerCurlPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _hammerCurlState.confirmer.update(rawPhase);
 
   if (_hammerCurlState.phase === 'down' && confirmed === 'up') {
-    _hammerCurlState.feedback = 'Curl!';
+    _hammerCurlState.feedback = getFeedback('dumbbell-hammer-curls', 'UP');
     if (leftUp) _hammerCurlState.leftReps++;
     if (rightUp) _hammerCurlState.rightReps++;
     if (_hammerCurlState.leftReps > 0 || _hammerCurlState.rightReps > 0) {
-      _hammerCurlState.feedback = 'Rep Completed!';
+      _hammerCurlState.feedback = getFeedback('dumbbell-hammer-curls', 'REP_COMPLETE');
     }
   } else if (_hammerCurlState.phase === 'up' && confirmed === 'down') {
-    _hammerCurlState.feedback = 'Lower';
+    _hammerCurlState.feedback = getFeedback('dumbbell-hammer-curls', 'DOWN');
   }
 
   if (confirmed !== 'neutral') _hammerCurlState.phase = confirmed;
@@ -638,14 +638,14 @@ export function detectLateralRaisePhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _lateralRaiseState.confirmer.update(rawPhase);
 
   if (_lateralRaiseState.phase === 'down' && confirmed === 'up') {
-    _lateralRaiseState.feedback = 'Raise!';
+    _lateralRaiseState.feedback = getFeedback('dumbbell-lateral-raises', 'UP');
     if (leftUp) _lateralRaiseState.leftReps++;
     if (rightUp) _lateralRaiseState.rightReps++;
     if (_lateralRaiseState.leftReps > 0 || _lateralRaiseState.rightReps > 0) {
-      _lateralRaiseState.feedback = 'Rep Completed!';
+      _lateralRaiseState.feedback = getFeedback('dumbbell-lateral-raises', 'REP_COMPLETE');
     }
   } else if (_lateralRaiseState.phase === 'up' && confirmed === 'down') {
-    _lateralRaiseState.feedback = 'Lower';
+    _lateralRaiseState.feedback = getFeedback('dumbbell-lateral-raises', 'DOWN');
   }
 
   if (confirmed !== 'neutral') _lateralRaiseState.phase = confirmed;
@@ -713,9 +713,9 @@ export function detectDeadliftPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _deadliftState.confirmer.update(rawPhase);
 
   if (_deadliftState.phase === 'up' && confirmed === 'down') {
-    _deadliftState.feedback = 'Lower';
+    _deadliftState.feedback = getFeedback('dumbbell-romanian-deadlift', 'DOWN');
   } else if (_deadliftState.phase === 'down' && confirmed === 'up') {
-    _deadliftState.feedback = 'Rep Completed!';
+    _deadliftState.feedback = getFeedback('dumbbell-romanian-deadlift', 'REP_COMPLETE');
   }
 
   if (confirmed === 'up') _deadliftState.baselineY = smoothedY;
@@ -784,9 +784,9 @@ export function detectShoulderPressPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _shoulderPressState.confirmer.update(rawPhase);
 
   if (_shoulderPressState.phase === 'down' && confirmed === 'up') {
-    _shoulderPressState.feedback = 'Press!';
+    _shoulderPressState.feedback = getFeedback('dumbbell-shoulder-press', 'UP');
   } else if (_shoulderPressState.phase === 'up' && confirmed === 'down') {
-    _shoulderPressState.feedback = 'Rep Completed!';
+    _shoulderPressState.feedback = getFeedback('dumbbell-shoulder-press', 'REP_COMPLETE');
   }
 
   if (confirmed === 'down') _shoulderPressState.baselineY = smoothedY;
@@ -855,9 +855,9 @@ export function detectTricepExtPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _tricepExtState.confirmer.update(rawPhase);
 
   if (_tricepExtState.phase === 'up' && confirmed === 'down') {
-    _tricepExtState.feedback = 'Lower';
+    _tricepExtState.feedback = getFeedback('dumbbell-tricep-overhead-extension', 'DOWN');
   } else if (_tricepExtState.phase === 'down' && confirmed === 'up') {
-    _tricepExtState.feedback = 'Rep Completed!';
+    _tricepExtState.feedback = getFeedback('dumbbell-tricep-overhead-extension', 'REP_COMPLETE');
   }
 
   if (confirmed === 'up') _tricepExtState.baselineY = smoothedY;
@@ -942,10 +942,10 @@ export function detectPunchPhaseSmoothed(pose: Landmark[]): Phase {
 
     const confirmedLeft = _punchState.confirmerLeft.update(rawLeft);
     if (_punchState.phaseLeft === 'down' && confirmedLeft === 'up') {
-      _punchState.feedback = 'Punch!';
+      _punchState.feedback = getFeedback('dumbbell-punches', 'UP');
     } else if (_punchState.phaseLeft === 'up' && confirmedLeft === 'down') {
       _punchState.leftReps++;
-      _punchState.feedback = 'Reset!';
+      _punchState.feedback = getFeedback('dumbbell-punches', 'DOWN');
     }
     if (confirmedLeft !== 'neutral') _punchState.phaseLeft = confirmedLeft;
   }
@@ -963,18 +963,18 @@ export function detectPunchPhaseSmoothed(pose: Landmark[]): Phase {
 
     const confirmedRight = _punchState.confirmerRight.update(rawRight);
     if (_punchState.phaseRight === 'down' && confirmedRight === 'up') {
-      _punchState.feedback = 'Punch!';
+      _punchState.feedback = getFeedback('dumbbell-punches', 'UP');
     } else if (_punchState.phaseRight === 'up' && confirmedRight === 'down') {
       _punchState.rightReps++;
-      _punchState.feedback = 'Reset!';
+      _punchState.feedback = getFeedback('dumbbell-punches', 'DOWN');
     }
     if (confirmedRight !== 'neutral') _punchState.phaseRight = confirmedRight;
   }
 
   // Total reps = min of both arms
   const minReps = Math.min(_punchState.leftReps, _punchState.rightReps);
-  if (minReps > 0 && (_punchState.feedback === 'Reset!')) {
-    _punchState.feedback = 'Rep Completed!';
+  if (minReps > 0 && (_punchState.feedback === getFeedback('dumbbell-punches', 'DOWN'))) {
+    _punchState.feedback = getFeedback('dumbbell-punches', 'REP_COMPLETE');
   }
 
   // Return combined phase for PoseTracker compatibility
@@ -1043,15 +1043,15 @@ export function detectThrusterPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _thrusterState.confirmer.update(rawPhase);
 
   if (_thrusterState.phase === 'down' && confirmed === 'up') {
-    _thrusterState.feedback = 'Press up!';
+    _thrusterState.feedback = getFeedback('dumbbell-thrusters', 'UP');
     if (leftTop) _thrusterState.leftReps++;
     if (rightTop) _thrusterState.rightReps++;
     const minReps = Math.min(_thrusterState.leftReps, _thrusterState.rightReps);
     if (minReps > 0) {
-      _thrusterState.feedback = 'Rep Completed!';
+      _thrusterState.feedback = getFeedback('dumbbell-thrusters', 'REP_COMPLETE');
     }
   } else if (_thrusterState.phase === 'up' && confirmed === 'down') {
-    _thrusterState.feedback = 'Lower!';
+    _thrusterState.feedback = getFeedback('dumbbell-thrusters', 'DOWN');
   }
 
   if (confirmed !== 'neutral') _thrusterState.phase = confirmed;
@@ -1117,14 +1117,14 @@ export function detectPushUpPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _pushUpSmoothedState.confirmer.update(rawPhase);
 
   if (_pushUpSmoothedState.phase === 'up' && confirmed === 'down') {
-    _pushUpSmoothedState.feedback = 'Down!';
+    _pushUpSmoothedState.feedback = getFeedback('push-ups', 'DOWN');
   } else if (_pushUpSmoothedState.phase === 'down' && confirmed === 'up') {
-    _pushUpSmoothedState.feedback = 'Push!';
+    _pushUpSmoothedState.feedback = getFeedback('push-ups', 'UP');
     if (leftTop) _pushUpSmoothedState.leftReps++;
     if (rightTop) _pushUpSmoothedState.rightReps++;
     const minReps = Math.min(_pushUpSmoothedState.leftReps, _pushUpSmoothedState.rightReps);
     if (minReps > 0) {
-      _pushUpSmoothedState.feedback = 'Rep Completed!';
+      _pushUpSmoothedState.feedback = getFeedback('push-ups', 'REP_COMPLETE');
     }
   }
 
@@ -1190,14 +1190,14 @@ export function detectPikePushUpPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _pikePushUpState.confirmer.update(rawPhase);
 
   if (_pikePushUpState.phase === 'up' && confirmed === 'down') {
-    _pikePushUpState.feedback = 'Lower';
+    _pikePushUpState.feedback = getFeedback('pike-push-ups', 'DOWN');
   } else if (_pikePushUpState.phase === 'down' && confirmed === 'up') {
-    _pikePushUpState.feedback = 'Push!';
+    _pikePushUpState.feedback = getFeedback('pike-push-ups', 'UP');
     if (leftTop) _pikePushUpState.leftReps++;
     if (rightTop) _pikePushUpState.rightReps++;
     const minReps = Math.min(_pikePushUpState.leftReps, _pikePushUpState.rightReps);
     if (minReps > 0) {
-      _pikePushUpState.feedback = 'Rep Completed!';
+      _pikePushUpState.feedback = getFeedback('pike-push-ups', 'REP_COMPLETE');
     }
   }
 
@@ -1255,9 +1255,9 @@ export function detectSquatPhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _squatSmoothedState.confirmer.update(rawPhase);
 
   if (_squatSmoothedState.phase === 'up' && confirmed === 'down') {
-    _squatSmoothedState.feedback = 'Down!';
+    _squatSmoothedState.feedback = getFeedback('squats', 'DOWN');
   } else if (_squatSmoothedState.phase === 'down' && confirmed === 'up') {
-    _squatSmoothedState.feedback = 'Rep Completed!';
+    _squatSmoothedState.feedback = getFeedback('squats', 'REP_COMPLETE');
   }
 
   if (confirmed === 'up') _squatSmoothedState.baselineY = smoothed;
@@ -1315,9 +1315,9 @@ export function detectLungePhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _lungeSmoothedState.confirmer.update(rawPhase);
 
   if (_lungeSmoothedState.phase === 'up' && confirmed === 'down') {
-    _lungeSmoothedState.feedback = 'Step Down!';
+    _lungeSmoothedState.feedback = getFeedback('lunges', 'DOWN');
   } else if (_lungeSmoothedState.phase === 'down' && confirmed === 'up') {
-    _lungeSmoothedState.feedback = 'Rep Completed!';
+    _lungeSmoothedState.feedback = getFeedback('lunges', 'REP_COMPLETE');
   }
 
   if (confirmed === 'up') _lungeSmoothedState.baselineY = smoothed;
@@ -1388,10 +1388,10 @@ export function detectCalfRaisePhaseSmoothed(pose: Landmark[]): Phase {
   const confirmed = _calfRaiseState.confirmer.update(rawPhase);
 
   if (_calfRaiseState.phase === 'down' && confirmed === 'up') {
-    _calfRaiseState.feedback = 'Up!';
+    _calfRaiseState.feedback = getFeedback('calf-raises', 'UP');
   } else if (_calfRaiseState.phase === 'up' && confirmed === 'down') {
     _calfRaiseState.reps++;
-    _calfRaiseState.feedback = 'Rep Completed!';
+    _calfRaiseState.feedback = getFeedback('calf-raises', 'REP_COMPLETE');
   }
 
   // Update baseline when at rest
@@ -1439,9 +1439,9 @@ export function detectBurpeePhaseSmoothed(pose: Landmark[]): Phase {
   if (_burpeeState2.bottomY !== null && (_burpeeState2.bottomY - smoothed) >= 0.20) raw = 'up';
   else if (_burpeeState2.bottomY === null && Math.abs(drop) < 0.05) raw = 'up';
   const confirmed = _burpeeState2.confirmer.update(raw);
-  if (_burpeeState2.phase === 'up' && confirmed === 'down') _burpeeState2.feedback = 'Down!';
+  if (_burpeeState2.phase === 'up' && confirmed === 'down') _burpeeState2.feedback = getFeedback('burpees', 'DOWN');
   else if (_burpeeState2.phase === 'down' && confirmed === 'up') {
-    _burpeeState2.feedback = 'Rep Completed!';
+    _burpeeState2.feedback = getFeedback('burpees', 'REP_COMPLETE');
     _burpeeState2.bottomY = null;
   }
   if (confirmed === 'up') _burpeeState2.baselineY = smoothed;
@@ -1499,13 +1499,13 @@ export function detectMountainClimberPhaseSmoothed(pose: Landmark[]): Phase {
     const currentLeg = leftForward ? 'left' : 'right';
     if (_mcState2.lastLeg && _mcState2.lastLeg !== currentLeg) {
       _mcState2.halfReps++;
-      _mcState2.feedback = _mcState2.halfReps % 2 === 0 ? 'Rep Completed!' : 'Switch!';
+      _mcState2.feedback = _mcState2.halfReps % 2 === 0 ? getFeedback('mountain-climbers', 'REP_COMPLETE') : getFeedback('mountain-climbers', 'ACTION');
     } else {
-      _mcState2.feedback = 'Drive!';
+      _mcState2.feedback = getFeedback('mountain-climbers', 'ACTION');
     }
     _mcState2.lastLeg = currentLeg;
   } else if (_mcState2.phase === 'up' && confirmed === 'down') {
-    _mcState2.feedback = 'Back!';
+    _mcState2.feedback = getFeedback('mountain-climbers', 'DOWN');
     // Update baselines when at rest
     if (leftX !== null) _mcState2.baselineLeftX = leftX;
     if (rightX !== null) _mcState2.baselineRightX = rightX;
@@ -1546,8 +1546,8 @@ export function detectJumpingJackPhaseSmoothed(pose: Landmark[]): Phase {
   if (ankleDist >= 0.18) raw = 'up';
   if (ankleDist < 0.08) raw = 'down';
   const confirmed = _jjState2.confirmer.update(raw);
-  if (_jjState2.phase === 'down' && confirmed === 'up') _jjState2.feedback = 'Open!';
-  else if (_jjState2.phase === 'up' && confirmed === 'down') _jjState2.feedback = 'Rep Completed!';
+  if (_jjState2.phase === 'down' && confirmed === 'up') _jjState2.feedback = getFeedback('jumping-jacks', 'OPEN');
+  else if (_jjState2.phase === 'up' && confirmed === 'down') _jjState2.feedback = getFeedback('jumping-jacks', 'REP_COMPLETE');
   if (confirmed === 'down') _jjState2.baselineDist = ankleDist;
   if (confirmed !== 'neutral') _jjState2.phase = confirmed;
   return confirmed;
@@ -1588,9 +1588,9 @@ export function detectHighKneePhaseSmoothed(pose: Landmark[]): Phase {
     const currentLeg = leftLifted ? 'left' : 'right';
     if (_hkState2.lastLeg && _hkState2.lastLeg !== currentLeg) {
       _hkState2.halfReps++;
-      _hkState2.feedback = _hkState2.halfReps % 2 === 0 ? 'Rep Completed!' : 'Switch!';
+      _hkState2.feedback = _hkState2.halfReps % 2 === 0 ? getFeedback('high-knees', 'REP_COMPLETE') : getFeedback('high-knees', 'DOWN');
     } else {
-      _hkState2.feedback = 'Lift!';
+      _hkState2.feedback = getFeedback('high-knees', 'ACTION');
     }
     _hkState2.lastLeg = currentLeg;
   }
@@ -1627,8 +1627,8 @@ export function detectJumpRopePhaseSmoothed(pose: Landmark[]): Phase {
   if (rise >= 0.03) raw = 'up';
   if (Math.abs(rise) < 0.01) raw = 'down';
   const confirmed = _jrState2.confirmer.update(raw);
-  if (_jrState2.phase === 'down' && confirmed === 'up') _jrState2.feedback = 'Jump!';
-  else if (_jrState2.phase === 'up' && confirmed === 'down') _jrState2.feedback = 'Rep Completed!';
+  if (_jrState2.phase === 'down' && confirmed === 'up') _jrState2.feedback = getFeedback('jump-rope', 'ACTION');
+  else if (_jrState2.phase === 'up' && confirmed === 'down') _jrState2.feedback = getFeedback('jump-rope', 'REP_COMPLETE');
   if (confirmed === 'down') _jrState2.baselineY = smoothed;
   if (confirmed !== 'neutral') _jrState2.phase = confirmed;
   return confirmed;
@@ -1663,8 +1663,8 @@ export function detectJumpPhaseSmoothed(pose: Landmark[]): Phase {
   if (rise >= 0.20) raw = 'up';
   if (Math.abs(rise) < 0.04) { raw = 'down'; _jumpState2.baselineY = smoothed; }
   const confirmed = _jumpState2.confirmer.update(raw);
-  if (_jumpState2.phase === 'down' && confirmed === 'up') _jumpState2.feedback = 'Jump!';
-  else if (_jumpState2.phase === 'up' && confirmed === 'down') _jumpState2.feedback = 'Rep Completed!';
+  if (_jumpState2.phase === 'down' && confirmed === 'up') _jumpState2.feedback = getFeedback('jumps', 'ACTION');
+  else if (_jumpState2.phase === 'up' && confirmed === 'down') _jumpState2.feedback = getFeedback('jumps', 'REP_COMPLETE');
   if (confirmed !== 'neutral') _jumpState2.phase = confirmed;
   return confirmed;
 }
@@ -1698,8 +1698,8 @@ export function detectSitUpPhaseSmoothed(pose: Landmark[]): Phase {
   if (rise >= 0.15) raw = 'up';
   if (Math.abs(rise) < 0.04) { raw = 'down'; _sitUpState2.baselineY = smoothed; }
   const confirmed = _sitUpState2.confirmer.update(raw);
-  if (_sitUpState2.phase === 'down' && confirmed === 'up') _sitUpState2.feedback = 'Up!';
-  else if (_sitUpState2.phase === 'up' && confirmed === 'down') _sitUpState2.feedback = 'Rep Completed!';
+  if (_sitUpState2.phase === 'down' && confirmed === 'up') _sitUpState2.feedback = getFeedback('sit-ups', 'UP');
+  else if (_sitUpState2.phase === 'up' && confirmed === 'down') _sitUpState2.feedback = getFeedback('sit-ups', 'REP_COMPLETE');
   if (confirmed !== 'neutral') _sitUpState2.phase = confirmed;
   return confirmed;
 }
@@ -1734,8 +1734,8 @@ export function detectCatCowPhaseSmoothed(pose: Landmark[]): Phase {
   if (change >= 0.08) raw = 'up';   // CAT: shoulders rise relative to hips
   if (change <= -0.08) raw = 'down'; // COW: shoulders drop relative to hips
   const confirmed = _catCowState2.confirmer.update(raw);
-  if (_catCowState2.phase === 'down' && confirmed === 'up') _catCowState2.feedback = 'Arch!';
-  else if (_catCowState2.phase === 'up' && confirmed === 'down') _catCowState2.feedback = 'Rep Completed!';
+  if (_catCowState2.phase === 'down' && confirmed === 'up') _catCowState2.feedback = getFeedback('cat-cow-stretch', 'ACTION');
+  else if (_catCowState2.phase === 'up' && confirmed === 'down') _catCowState2.feedback = getFeedback('cat-cow-stretch', 'REP_COMPLETE');
   if (confirmed !== 'neutral') _catCowState2.phase = confirmed;
   return confirmed;
 }
@@ -1767,8 +1767,8 @@ export function detectToeTouchPhaseSmoothed(pose: Landmark[]): Phase {
   if (dist < 0.12) raw = 'down';
   if (dist > 0.30) raw = 'up';
   const confirmed = _toeTouchState2.confirmer.update(raw);
-  if (_toeTouchState2.phase === 'up' && confirmed === 'down') _toeTouchState2.feedback = 'Reach!';
-  else if (_toeTouchState2.phase === 'down' && confirmed === 'up') _toeTouchState2.feedback = 'Rep Completed!';
+  if (_toeTouchState2.phase === 'up' && confirmed === 'down') _toeTouchState2.feedback = getFeedback('toe-touches', 'DOWN');
+  else if (_toeTouchState2.phase === 'down' && confirmed === 'up') _toeTouchState2.feedback = getFeedback('toe-touches', 'REP_COMPLETE');
   if (confirmed !== 'neutral') _toeTouchState2.phase = confirmed;
   return confirmed;
 }
@@ -1810,12 +1810,12 @@ export function detectDiamondPushUpPhaseSmoothed(pose: Landmark[]): Phase {
   if (leftBottom || rightBottom) rawPhase = 'down';
   const confirmed = _diamondPushUpState.confirmer.update(rawPhase);
   if (_diamondPushUpState.phase === 'up' && confirmed === 'down') {
-    _diamondPushUpState.feedback = 'Lower';
+    _diamondPushUpState.feedback = getFeedback('diamond-push-ups', 'DOWN');
   } else if (_diamondPushUpState.phase === 'down' && confirmed === 'up') {
-    _diamondPushUpState.feedback = 'Push!';
+    _diamondPushUpState.feedback = getFeedback('diamond-push-ups', 'UP');
     if (leftTop) _diamondPushUpState.leftReps++;
     if (rightTop) _diamondPushUpState.rightReps++;
-    if (Math.min(_diamondPushUpState.leftReps, _diamondPushUpState.rightReps) > 0) _diamondPushUpState.feedback = 'Rep Completed!';
+    if (Math.min(_diamondPushUpState.leftReps, _diamondPushUpState.rightReps) > 0) _diamondPushUpState.feedback = getFeedback('diamond-push-ups', 'REP_COMPLETE');
   }
   if (confirmed !== 'neutral') _diamondPushUpState.phase = confirmed;
   return confirmed;
@@ -1850,8 +1850,8 @@ export function detectCobraPhaseSmoothed(pose: Landmark[]): Phase {
   if (rise >= 0.12) raw = 'up';
   if (Math.abs(rise) < 0.04) { raw = 'down'; _cobraState2.baselineRel = smoothed; }
   const confirmed = _cobraState2.confirmer.update(raw);
-  if (_cobraState2.phase === 'down' && confirmed === 'up') _cobraState2.feedback = 'Lift chest!';
-  else if (_cobraState2.phase === 'up' && confirmed === 'down') _cobraState2.feedback = 'Rep Completed!';
+  if (_cobraState2.phase === 'down' && confirmed === 'up') _cobraState2.feedback = getFeedback('cobra-stretch', 'UP');
+  else if (_cobraState2.phase === 'up' && confirmed === 'down') _cobraState2.feedback = getFeedback('cobra-stretch', 'REP_COMPLETE');
   if (confirmed !== 'neutral') _cobraState2.phase = confirmed;
   return confirmed;
 }
@@ -1885,8 +1885,8 @@ export function detectHipCirclePhaseSmoothed(pose: Landmark[]): Phase {
   if (displacement > 0.04) raw = 'up';
   if (displacement < -0.04) raw = 'down';
   const confirmed = _hipCircleState2.confirmer.update(raw);
-  if (_hipCircleState2.phase === 'down' && confirmed === 'up') _hipCircleState2.feedback = 'Circle!';
-  else if (_hipCircleState2.phase === 'up' && confirmed === 'down') _hipCircleState2.feedback = 'Rep Completed!';
+  if (_hipCircleState2.phase === 'down' && confirmed === 'up') _hipCircleState2.feedback = getFeedback('hip-circles', 'ACTION');
+  else if (_hipCircleState2.phase === 'up' && confirmed === 'down') _hipCircleState2.feedback = getFeedback('hip-circles', 'REP_COMPLETE');
   if (confirmed !== 'neutral') _hipCircleState2.phase = confirmed;
   return confirmed;
 }
