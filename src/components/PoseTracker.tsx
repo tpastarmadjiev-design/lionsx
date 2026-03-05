@@ -5,6 +5,8 @@ import { getFeedback } from '@/lib/exerciseFeedbackMap';
 import { createPushUpState, detectPushUp, checkUpperBodyVisibility } from '@/lib/pushUpDetector';
 import { checkPositioning, type PositioningResult } from '@/lib/positioningCheck';
 import { createAdaptiveState, updateAdaptive, shouldCountRep, getAdaptiveMessage, isCalibrating, type AdaptiveState } from '@/lib/adaptiveThreshold';
+import { createMotionConfidenceState, updateMotionConfidence, isMotionConfident, type MotionConfidenceState } from '@/lib/motionConfidence';
+import { createGhostRepState, updateGhostRepState, shouldAllowRep, onRepCounted, getGhostRepMessage, clearResumeMessage, type GhostRepState } from '@/lib/ghostRepPrevention';
 import {
   detectSquatPhase, detectLungePhase, detectPikePushUpPhase, detectDiamondPushUpPhase,
   detectCalfRaisePhase, detectBurpeePhase, detectMountainClimberPhase, detectHighKneePhase,
@@ -73,6 +75,14 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   const adaptiveStateRef = useRef<AdaptiveState>(createAdaptiveState(exercise));
   const [adaptiveMessage, setAdaptiveMessage] = useState<string | null>('Learning your movement...');
   
+  // Motion confidence state
+  const motionConfidenceRef = useRef<MotionConfidenceState>(createMotionConfidenceState(exercise));
+  
+  // Ghost rep prevention state
+  const ghostRepRef = useRef<GhostRepState>(createGhostRepState());
+  const [ghostRepMessage, setGhostRepMessage] = useState<string | null>(null);
+  const ghostRepMessageTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visibilityWarning, setVisibilityWarning] = useState<string | null>(null);
@@ -93,6 +103,9 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     setPositioningResult(null);
     adaptiveStateRef.current = createAdaptiveState(exercise);
     setAdaptiveMessage('Learning your movement...');
+    motionConfidenceRef.current = createMotionConfidenceState(exercise);
+    ghostRepRef.current = createGhostRepState();
+    setGhostRepMessage(null);
   }, [exercise]);
 
   // Initialize MediaPipe
@@ -263,8 +276,26 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       return; // Don't count anything until positioned
     }
 
+    // ── MOTION CONFIDENCE: update every frame ──
+    updateMotionConfidence(motionConfidenceRef.current, exercise, pose);
+
+    // ── GHOST REP PREVENTION: update idle detection every frame ──
+    updateGhostRepState(ghostRepRef.current, pose);
+    
+    // Update ghost rep UI message
+    const grMsg = getGhostRepMessage(ghostRepRef.current);
+    if (grMsg !== ghostRepMessage) {
+      setGhostRepMessage(grMsg);
+      if (grMsg === 'Go!') {
+        if (ghostRepMessageTimeoutRef.current) clearTimeout(ghostRepMessageTimeoutRef.current);
+        ghostRepMessageTimeoutRef.current = setTimeout(() => {
+          clearResumeMessage(ghostRepRef.current);
+          setGhostRepMessage(null);
+        }, 1000);
+      }
+    }
+
     // ── ADAPTIVE THRESHOLD: feed data ──
-    // Extract current phase for adaptive tracking (without affecting rep counting)
     const prePhase = getPhaseForExercise(pose);
     updateAdaptive(adaptiveStateRef.current, pose, prePhase);
     
@@ -306,22 +337,22 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     // --- REP-BASED EXERCISES ---
     let currentPhase: RepPhase = 'neutral';
 
-    // Check smoothed/new exercise detectors first
-    const detectedPhase = getPhaseForExercise(pose);
-    if (detectedPhase !== 'neutral') {
-      currentPhase = detectedPhase;
-    } else {
-      // Fallback for remaining legacy exercises
-      const NOSE = 0;
-      
-      switch (exercise) {
-        case 'pull-ups':
-        case 'dips': {
-          const nose = pose[NOSE];
-          if (!nose) break;
-          if (nose.y < 0.35) currentPhase = 'up';
-          else if (nose.y > 0.5) currentPhase = 'down';
-          break;
+    // ── MOTION CONFIDENCE: gate phase detection ──
+    if (isMotionConfident(motionConfidenceRef.current)) {
+      const detectedPhase = getPhaseForExercise(pose);
+      if (detectedPhase !== 'neutral') {
+        currentPhase = detectedPhase;
+      } else {
+        const NOSE = 0;
+        switch (exercise) {
+          case 'pull-ups':
+          case 'dips': {
+            const nose = pose[NOSE];
+            if (!nose) break;
+            if (nose.y < 0.35) currentPhase = 'up';
+            else if (nose.y > 0.5) currentPhase = 'down';
+            break;
+          }
         }
       }
     }
@@ -339,7 +370,11 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       if (validateRep(exercise as ExerciseType, repCycleStateRef.current, pose, suspicionTracker)) {
         // ── ADAPTIVE THRESHOLD: filter tiny movements ──
         if (shouldCountRep(adaptiveStateRef.current, pose)) {
-          onRepComplete();
+          // ── GHOST REP PREVENTION: check idle + cooldown + micro-movement ──
+          if (shouldAllowRep(ghostRepRef.current, adaptiveStateRef.current.calibratedRange)) {
+            onRepComplete();
+            onRepCounted(ghostRepRef.current);
+          }
         }
       }
     }
@@ -357,7 +392,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
         feedbackTimeoutRef.current = setTimeout(() => setExerciseFeedback(null), 1500);
       }
     }
-  }, [exercise, onRepComplete, onSecondComplete, visibilityWarning, isTimedHold, isHoldValid, getPhaseForExercise, suspicionTracker]);
+  }, [exercise, onRepComplete, onSecondComplete, visibilityWarning, isTimedHold, isHoldValid, getPhaseForExercise, suspicionTracker, ghostRepMessage]);
 
   // Pose detection loop
   useEffect(() => {
@@ -488,6 +523,19 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
         <div className="absolute top-12 inset-x-0 flex justify-center pointer-events-none z-10">
           <span className="px-4 py-2 rounded-full text-xs font-semibold shadow-lg bg-accent/80 text-accent-foreground">
             {adaptiveMessage}
+          </span>
+        </div>
+      )}
+
+      {/* Ghost Rep Prevention: Idle / Resume Message */}
+      {positioningReady && ghostRepMessage && (
+        <div className="absolute bottom-12 inset-x-0 flex justify-center pointer-events-none z-10">
+          <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-lg ${
+            ghostRepMessage === 'Go!'
+              ? 'bg-green-500/90 text-white'
+              : 'bg-amber-500/90 text-white'
+          }`}>
+            {ghostRepMessage}
           </span>
         </div>
       )}
