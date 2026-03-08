@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { createRepCycleState, validateRep, recordDownPhase, recordUpPhase, recordOrientationSample, type ExerciseType, type SessionSuspicionTracker } from '@/lib/antiCheat';
-import { getFeedback } from '@/lib/exerciseFeedbackMap';
 import { createPushUpState, detectPushUp, checkUpperBodyVisibility } from '@/lib/pushUpDetector';
-import { checkPositioning, type PositioningResult } from '@/lib/positioningCheck';
-import { createAdaptiveState, updateAdaptive, shouldCountRep, getAdaptiveMessage, isCalibrating, type AdaptiveState } from '@/lib/adaptiveThreshold';
-import { createMotionConfidenceState, updateMotionConfidence, isMotionConfident, type MotionConfidenceState } from '@/lib/motionConfidence';
-import { createGhostRepState, updateGhostRepState, shouldAllowRep, onRepCounted, getGhostRepMessage, clearResumeMessage, type GhostRepState } from '@/lib/ghostRepPrevention';
 import {
   detectSquatPhase, detectLungePhase, detectPikePushUpPhase, detectDiamondPushUpPhase,
   detectCalfRaisePhase, detectBurpeePhase, detectMountainClimberPhase, detectHighKneePhase,
@@ -24,14 +19,6 @@ import {
   detectFrontRaisePhaseSmoothed, detectGobletSquatPhaseSmoothed,
   detectHammerCurlPhaseSmoothed, detectLateralRaisePhaseSmoothed,
   detectPunchPhaseSmoothed, detectThrusterPhaseSmoothed, detectTricepExtPhaseSmoothed,
-  detectPushUpPhaseSmoothed, detectPikePushUpPhaseSmoothed,
-  detectSquatPhaseSmoothed, detectLungePhaseSmoothed, detectCalfRaisePhaseSmoothed,
-  detectBurpeePhaseSmoothed, detectMountainClimberPhaseSmoothed,
-  detectJumpingJackPhaseSmoothed, detectHighKneePhaseSmoothed, detectJumpRopePhaseSmoothed,
-  detectJumpPhaseSmoothed, detectSitUpPhaseSmoothed, detectCatCowPhaseSmoothed,
-  detectToeTouchPhaseSmoothed, detectDiamondPushUpPhaseSmoothed,
-  detectCobraPhaseSmoothed, detectHipCirclePhaseSmoothed,
-  isPlankValidSmoothed, isWallSitValidSmoothed, isDeepSquatHoldValidSmoothed, isShoulderStretchValidSmoothed,
   getSmoothedFeedback, resetSmoothedDetector, SMOOTHED_EXERCISES,
 } from '@/lib/smoothedDetectors';
 
@@ -49,7 +36,7 @@ interface PoseTrackerProps {
 type RepPhase = 'up' | 'down' | 'neutral';
 
 // Timed hold exercises use the plank-style scoring pattern
-const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'shoulder-stretch-hold', 'deep-squat-hold'];
+const TIMED_HOLD_EXERCISES: ExerciseType[] = ['plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'];
 
 export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComplete, onSecondComplete, suspicionTracker, onCameraReady, onCameraError }: PoseTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -66,23 +53,6 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   const lastProcessTimeRef = useRef<number>(0);
   const ML_INTERVAL_MS = 125; // ~8 FPS cap for pose detection
   
-  // Positioning check state
-  const [positioningReady, setPositioningReady] = useState(false);
-  const positioningReadyRef = useRef(false);
-  const [positioningResult, setPositioningResult] = useState<PositioningResult | null>(null);
-  
-  // Adaptive threshold state
-  const adaptiveStateRef = useRef<AdaptiveState>(createAdaptiveState(exercise));
-  const [adaptiveMessage, setAdaptiveMessage] = useState<string | null>('Learning your movement...');
-  
-  // Motion confidence state
-  const motionConfidenceRef = useRef<MotionConfidenceState>(createMotionConfidenceState(exercise));
-  
-  // Ghost rep prevention state
-  const ghostRepRef = useRef<GhostRepState>(createGhostRepState());
-  const [ghostRepMessage, setGhostRepMessage] = useState<string | null>(null);
-  const ghostRepMessageTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visibilityWarning, setVisibilityWarning] = useState<string | null>(null);
@@ -98,14 +68,6 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     resetSmoothedDetector('dumbbell-punches');
     resetSmoothedDetector(exercise);
     setExerciseFeedback(null);
-    setPositioningReady(false);
-    positioningReadyRef.current = false;
-    setPositioningResult(null);
-    adaptiveStateRef.current = createAdaptiveState(exercise);
-    setAdaptiveMessage('Learning your movement...');
-    motionConfidenceRef.current = createMotionConfidenceState(exercise);
-    ghostRepRef.current = createGhostRepState();
-    setGhostRepMessage(null);
   }, [exercise]);
 
   // Initialize MediaPipe
@@ -212,24 +174,19 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   // Get phase for rep-based exercises using the new detectors
   const getPhaseForExercise = useCallback((pose: any[]): RepPhase => {
     switch (exercise) {
-      case 'push-ups': return detectPushUpPhaseSmoothed(pose);
-      case 'pike-push-ups': return detectPikePushUpPhaseSmoothed(pose);
-      case 'squats': return detectSquatPhaseSmoothed(pose);
-      case 'lunges': return detectLungePhaseSmoothed(pose);
-      case 'calf-raises': return detectCalfRaisePhaseSmoothed(pose);
       case 'bench-press': return detectBenchPressPhaseSmoothed(pose);
-      case 'diamond-push-ups': return detectDiamondPushUpPhaseSmoothed(pose);
-      case 'burpees': return detectBurpeePhaseSmoothed(pose);
-      case 'mountain-climbers': return detectMountainClimberPhaseSmoothed(pose);
-      case 'high-knees': return detectHighKneePhaseSmoothed(pose);
-      case 'jumping-jacks': return detectJumpingJackPhaseSmoothed(pose);
-      case 'jump-rope': return detectJumpRopePhaseSmoothed(pose);
-      case 'toe-touches': return detectToeTouchPhaseSmoothed(pose);
-      case 'cat-cow-stretch': return detectCatCowPhaseSmoothed(pose);
-      case 'jumps': return detectJumpPhaseSmoothed(pose);
-      case 'sit-ups': return detectSitUpPhaseSmoothed(pose);
-      case 'cobra-stretch': return detectCobraPhaseSmoothed(pose);
-      case 'hip-circles': return detectHipCirclePhaseSmoothed(pose);
+      case 'squats': return detectSquatPhase(pose);
+      case 'lunges': return detectLungePhase(pose);
+      case 'pike-push-ups': return detectPikePushUpPhase(pose);
+      case 'diamond-push-ups': return detectDiamondPushUpPhase(pose);
+      case 'calf-raises': return detectCalfRaisePhase(pose);
+      case 'burpees': return detectBurpeePhase(pose);
+      case 'mountain-climbers': return detectMountainClimberPhase(pose);
+      case 'high-knees': return detectHighKneePhase(pose);
+      case 'jumping-jacks': return detectJumpingJackPhase(pose);
+      case 'jump-rope': return detectJumpRopePhase(pose);
+      case 'toe-touches': return detectToeTouchPhase(pose);
+      case 'cat-cow-stretch': return detectCatCowPhase(pose);
       case 'dumbbell-bicep-curls': return detectBicepCurlPhase(pose);
       case 'dumbbell-hammer-curls': return detectHammerCurlPhaseSmoothed(pose);
       case 'dumbbell-shoulder-press': return detectShoulderPressPhase(pose);
@@ -241,7 +198,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
       case 'dumbbell-chest-press': return detectChestPressPhase(pose);
       case 'dumbbell-tricep-overhead-extension': return detectTricepExtPhaseSmoothed(pose);
       case 'dumbbell-punches': return detectPunchPhaseSmoothed(pose);
-      case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose);
+      case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose); // now uses smoothed hip detector
       case 'dumbbell-windmill': return detectWindmillPhase(pose);
       default: return 'neutral';
     }
@@ -250,10 +207,17 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   // Check timed hold validity
   const isHoldValid = useCallback((pose: any[]): boolean => {
     switch (exercise) {
-      case 'plank': return isPlankValidSmoothed(pose);
-      case 'wall-sit': return isWallSitValidSmoothed(pose);
-      case 'deep-squat-hold': return isDeepSquatHoldValidSmoothed(pose);
-      case 'shoulder-stretch-hold': return isShoulderStretchValidSmoothed(pose);
+      case 'plank': {
+        const shoulder = pose[11];
+        const hip = pose[23];
+        if (!shoulder || !hip) return false;
+        return Math.abs(shoulder.y - hip.y) < 0.15;
+      }
+      case 'wall-sit': return isWallSitValid(pose);
+      case 'deep-squat-hold': return isDeepSquatHoldValid(pose);
+      case 'shoulder-stretch-hold': return isShoulderStretchValid(pose);
+      case 'cobra-stretch': return isCobraStretchValid(pose);
+      case 'hip-circles': return isHipCircleValid(pose);
       default: return false;
     }
   }, [exercise]);
@@ -264,47 +228,27 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     
     const pose = landmarks[0];
     
-    // ── POSITIONING CHECK ──
-    // Must pass before any rep counting begins
-    if (!positioningReadyRef.current) {
-      const result = checkPositioning(pose);
-      setPositioningResult(result);
-      if (result.isReady) {
-        positioningReadyRef.current = true;
-        setPositioningReady(true);
+    // --- PUSH-UPS: dedicated detector ---
+    if (exercise === 'push-ups') {
+      const visMsg = checkUpperBodyVisibility(pose);
+      if (visMsg) {
+        if (!visibilityWarning) setVisibilityWarning(visMsg);
+        pushUpBodyVisibleRef.current = false;
+        return;
       }
-      return; // Don't count anything until positioned
-    }
+      if (visibilityWarning) setVisibilityWarning(null);
+      pushUpBodyVisibleRef.current = true;
 
-    // ── MOTION CONFIDENCE: update every frame ──
-    updateMotionConfidence(motionConfidenceRef.current, exercise, pose);
-
-    // ── GHOST REP PREVENTION: update idle detection every frame ──
-    updateGhostRepState(ghostRepRef.current, pose);
-    
-    // Update ghost rep UI message
-    const grMsg = getGhostRepMessage(ghostRepRef.current);
-    if (grMsg !== ghostRepMessage) {
-      setGhostRepMessage(grMsg);
-      if (grMsg === 'Go!') {
-        if (ghostRepMessageTimeoutRef.current) clearTimeout(ghostRepMessageTimeoutRef.current);
-        ghostRepMessageTimeoutRef.current = setTimeout(() => {
-          clearResumeMessage(ghostRepRef.current);
-          setGhostRepMessage(null);
-        }, 1000);
+      const { repCounted } = detectPushUp(pose, pushUpStateRef.current);
+      if (repCounted) {
+        if (suspicionTracker) {
+          suspicionTracker.totalReps++;
+          suspicionTracker.lpTimestamps.push({ time: Date.now(), lp: 1 });
+          recordOrientationSample(suspicionTracker, pose);
+        }
+        onRepComplete();
       }
-    }
-
-    // ── ADAPTIVE THRESHOLD: feed data ──
-    const prePhase = getPhaseForExercise(pose);
-    updateAdaptive(adaptiveStateRef.current, pose, prePhase);
-    
-    // Update adaptive message
-    const msg = getAdaptiveMessage(adaptiveStateRef.current);
-    if (msg !== null) {
-      setAdaptiveMessage(msg);
-    } else if (adaptiveStateRef.current.calibrated) {
-      setAdaptiveMessage(null);
+      return;
     }
     
     // --- TIMED HOLD EXERCISES ---
@@ -314,45 +258,66 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
         if (!holdStartRef.current) {
           holdStartRef.current = Date.now();
           lastHoldPointRef.current = 0;
-          setExerciseFeedback(getFeedback(exercise, 'HOLD'));
         } else {
           const elapsed = Math.floor((Date.now() - holdStartRef.current) / 1000);
           const pointsEarned = Math.floor(elapsed / 2);
           if (pointsEarned > lastHoldPointRef.current) {
             lastHoldPointRef.current = pointsEarned;
             onSecondComplete?.();
-            setExerciseFeedback(getFeedback(exercise, 'GOOD'));
-            if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-            feedbackTimeoutRef.current = setTimeout(() => setExerciseFeedback(getFeedback(exercise, 'HOLD')), 1500);
           }
         }
       } else {
         holdStartRef.current = null;
         lastHoldPointRef.current = 0;
-        setExerciseFeedback(null);
       }
       return;
     }
 
-    // --- REP-BASED EXERCISES ---
+    // --- LEGACY EXERCISES (sit-ups, jumps, dips, pull-ups, bench-press) ---
     let currentPhase: RepPhase = 'neutral';
 
-    // ── MOTION CONFIDENCE: gate phase detection ──
-    if (isMotionConfident(motionConfidenceRef.current)) {
-      const detectedPhase = getPhaseForExercise(pose);
-      if (detectedPhase !== 'neutral') {
-        currentPhase = detectedPhase;
-      } else {
-        const NOSE = 0;
-        switch (exercise) {
-          case 'pull-ups':
-          case 'dips': {
-            const nose = pose[NOSE];
-            if (!nose) break;
-            if (nose.y < 0.35) currentPhase = 'up';
-            else if (nose.y > 0.5) currentPhase = 'down';
-            break;
-          }
+    // Check new exercise detectors first
+    const detectedPhase = getPhaseForExercise(pose);
+    if (detectedPhase !== 'neutral') {
+      currentPhase = detectedPhase;
+    } else {
+      // Fallback for original exercises
+      const NOSE = 0;
+      const LEFT_SHOULDER = 11;
+      const RIGHT_SHOULDER = 12;
+      const LEFT_ELBOW = 13;
+      const RIGHT_ELBOW = 14;
+      const LEFT_HIP = 23;
+      const LEFT_KNEE = 25;
+      
+      switch (exercise) {
+        case 'bench-press': {
+          // Handled by smoothed detector in getPhaseForExercise
+          break;
+        }
+        case 'sit-ups': {
+          const shoulder = pose[LEFT_SHOULDER];
+          const knee = pose[LEFT_KNEE];
+          if (!shoulder || !knee) break;
+          const shoulderKneeDist = Math.abs(shoulder.y - knee.y);
+          if (shoulderKneeDist < 0.15) currentPhase = 'up';
+          else if (shoulderKneeDist > 0.25) currentPhase = 'down';
+          break;
+        }
+        case 'jumps': {
+          const hip = pose[LEFT_HIP];
+          if (!hip) break;
+          if (hip.y < 0.4) currentPhase = 'up';
+          else if (hip.y > 0.55) currentPhase = 'down';
+          break;
+        }
+        case 'pull-ups':
+        case 'dips': {
+          const nose = pose[NOSE];
+          if (!nose) break;
+          if (nose.y < 0.35) currentPhase = 'up';
+          else if (nose.y > 0.5) currentPhase = 'down';
+          break;
         }
       }
     }
@@ -368,14 +333,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
       recordUpPhase(repCycleStateRef.current, pose);
       if (validateRep(exercise as ExerciseType, repCycleStateRef.current, pose, suspicionTracker)) {
-        // ── ADAPTIVE THRESHOLD: filter tiny movements ──
-        if (shouldCountRep(adaptiveStateRef.current, pose)) {
-          // ── GHOST REP PREVENTION: check idle + cooldown + micro-movement ──
-          if (shouldAllowRep(ghostRepRef.current, adaptiveStateRef.current.calibratedRange)) {
-            onRepComplete();
-            onRepCounted(ghostRepRef.current);
-          }
-        }
+        onRepComplete();
       }
     }
     
@@ -392,7 +350,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
         feedbackTimeoutRef.current = setTimeout(() => setExerciseFeedback(null), 1500);
       }
     }
-  }, [exercise, onRepComplete, onSecondComplete, visibilityWarning, isTimedHold, isHoldValid, getPhaseForExercise, suspicionTracker, ghostRepMessage]);
+  }, [exercise, onRepComplete, onSecondComplete, visibilityWarning, isTimedHold, isHoldValid, getPhaseForExercise, suspicionTracker]);
 
   // Pose detection loop
   useEffect(() => {
@@ -482,73 +440,15 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
         className="w-full h-full object-cover"
         style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }}
       />
-
-      {/* Positioning Check Indicator */}
-      {!positioningReady && positioningResult && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
-          <div className={`px-6 py-4 rounded-2xl backdrop-blur-sm flex flex-col items-center gap-2 ${
-            positioningResult.isReady
-              ? 'bg-green-500/20 border border-green-500/40'
-              : 'bg-destructive/20 border border-destructive/40'
-          }`}>
-            <div className={`w-4 h-4 rounded-full ${
-              positioningResult.isReady ? 'bg-green-500' : 'bg-destructive'
-            }`} />
-            <p className={`text-sm font-semibold ${
-              positioningResult.isReady ? 'text-green-400' : 'text-destructive'
-            }`}>
-              {positioningResult.message}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {positioningResult.visibleCount}/{positioningResult.requiredCount} landmarks visible
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Positioning not yet checked - waiting for first frame */}
-      {!positioningReady && !positioningResult && isActive && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
-          <div className="px-6 py-4 rounded-2xl backdrop-blur-sm bg-secondary/60 border border-border flex flex-col items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-muted-foreground animate-pulse" />
-            <p className="text-sm font-semibold text-muted-foreground">
-              Checking position...
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Adaptive Threshold Calibration Message */}
-      {positioningReady && adaptiveMessage && (
-        <div className="absolute top-12 inset-x-0 flex justify-center pointer-events-none z-10">
-          <span className="px-4 py-2 rounded-full text-xs font-semibold shadow-lg bg-accent/80 text-accent-foreground">
-            {adaptiveMessage}
-          </span>
-        </div>
-      )}
-
-      {/* Ghost Rep Prevention: Idle / Resume Message */}
-      {positioningReady && ghostRepMessage && (
-        <div className="absolute bottom-12 inset-x-0 flex justify-center pointer-events-none z-10">
-          <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-lg ${
-            ghostRepMessage === 'Go!'
-              ? 'bg-green-500/90 text-white'
-              : 'bg-amber-500/90 text-white'
-          }`}>
-            {ghostRepMessage}
-          </span>
-        </div>
-      )}
-
       {visibilityWarning && exercise === 'push-ups' && (
         <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground text-xs sm:text-sm text-center px-3 py-2">
           {visibilityWarning}
         </div>
       )}
-      {exerciseFeedback && (SMOOTHED_EXERCISES.includes(exercise) || isTimedHold) && (
+      {exerciseFeedback && SMOOTHED_EXERCISES.includes(exercise) && (
         <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none">
           <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-lg ${
-            exerciseFeedback === 'Rep Completed!' || exerciseFeedback === getFeedback(exercise, 'GOOD')
+            exerciseFeedback === 'Rep Completed!'
               ? 'bg-green-500/90 text-white'
               : 'bg-primary/80 text-primary-foreground'
           }`}>
