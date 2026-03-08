@@ -132,6 +132,12 @@ function extractTrackingValue(exercise: string, pose: Landmark[]): number | null
     if (!lE && !rE) return null;
     return lE && rE ? (lE.y + rE.y) / 2 : (lE || rE)!.y;
   }
+  // Nose vertical (pull-ups, dips)
+  if (['pull-ups', 'dips'].includes(exercise)) {
+    const nose = pose[0];
+    if (!nose) return null;
+    return nose.y;
+  }
   // Wrist-elbow relative
   if (exercise === 'dumbbell-hammer-curls') {
     const lE = pose[13], lW = pose[15];
