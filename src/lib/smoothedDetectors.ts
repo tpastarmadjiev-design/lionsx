@@ -1082,6 +1082,7 @@ export function getSmoothedFeedback(exercise: string): string | null {
     case 'dumbbell-tricep-overhead-extension': return getTricepExtFeedback();
     case 'dumbbell-punches': return getPunchFeedback();
     case 'dumbbell-thrusters': return getThrusterFeedback();
+    case 'pull-ups': return getPullUpFeedback();
     default: return null;
   }
 }
