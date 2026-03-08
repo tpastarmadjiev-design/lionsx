@@ -1104,10 +1104,77 @@ export function resetSmoothedDetector(exercise: string) {
   }
 }
 
+// ═══════════════════════════════════════════
+// PULL-UPS — shoulder Y vs elbow Y
+// ═══════════════════════════════════════════
+
+const pullUpLeftShoulderBuf = new SmoothBuffer(4);
+const pullUpRightShoulderBuf = new SmoothBuffer(4);
+const pullUpLeftElbowBuf = new SmoothBuffer(4);
+const pullUpRightElbowBuf = new SmoothBuffer(4);
+const pullUpConfirmer = new PhaseConfirmer(2);
+let pullUpFeedback: string | null = null;
+
+function resetPullUpState() {
+  pullUpLeftShoulderBuf.reset();
+  pullUpRightShoulderBuf.reset();
+  pullUpLeftElbowBuf.reset();
+  pullUpRightElbowBuf.reset();
+  pullUpConfirmer.reset();
+  pullUpFeedback = null;
+}
+
+export function detectPullUpPhaseSmoothed(pose: Landmark[]): Phase {
+  const lShoulder = pose[11], rShoulder = pose[12];
+  const lElbow = pose[13], rElbow = pose[14];
+
+  // Need at least one side
+  const hasLeft = lShoulder && lElbow;
+  const hasRight = rShoulder && rElbow;
+  if (!hasLeft && !hasRight) return pullUpConfirmer.update('neutral');
+
+  let avgShoulderY = 0;
+  let avgElbowY = 0;
+  let count = 0;
+
+  if (hasLeft) {
+    avgShoulderY += pullUpLeftShoulderBuf.push(lShoulder.y);
+    avgElbowY += pullUpLeftElbowBuf.push(lElbow.y);
+    count++;
+  }
+  if (hasRight) {
+    avgShoulderY += pullUpRightShoulderBuf.push(rShoulder.y);
+    avgElbowY += pullUpRightElbowBuf.push(rElbow.y);
+    count++;
+  }
+
+  avgShoulderY /= count;
+  avgElbowY /= count;
+
+  let rawPhase: Phase = 'neutral';
+
+  // TOP: shoulders at or above elbow level (smaller Y = higher in frame)
+  if (avgShoulderY <= avgElbowY) {
+    rawPhase = 'up';
+    pullUpFeedback = 'Pull!';
+  }
+  // BOTTOM: shoulders at least 0.06 below elbows
+  if (avgShoulderY - avgElbowY >= 0.06) {
+    rawPhase = 'down';
+    pullUpFeedback = 'Lower';
+  }
+
+  return pullUpConfirmer.update(rawPhase);
+}
+
+export function getPullUpFeedback(): string | null {
+  return pullUpFeedback;
+}
+
 /** List of exercises that use smoothed detectors */
 export const SMOOTHED_EXERCISES: string[] = [
   'bench-press', 'dumbbell-chest-press', 'dumbbell-bent-over-rows', 'dumbbell-bicep-curls',
   'dumbbell-front-raises', 'dumbbell-goblet-squat', 'dumbbell-hammer-curls', 'dumbbell-lateral-raises',
   'dumbbell-romanian-deadlift', 'dumbbell-shoulder-press', 'dumbbell-tricep-overhead-extension',
-  'dumbbell-punches', 'dumbbell-thrusters',
+  'dumbbell-punches', 'dumbbell-thrusters', 'pull-ups',
 ];
