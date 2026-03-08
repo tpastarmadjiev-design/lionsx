@@ -1065,7 +1065,7 @@ export function resetThrusterState() { Object.assign(_thrusterState, createThrus
 export type SmoothedExercise = 'bench-press' | 'dumbbell-chest-press' | 'dumbbell-bent-over-rows' | 'dumbbell-bicep-curls'
   | 'dumbbell-front-raises' | 'dumbbell-goblet-squat' | 'dumbbell-hammer-curls' | 'dumbbell-lateral-raises'
   | 'dumbbell-romanian-deadlift' | 'dumbbell-shoulder-press' | 'dumbbell-tricep-overhead-extension'
-  | 'dumbbell-punches' | 'dumbbell-thrusters';
+  | 'dumbbell-punches' | 'dumbbell-thrusters' | 'pull-ups';
 
 export function getSmoothedFeedback(exercise: string): string | null {
   switch (exercise) {
