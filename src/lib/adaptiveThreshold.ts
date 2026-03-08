@@ -150,6 +150,11 @@ function extractMovementValue(exercise: string, pose: Landmark[]): number | null
       return lHip && rHip ? (lHip.y + rHip.y) / 2 : (lHip || rHip)!.y;
     }
     case 'vertical-shoulder': {
+      // For pull-ups/dips use nose as primary tracker
+      if (exercise === 'pull-ups' || exercise === 'dips') {
+        const nose = pose[0];
+        return nose ? nose.y : null;
+      }
       const lS = pose[11], rS = pose[12];
       if (!lS && !rS) return null;
       return lS && rS ? (lS.y + rS.y) / 2 : (lS || rS)!.y;
