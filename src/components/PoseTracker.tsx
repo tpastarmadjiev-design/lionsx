@@ -175,6 +175,7 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
   // Get phase for rep-based exercises using the new detectors
   const getPhaseForExercise = useCallback((pose: any[]): RepPhase => {
     switch (exercise) {
+      case 'pull-ups': return detectPullUpPhaseSmoothed(pose);
       case 'bench-press': return detectBenchPressPhaseSmoothed(pose);
       case 'squats': return detectSquatPhase(pose);
       case 'lunges': return detectLungePhase(pose);
