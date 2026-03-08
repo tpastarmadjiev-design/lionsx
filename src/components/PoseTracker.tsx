@@ -19,6 +19,7 @@ import {
   detectFrontRaisePhaseSmoothed, detectGobletSquatPhaseSmoothed,
   detectHammerCurlPhaseSmoothed, detectLateralRaisePhaseSmoothed,
   detectPunchPhaseSmoothed, detectThrusterPhaseSmoothed, detectTricepExtPhaseSmoothed,
+  detectPullUpPhaseSmoothed,
   getSmoothedFeedback, resetSmoothedDetector, SMOOTHED_EXERCISES,
 } from '@/lib/smoothedDetectors';
 
