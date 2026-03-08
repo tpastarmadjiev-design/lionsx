@@ -22,7 +22,7 @@ type Direction = 1 | -1 | 0; // increasing, decreasing, unchanged
 
 const DIRECTION_HISTORY = 5;
 const CONFIDENCE_SMOOTH_WINDOW = 3;
-const CONFIDENCE_THRESHOLD = 0.65;
+const CONFIDENCE_THRESHOLD = 0.45;
 
 // Minimum movement magnitudes per frame
 const MIN_ANGLE_CHANGE = 6;        // degrees
