@@ -313,7 +313,6 @@ export function PoseTracker({ exercise, isActive, facingMode = 'user', onRepComp
           else if (hip.y > 0.55) currentPhase = 'down';
           break;
         }
-        case 'pull-ups':
         case 'dips': {
           const nose = pose[NOSE];
           if (!nose) break;
