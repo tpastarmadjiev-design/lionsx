@@ -1155,8 +1155,8 @@ export function detectPullUpPhaseSmoothed(pose: Landmark[]): Phase {
 
   let rawPhase: Phase = 'neutral';
 
-  // TOP: shoulders at or above elbow level (smaller Y = higher in frame)
-  if (avgShoulderY <= avgElbowY) {
+  // TOP: shoulders at or above elbow level (with 0.02 tolerance)
+  if (avgShoulderY <= avgElbowY - 0.02) {
     rawPhase = 'up';
     pullUpFeedback = 'Pull!';
   }
