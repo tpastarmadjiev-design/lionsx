@@ -1101,6 +1101,7 @@ export function resetSmoothedDetector(exercise: string) {
     case 'dumbbell-tricep-overhead-extension': resetTricepExtState(); break;
     case 'dumbbell-punches': resetPunchSmoothedState(); break;
     case 'dumbbell-thrusters': resetThrusterState(); break;
+    case 'pull-ups': resetPullUpState(); break;
   }
 }
 
