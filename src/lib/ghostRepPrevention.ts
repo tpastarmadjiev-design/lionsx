@@ -130,19 +130,22 @@ export function shouldAllowRep(
   state: GhostRepState,
   calibratedRange?: number,
 ): boolean {
+  // TEMPORARILY BYPASSED — always allow reps
+  return true;
+
   // 1. Block if user is idle
-  if (state.isIdle) return false;
+  // if (state.isIdle) return false;
 
   // 2. Block if within cooldown period
-  if (state.framesSinceLastRep < REP_COOLDOWN_FRAMES) return false;
+  // if (state.framesSinceLastRep < REP_COOLDOWN_FRAMES) return false;
 
   // 3. Micro-movement filter: reject movements < 15% of calibrated range
-  if (calibratedRange && calibratedRange > 0) {
-    const microThreshold = calibratedRange * MICRO_MOVEMENT_RATIO;
-    if (state.currentMovement < microThreshold) return false;
-  }
+  // if (calibratedRange && calibratedRange > 0) {
+  //   const microThreshold = calibratedRange * MICRO_MOVEMENT_RATIO;
+  //   if (state.currentMovement < microThreshold) return false;
+  // }
 
-  return true;
+  // return true;
 }
 
 /**
