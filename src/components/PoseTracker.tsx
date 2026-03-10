@@ -20,6 +20,7 @@ import {
   isPlankValid, isWallSitValid, isDeepSquatHoldValid,
   isShoulderStretchValid, isCobraStretchValid, isHipCircleValid,
   resetMountainClimberState, resetHighKneeState, resetPunchState,
+  resetCalfRaiseState, resetHipCircleState,
   type Phase,
 } from '@/lib/exerciseDetectors';
 
@@ -34,10 +35,12 @@ interface PoseTrackerProps {
   onCameraError?: (message: string) => void;
 }
 
-// Timed hold exercises
 const TIMED_HOLD_EXERCISES: ExerciseType[] = [
   'plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'
 ];
+
+// Points awarded every 1.5 seconds for timed holds
+const HOLD_SECONDS_PER_POINT = 1.5;
 
 export function PoseTracker({
   exercise, isActive, facingMode = 'user',
@@ -53,7 +56,7 @@ export function PoseTracker({
   const lastHoldPointRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
   const lastProcessTimeRef = useRef<number>(0);
-  const ML_INTERVAL_MS = 125; // ~8 FPS for pose detection
+  const ML_INTERVAL_MS = 125;
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +68,8 @@ export function PoseTracker({
     resetMountainClimberState();
     resetHighKneeState();
     resetPunchState();
+    resetCalfRaiseState();
+    resetHipCircleState();
     lastPhaseRef.current = 'neutral';
     holdStartRef.current = null;
     lastHoldPointRef.current = 0;
@@ -73,7 +78,6 @@ export function PoseTracker({
   // Initialize MediaPipe
   useEffect(() => {
     let isMounted = true;
-
     const init = async () => {
       try {
         const vision = await FilesetResolver.forVisionTasks(
@@ -99,15 +103,10 @@ export function PoseTracker({
         }
       }
     };
-
     init();
-    return () => {
-      isMounted = false;
-      poseLandmarkerRef.current?.close();
-    };
+    return () => { isMounted = false; poseLandmarkerRef.current?.close(); };
   }, []);
 
-  // Stop camera stream
   const stopStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -116,12 +115,10 @@ export function PoseTracker({
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
-  // Start/stop camera
   useEffect(() => {
     if (!videoRef.current || isLoading) return;
     if (!isActive) { stopStream(); return; }
     stopStream();
-
     let cancelled = false;
     const startCamera = async () => {
       try {
@@ -143,12 +140,10 @@ export function PoseTracker({
         }
       }
     };
-
     startCamera();
     return () => { cancelled = true; stopStream(); };
   }, [isLoading, isActive, facingMode, stopStream]);
 
-  // ─── Get phase for any exercise ───
   const getPhase = useCallback((pose: any[]): Phase => {
     switch (exercise) {
       case 'squats': return detectSquatPhase(pose);
@@ -186,7 +181,6 @@ export function PoseTracker({
     }
   }, [exercise]);
 
-  // ─── Check timed hold validity ───
   const isHoldValid = useCallback((pose: any[]): boolean => {
     switch (exercise) {
       case 'plank': return isPlankValid(pose);
@@ -199,12 +193,11 @@ export function PoseTracker({
     }
   }, [exercise]);
 
-  // ─── Main rep detection — ONE simple path ───
   const detectRep = useCallback((landmarks: any[]) => {
     if (!landmarks || landmarks.length === 0) return;
     const pose = landmarks[0];
 
-    // --- TIMED HOLDS ---
+    // --- TIMED HOLDS: 1 point per 1.5 seconds ---
     if (isTimedHold) {
       const valid = isHoldValid(pose);
       if (valid) {
@@ -212,8 +205,8 @@ export function PoseTracker({
           holdStartRef.current = Date.now();
           lastHoldPointRef.current = 0;
         } else {
-          const elapsed = Math.floor((Date.now() - holdStartRef.current) / 1000);
-          const pointsEarned = Math.floor(elapsed / 2);
+          const elapsedSec = (Date.now() - holdStartRef.current) / 1000;
+          const pointsEarned = Math.floor(elapsedSec / HOLD_SECONDS_PER_POINT);
           if (pointsEarned > lastHoldPointRef.current) {
             lastHoldPointRef.current = pointsEarned;
             onSecondComplete?.();
@@ -226,30 +219,23 @@ export function PoseTracker({
       return;
     }
 
-    // --- REP-BASED EXERCISES ---
+    // --- REP-BASED: count on down → up ---
     const currentPhase = getPhase(pose);
-
-    // Count rep on transition: down → up
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
       if (suspicionTracker) recordRep(suspicionTracker);
       onRepComplete();
     }
-
-    // Only update phase on non-neutral values (hysteresis)
     if (currentPhase !== 'neutral') {
       lastPhaseRef.current = currentPhase;
     }
   }, [exercise, isTimedHold, isHoldValid, getPhase, onRepComplete, onSecondComplete, suspicionTracker]);
 
-  // ─── Pose detection loop ───
   useEffect(() => {
     if (!isActive || isLoading || !videoRef.current || !canvasRef.current || !poseLandmarkerRef.current) return;
-
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
     let lastVideoTime = -1;
 
     const loop = () => {
@@ -258,14 +244,11 @@ export function PoseTracker({
         return;
       }
       lastVideoTime = video.currentTime;
-
-      // Draw camera feed
       ctx.save();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       ctx.restore();
 
-      // Throttle ML to ~8 FPS
       const now = performance.now();
       if (now - lastProcessTimeRef.current >= ML_INTERVAL_MS) {
         lastProcessTimeRef.current = now;
@@ -274,19 +257,14 @@ export function PoseTracker({
           detectRep(results.landmarks);
         }
       }
-
       animationFrameRef.current = requestAnimationFrame(loop);
     };
 
     if (video.readyState >= 2) loop();
     else video.addEventListener('loadeddata', loop);
-
-    return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    };
+    return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); };
   }, [isActive, isLoading, detectRep]);
 
-  // ─── Render ───
   if (error) {
     return (
       <div className="w-full aspect-[4/3] bg-secondary rounded-xl flex items-center justify-center">
@@ -308,20 +286,9 @@ export function PoseTracker({
 
   return (
     <div className="relative w-full h-full bg-secondary rounded-xl overflow-hidden">
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="absolute inset-0 w-full h-full object-cover opacity-0"
-      />
-      <canvas
-        ref={canvasRef}
-        width={640}
-        height={480}
-        className="w-full h-full object-cover"
-        style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }}
-      />
+      <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover opacity-0" />
+      <canvas ref={canvasRef} width={640} height={480} className="w-full h-full object-cover"
+        style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }} />
     </div>
   );
 }
