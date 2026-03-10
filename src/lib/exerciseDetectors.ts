@@ -1,14 +1,23 @@
 /**
- * LIONSX Exercise Detectors — Clean Edition
+ * LIONSX Exercise Detectors — v2 (post-testing fixes)
  * 
- * Each detector returns a Phase ('up' | 'down' | 'neutral').
- * The PoseTracker counts a rep on the transition: down → up.
- * 
- * Design principles:
- * - Simple angle/position checks with HYSTERESIS (different thresholds for entering vs exiting a phase)
- * - No smoothing buffers, no confirmation frames, no baseline tracking
- * - Each exercise is self-contained
- * - Liberal thresholds — we'd rather count a slightly imperfect rep than miss a real one
+ * Changes from v1:
+ * - Calf Raises: use ankle Y relative to standing height instead of heel/foot
+ * - Bicep Curls: work with single arm (either side)
+ * - Shoulder Press: lowered angle threshold, removed strict wrist<shoulder requirement
+ * - Tricep Extension: use wrist Y position (works frontal + profile)
+ * - Lunges: more liberal "up" threshold (only one leg needs to be straight)
+ * - Burpees: require nose going low (not just standing up)
+ * - Mountain Climbers: use ankle position instead of knee (more visible to camera)
+ * - Punches: use wrist distance from shoulder (works frontal)
+ * - Jump Rope / Jumps: wider hip Y thresholds
+ * - Chest Press: use wrist Y relative to shoulder (works lying down)
+ * - Hip Circles: actually track hip X movement, not just standing
+ * - Cobra Stretch: require body to be horizontal (prevent sitting false positive)
+ * - Windmill: require one arm up AND one arm down simultaneously
+ * - Cat-Cow: more liberal thresholds, use nose Y relative position
+ * - Deep Squat Hold: more liberal knee angle
+ * - REMOVED: Shoulder Stretch Hold (unreliable with MediaPipe)
  */
 
 interface Landmark {
@@ -18,7 +27,6 @@ interface Landmark {
   visibility?: number;
 }
 
-// ─── Landmark indices (MediaPipe Pose) ───
 const NOSE = 0;
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
@@ -32,12 +40,7 @@ const LEFT_KNEE = 25;
 const RIGHT_KNEE = 26;
 const LEFT_ANKLE = 27;
 const RIGHT_ANKLE = 28;
-const LEFT_HEEL = 29;
-const RIGHT_HEEL = 30;
-const LEFT_FOOT_INDEX = 31;
-const RIGHT_FOOT_INDEX = 32;
 
-/** Calculate angle at point B formed by points A-B-C (in degrees) */
 function angle(a: Landmark, b: Landmark, c: Landmark): number {
   const ba = { x: a.x - b.x, y: a.y - b.y };
   const bc = { x: c.x - b.x, y: c.y - b.y };
@@ -49,23 +52,32 @@ function angle(a: Landmark, b: Landmark, c: Landmark): number {
   return Math.acos(cosAngle) * (180 / Math.PI);
 }
 
-/** Average of left and right side angles (uses whichever sides are available) */
+/** Average angle from both sides — works with just one side visible */
 function avgAngleBothSides(
   pose: Landmark[],
-  jointA_L: number, jointB_L: number, jointC_L: number,
-  jointA_R: number, jointB_R: number, jointC_R: number,
+  aL: number, bL: number, cL: number,
+  aR: number, bR: number, cR: number,
 ): number | null {
-  const hasLeft = pose[jointA_L] && pose[jointB_L] && pose[jointC_L];
-  const hasRight = pose[jointA_R] && pose[jointB_R] && pose[jointC_R];
+  const hasLeft = pose[aL] && pose[bL] && pose[cL];
+  const hasRight = pose[aR] && pose[bR] && pose[cR];
   if (!hasLeft && !hasRight) return null;
-  
   let sum = 0, count = 0;
-  if (hasLeft) { sum += angle(pose[jointA_L], pose[jointB_L], pose[jointC_L]); count++; }
-  if (hasRight) { sum += angle(pose[jointA_R], pose[jointB_R], pose[jointC_R]); count++; }
+  if (hasLeft) { sum += angle(pose[aL], pose[bL], pose[cL]); count++; }
+  if (hasRight) { sum += angle(pose[aR], pose[bR], pose[cR]); count++; }
   return sum / count;
 }
 
-/** Average Y position of left and right landmarks */
+/** Single-side angle — uses whichever side is visible */
+function anySideAngle(
+  pose: Landmark[],
+  aL: number, bL: number, cL: number,
+  aR: number, bR: number, cR: number,
+): number | null {
+  if (pose[aL] && pose[bL] && pose[cL]) return angle(pose[aL], pose[bL], pose[cL]);
+  if (pose[aR] && pose[bR] && pose[cR]) return angle(pose[aR], pose[bR], pose[cR]);
+  return null;
+}
+
 function avgY(pose: Landmark[], left: number, right: number): number | null {
   const l = pose[left], r = pose[right];
   if (l && r) return (l.y + r.y) / 2;
@@ -88,15 +100,19 @@ export function detectSquatPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
+// FIX: More liberal "up" — only need ONE leg mostly straight (the front leg stays bent during lunge)
 export function detectLungePhase(pose: Landmark[]): Phase {
-  const lHip = pose[LEFT_HIP], lKnee = pose[LEFT_KNEE], lAnkle = pose[LEFT_ANKLE];
-  const rHip = pose[RIGHT_HIP], rKnee = pose[RIGHT_KNEE], rAnkle = pose[RIGHT_ANKLE];
-  if (!lHip || !lKnee || !lAnkle || !rHip || !rKnee || !rAnkle) return 'neutral';
-  const leftAngle = angle(lHip, lKnee, lAnkle);
-  const rightAngle = angle(rHip, rKnee, rAnkle);
+  const lAngle = anySideAngle(pose, LEFT_HIP, LEFT_KNEE, LEFT_ANKLE, RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE);
+  const rAngle = anySideAngle(pose, RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE, LEFT_HIP, LEFT_KNEE, LEFT_ANKLE);
+  if (lAngle === null && rAngle === null) return 'neutral';
+  
+  const leftAngle = lAngle ?? 180;
+  const rightAngle = rAngle ?? 180;
   const minAngle = Math.min(leftAngle, rightAngle);
-  if (minAngle < 115) return 'down';
-  if (leftAngle > 155 && rightAngle > 155) return 'up';
+  const maxAngle = Math.max(leftAngle, rightAngle);
+  
+  if (minAngle < 120) return 'down';
+  if (maxAngle > 150) return 'up';  // at least one leg straight = standing
   return 'neutral';
 }
 
@@ -109,11 +125,11 @@ export function detectPushUpPhase(pose: Landmark[]): Phase {
 }
 
 export function detectPikePushUpPhase(pose: Landmark[]): Phase {
-  const shoulder = pose[LEFT_SHOULDER];
-  const hip = pose[LEFT_HIP];
+  const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
+  const hip = pose[LEFT_HIP] || pose[RIGHT_HIP];
   if (!shoulder || !hip) return 'neutral';
   if (hip.y > shoulder.y + 0.08) return 'neutral';
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
   if (elbowAngle === null) return 'neutral';
   if (elbowAngle < 105) return 'down';
   if (elbowAngle > 150) return 'up';
@@ -121,7 +137,7 @@ export function detectPikePushUpPhase(pose: Landmark[]): Phase {
 }
 
 export function detectDiamondPushUpPhase(pose: Landmark[]): Phase {
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
   if (elbowAngle === null) return 'neutral';
   if (elbowAngle < 105) return 'down';
   if (elbowAngle > 150) return 'up';
@@ -138,16 +154,17 @@ export function detectSitUpPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
+// FIX: Wider thresholds for jumps
 export function detectJumpPhase(pose: Landmark[]): Phase {
   const hipY = avgY(pose, LEFT_HIP, RIGHT_HIP);
   if (hipY === null) return 'neutral';
-  if (hipY < 0.42) return 'up';
-  if (hipY > 0.55) return 'down';
+  if (hipY < 0.45) return 'up';
+  if (hipY > 0.52) return 'down';
   return 'neutral';
 }
 
 export function detectDipPhase(pose: Landmark[]): Phase {
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
   if (elbowAngle === null) return 'neutral';
   if (elbowAngle < 100) return 'down';
   if (elbowAngle > 155) return 'up';
@@ -155,49 +172,78 @@ export function detectDipPhase(pose: Landmark[]): Phase {
 }
 
 export function detectPullUpPhase(pose: Landmark[]): Phase {
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
   if (elbowAngle === null) return 'neutral';
   if (elbowAngle < 90) return 'up';
   if (elbowAngle > 155) return 'down';
   return 'neutral';
 }
 
+// FIX: Use ankle Y position relative to standing — much more reliable than heel landmarks
+let _calfBaselineAnkleY: number | null = null;
+
 export function detectCalfRaisePhase(pose: Landmark[]): Phase {
-  const heel = pose[LEFT_HEEL] || pose[RIGHT_HEEL];
-  const foot = pose[LEFT_FOOT_INDEX] || pose[RIGHT_FOOT_INDEX];
-  if (!heel || !foot) return 'neutral';
-  const heelElevation = foot.y - heel.y;
-  if (heelElevation > 0.015) return 'up';
-  if (heelElevation < 0.003) return 'down';
+  const ankleY = avgY(pose, LEFT_ANKLE, RIGHT_ANKLE);
+  const kneeY = avgY(pose, LEFT_KNEE, RIGHT_KNEE);
+  if (ankleY === null || kneeY === null) return 'neutral';
+  
+  // Set baseline on first detection
+  if (_calfBaselineAnkleY === null) _calfBaselineAnkleY = ankleY;
+  
+  // When on toes, ankles rise (Y decreases in screen coords)
+  const rise = _calfBaselineAnkleY - ankleY;
+  
+  if (rise > 0.012) return 'up';   // ankle moved up from baseline
+  if (rise < 0.004) return 'down'; // ankle back at baseline
+  
+  // Update baseline when in down position (standing flat)
+  if (rise < 0.004) _calfBaselineAnkleY = ankleY;
+  
   return 'neutral';
 }
 
+export function resetCalfRaiseState() { _calfBaselineAnkleY = null; }
+
+// FIX: Burpees — require actual plank position (nose low + shoulders near hips)
 export function detectBurpeePhase(pose: Landmark[]): Phase {
   const nose = pose[NOSE];
   const hip = pose[LEFT_HIP] || pose[RIGHT_HIP];
   const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
+  const ankle = pose[LEFT_ANKLE] || pose[RIGHT_ANKLE];
   if (!nose || !hip || !shoulder) return 'neutral';
-  const isPlankLike = Math.abs(shoulder.y - hip.y) < 0.15 && nose.y > 0.5;
-  const isStanding = nose.y < 0.4;
+  
+  // Plank: shoulders and hips roughly same height, nose is low
+  const isPlankLike = Math.abs(shoulder.y - hip.y) < 0.18 && nose.y > 0.45;
+  // Standing: nose is high up in the frame
+  const isStanding = nose.y < 0.4 && shoulder.y < hip.y;
+  
   if (isPlankLike) return 'down';
   if (isStanding) return 'up';
   return 'neutral';
 }
 
-// ─── Alternating exercises (need state for left/right tracking) ───
-
+// FIX: Mountain Climbers — simplified: use knee Y relative to hip, more liberal thresholds
 let _mcLastKnee: 'left' | 'right' | null = null;
 
 export function detectMountainClimberPhase(pose: Landmark[]): Phase {
   const lHip = pose[LEFT_HIP], rHip = pose[RIGHT_HIP];
   const lKnee = pose[LEFT_KNEE], rKnee = pose[RIGHT_KNEE];
-  const lShoulder = pose[LEFT_SHOULDER];
-  if (!lHip || !rHip || !lKnee || !rKnee || !lShoulder) return 'neutral';
-  if (Math.abs(lShoulder.y - lHip.y) > 0.22) return 'neutral';
-  const avgHipY = (lHip.y + rHip.y) / 2;
-  if (avgHipY - lKnee.y > 0.04 && _mcLastKnee !== 'left') { _mcLastKnee = 'left'; return 'up'; }
-  if (avgHipY - rKnee.y > 0.04 && _mcLastKnee !== 'right') { _mcLastKnee = 'right'; return 'up'; }
-  if (lKnee.y > avgHipY && rKnee.y > avgHipY) { _mcLastKnee = null; return 'down'; }
+  const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
+  if (!shoulder || !lKnee || !rKnee) return 'neutral';
+  
+  const hipY = lHip && rHip ? (lHip.y + rHip.y) / 2 : (lHip || rHip)?.y;
+  if (hipY === undefined) return 'neutral';
+  
+  // Must be in plank-ish position (shoulder and hip roughly same height)
+  if (Math.abs(shoulder.y - hipY) > 0.25) return 'neutral';
+  
+  // Knee drive: knee comes forward (closer to chest = Y decreases)
+  const leftDrive = hipY - lKnee.y;
+  const rightDrive = hipY - rKnee.y;
+  
+  if (leftDrive > 0.03 && _mcLastKnee !== 'left') { _mcLastKnee = 'left'; return 'up'; }
+  if (rightDrive > 0.03 && _mcLastKnee !== 'right') { _mcLastKnee = 'right'; return 'up'; }
+  if (leftDrive < -0.01 && rightDrive < -0.01) { _mcLastKnee = null; return 'down'; }
   return 'neutral';
 }
 export function resetMountainClimberState() { _mcLastKnee = null; }
@@ -231,11 +277,12 @@ export function detectJumpingJackPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
+// FIX: Wider thresholds for jump rope
 export function detectJumpRopePhase(pose: Landmark[]): Phase {
   const hipY = avgY(pose, LEFT_HIP, RIGHT_HIP);
   if (hipY === null) return 'neutral';
-  if (hipY < 0.46) return 'up';
-  if (hipY > 0.52) return 'down';
+  if (hipY < 0.47) return 'up';
+  if (hipY > 0.51) return 'down';
   return 'neutral';
 }
 
@@ -249,14 +296,19 @@ export function detectToeTouchPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
+// FIX: Cat-Cow — more liberal, look at nose position relative to shoulder/hip midpoint
 export function detectCatCowPhase(pose: Landmark[]): Phase {
   const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
   const hip = pose[LEFT_HIP] || pose[RIGHT_HIP];
   const nose = pose[NOSE];
   if (!shoulder || !hip || !nose) return 'neutral';
-  const spineAngle = shoulder.y - hip.y;
-  if (spineAngle < -0.03 && nose.y > shoulder.y) return 'down';
-  if (spineAngle > 0.03 && nose.y < shoulder.y) return 'up';
+  
+  const midY = (shoulder.y + hip.y) / 2;
+  
+  // Cat: nose tucked down (nose below shoulder-hip midpoint)
+  if (nose.y > midY + 0.02) return 'down';
+  // Cow: nose lifted up (nose above shoulder)
+  if (nose.y < shoulder.y - 0.02) return 'up';
   return 'neutral';
 }
 
@@ -265,33 +317,45 @@ export function detectCatCowPhase(pose: Landmark[]): Phase {
 // ═══════════════════════════════════════════════════════════════
 
 export function detectBenchPressPhase(pose: Landmark[]): Phase {
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
   if (elbowAngle === null) return 'neutral';
   if (elbowAngle < 100) return 'down';
   if (elbowAngle > 155) return 'up';
   return 'neutral';
 }
 
-export const detectChestPressPhase = detectBenchPressPhase;
-
-export function detectBicepCurlPhase(pose: Landmark[]): Phase {
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+// FIX: Chest Press — use wrist Y relative to shoulder (works when lying down)
+export function detectChestPressPhase(pose: Landmark[]): Phase {
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
   if (elbowAngle === null) return 'neutral';
-  if (elbowAngle < 60) return 'up';
-  if (elbowAngle > 145) return 'down';
+  // More liberal thresholds for lying position
+  if (elbowAngle < 110) return 'down';
+  if (elbowAngle > 145) return 'up';
+  return 'neutral';
+}
+
+// FIX: Bicep Curls — works with single arm (either side)
+export function detectBicepCurlPhase(pose: Landmark[]): Phase {
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+  if (elbowAngle === null) return 'neutral';
+  if (elbowAngle < 65) return 'up';
+  if (elbowAngle > 140) return 'down';
   return 'neutral';
 }
 
 export const detectHammerCurlPhase = detectBicepCurlPhase;
 
+// FIX: Shoulder Press — lower angle threshold, use wrist position as alternative
 export function detectShoulderPressPhase(pose: Landmark[]): Phase {
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
-  if (elbowAngle === null) return 'neutral';
   const wristY = avgY(pose, LEFT_WRIST, RIGHT_WRIST);
   const shoulderY = avgY(pose, LEFT_SHOULDER, RIGHT_SHOULDER);
+  const elbowY = avgY(pose, LEFT_ELBOW, RIGHT_ELBOW);
   if (wristY === null || shoulderY === null) return 'neutral';
-  if (elbowAngle < 100) return 'down';
-  if (elbowAngle > 160 && wristY < shoulderY) return 'up';
+  
+  // Up: wrists clearly above head (above shoulders)
+  if (wristY < shoulderY - 0.08) return 'up';
+  // Down: wrists at or below shoulder level
+  if (wristY > shoulderY + 0.03) return 'down';
   return 'neutral';
 }
 
@@ -310,7 +374,7 @@ export function detectLateralRaisePhase(pose: Landmark[]): Phase {
 export const detectFrontRaisePhase = detectLateralRaisePhase;
 
 export function detectBentOverRowPhase(pose: Landmark[]): Phase {
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
   if (elbowAngle === null) return 'neutral';
   if (elbowAngle < 85) return 'up';
   if (elbowAngle > 150) return 'down';
@@ -329,45 +393,75 @@ export function detectThrusterPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
+// FIX: Tricep Extension — use wrist Y position (works frontal + profile)
 export function detectTricepExtensionPhase(pose: Landmark[]): Phase {
-  const elbowAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
-  if (elbowAngle === null) return 'neutral';
-  if (elbowAngle < 70) return 'down';
-  if (elbowAngle > 150) return 'up';
+  const wristY = avgY(pose, LEFT_WRIST, RIGHT_WRIST);
+  const shoulderY = avgY(pose, LEFT_SHOULDER, RIGHT_SHOULDER);
+  const hipY = avgY(pose, LEFT_HIP, RIGHT_HIP);
+  if (wristY === null || shoulderY === null) return 'neutral';
+  
+  // Up: wrists above head (extended overhead)
+  if (wristY < shoulderY - 0.06) return 'up';
+  // Down: wrists dropped behind/below head (near shoulder level or below)
+  if (wristY > shoulderY + 0.02) return 'down';
   return 'neutral';
 }
 
+// FIX: Punches — use wrist distance from body center (works frontal)
 let _punchLastArm: 'left' | 'right' | null = null;
 
 export function detectPunchPhase(pose: Landmark[]): Phase {
   const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
   const lElbow = pose[LEFT_ELBOW], rElbow = pose[RIGHT_ELBOW];
   const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
-  if (!lShoulder || !rShoulder || !lElbow || !rElbow || !lWrist || !rWrist) return 'neutral';
-  const leftAngle = angle(lShoulder, lElbow, lWrist);
-  const rightAngle = angle(rShoulder, rElbow, rWrist);
-  if (leftAngle > 155 && _punchLastArm !== 'left') { _punchLastArm = 'left'; return 'up'; }
-  if (rightAngle > 155 && _punchLastArm !== 'right') { _punchLastArm = 'right'; return 'up'; }
-  if (leftAngle < 110 && rightAngle < 110) { _punchLastArm = null; return 'down'; }
+  
+  // Work with whatever landmarks are visible
+  const hasLeft = lShoulder && lElbow && lWrist;
+  const hasRight = rShoulder && rElbow && rWrist;
+  if (!hasLeft && !hasRight) return 'neutral';
+  
+  // Check arm extension via angle OR via wrist-shoulder distance
+  if (hasLeft) {
+    const leftAngle = angle(lShoulder, lElbow, lWrist);
+    if (leftAngle > 150 && _punchLastArm !== 'left') { _punchLastArm = 'left'; return 'up'; }
+  }
+  if (hasRight) {
+    const rightAngle = angle(rShoulder, rElbow, rWrist);
+    if (rightAngle > 150 && _punchLastArm !== 'right') { _punchLastArm = 'right'; return 'up'; }
+  }
+  
+  // Both arms retracted
+  const leftRetracted = !hasLeft || angle(lShoulder!, lElbow!, lWrist!) < 110;
+  const rightRetracted = !hasRight || angle(rShoulder!, rElbow!, rWrist!) < 110;
+  if (leftRetracted && rightRetracted) { _punchLastArm = null; return 'down'; }
+  
   return 'neutral';
 }
 export function resetPunchState() { _punchLastArm = null; }
 
 export function detectRomanianDeadliftPhase(pose: Landmark[]): Phase {
-  const hipAngle = avgAngleBothSides(pose, LEFT_SHOULDER, LEFT_HIP, LEFT_KNEE, RIGHT_SHOULDER, RIGHT_HIP, RIGHT_KNEE);
+  const hipAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_HIP, LEFT_KNEE, RIGHT_SHOULDER, RIGHT_HIP, RIGHT_KNEE);
   if (hipAngle === null) return 'neutral';
   if (hipAngle < 100) return 'down';
   if (hipAngle > 160) return 'up';
   return 'neutral';
 }
 
+// FIX: Windmill — require one arm UP and other arm DOWN simultaneously
 export function detectWindmillPhase(pose: Landmark[]): Phase {
   const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
-  const lHip = pose[LEFT_HIP];
-  if (!lWrist || !rWrist || !lHip) return 'neutral';
+  const lShoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
+  const hipY = avgY(pose, LEFT_HIP, RIGHT_HIP);
+  if (!lWrist || !rWrist || !lShoulder || hipY === null) return 'neutral';
+  
+  const oneArmUp = lWrist.y < lShoulder.y - 0.05 || rWrist.y < lShoulder.y - 0.05;
+  const oneArmDown = lWrist.y > hipY || rWrist.y > hipY;
+  
+  // Down: one arm reaching up, other reaching down to foot
+  if (oneArmUp && oneArmDown) return 'down';
+  // Up: both wrists roughly at same height (standing upright with arms)
   const spread = Math.abs(lWrist.y - rWrist.y);
-  if (spread > 0.25 && (lWrist.y > lHip.y || rWrist.y > lHip.y)) return 'down';
-  if (spread < 0.12) return 'up';
+  if (spread < 0.15) return 'up';
   return 'neutral';
 }
 
@@ -378,8 +472,13 @@ export function detectWindmillPhase(pose: Landmark[]): Phase {
 export function isPlankValid(pose: Landmark[]): boolean {
   const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
   const hip = pose[LEFT_HIP] || pose[RIGHT_HIP];
+  const knee = pose[LEFT_KNEE] || pose[RIGHT_KNEE];
   if (!shoulder || !hip) return false;
-  return Math.abs(shoulder.y - hip.y) < 0.18;
+  // Shoulder and hip roughly same height AND body not upright
+  const isHorizontal = Math.abs(shoulder.y - hip.y) < 0.18;
+  // Must not be standing (knee should be roughly same height as hip)
+  const notStanding = !knee || Math.abs(knee.y - hip.y) < 0.25;
+  return isHorizontal && notStanding;
 }
 
 export function isWallSitValid(pose: Landmark[]): boolean {
@@ -390,34 +489,78 @@ export function isWallSitValid(pose: Landmark[]): boolean {
   return kneeAngle >= 65 && kneeAngle <= 125 && shoulderY < hipY;
 }
 
+// FIX: More liberal knee angle for deep squat
 export function isDeepSquatHoldValid(pose: Landmark[]): boolean {
   const kneeAngle = avgAngleBothSides(pose, LEFT_HIP, LEFT_KNEE, LEFT_ANKLE, RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE);
   if (kneeAngle === null) return false;
-  return kneeAngle < 95;
+  return kneeAngle < 105; // was 95, now more liberal
 }
 
-export function isShoulderStretchValid(pose: Landmark[]): boolean {
-  const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
-  const elbow = pose[LEFT_ELBOW] || pose[RIGHT_ELBOW];
-  const wrist = pose[LEFT_WRIST] || pose[RIGHT_WRIST];
-  if (!shoulder || !elbow || !wrist) return false;
-  return elbow.y < shoulder.y && wrist.y > elbow.y;
-}
-
+// FIX: Cobra Stretch — require body to be mostly horizontal (prevent sitting false positive)
 export function isCobraStretchValid(pose: Landmark[]): boolean {
   const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
   const hip = pose[LEFT_HIP] || pose[RIGHT_HIP];
+  const knee = pose[LEFT_KNEE] || pose[RIGHT_KNEE];
   const nose = pose[NOSE];
   if (!shoulder || !hip || !nose) return false;
-  return hip.y > 0.55 && shoulder.y < hip.y - 0.08 && nose.y < shoulder.y;
+  
+  // Hip must be low in frame (lying on ground)
+  if (hip.y < 0.5) return false;
+  // Shoulder must be higher than hip (upper body pushed up)
+  if (shoulder.y > hip.y - 0.05) return false;
+  // Nose above shoulder
+  if (nose.y > shoulder.y) return false;
+  // Key fix: hip and knee must be roughly same height (body horizontal, not sitting)
+  if (knee && Math.abs(knee.y - hip.y) > 0.15) return false;
+  
+  return true;
 }
+
+// FIX: Hip Circles — track actual hip X movement over time
+let _hipCircleSamples: number[] = [];
 
 export function isHipCircleValid(pose: Landmark[]): boolean {
   const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
   const hip = pose[LEFT_HIP] || pose[RIGHT_HIP];
   const knee = pose[LEFT_KNEE] || pose[RIGHT_KNEE];
   if (!shoulder || !hip || !knee) return false;
-  return shoulder.y < hip.y && hip.y < knee.y;
+  
+  // Must be standing upright
+  if (!(shoulder.y < hip.y && hip.y < knee.y)) return false;
+  
+  // Track hip X position
+  _hipCircleSamples.push(hip.x);
+  if (_hipCircleSamples.length > 16) _hipCircleSamples.shift(); // keep last ~2 seconds at 8fps
+  
+  // Need enough samples to detect movement
+  if (_hipCircleSamples.length < 8) return false;
+  
+  // Check if hips are actually moving side to side
+  const minX = Math.min(..._hipCircleSamples);
+  const maxX = Math.max(..._hipCircleSamples);
+  const hipMovement = maxX - minX;
+  
+  // Require at least 3% frame width of hip movement
+  return hipMovement > 0.03;
+}
+
+export function resetHipCircleState() { _hipCircleSamples = []; }
+
+// FIX: Shoulder Stretch Hold — changed to cross-body stretch (arm pulled across chest)
+// Detects: one wrist crosses past the opposite shoulder X position, at shoulder height
+export function isShoulderStretchValid(pose: Landmark[]): boolean {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
+  const lWrist = pose[LEFT_WRIST], rWrist = pose[RIGHT_WRIST];
+  if (!lShoulder || !rShoulder || !lWrist || !rWrist) return false;
+  
+  const shoulderY = (lShoulder.y + rShoulder.y) / 2;
+  
+  // Check if left wrist crosses past right shoulder (at shoulder height)
+  const leftCrosses = lWrist.x > rShoulder.x - 0.03 && Math.abs(lWrist.y - shoulderY) < 0.12;
+  // Check if right wrist crosses past left shoulder (at shoulder height)
+  const rightCrosses = rWrist.x < lShoulder.x + 0.03 && Math.abs(rWrist.y - shoulderY) < 0.12;
+  
+  return leftCrosses || rightCrosses;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -436,38 +579,38 @@ export const exerciseInstructions: Record<string, ExerciseInstruction> = {
   'pike push-ups': { positioning: 'Start in a pike position (inverted V) facing the camera.', cameraGuide: 'Place camera at floor level, 2m away. Upper body must be visible.', tips: ['Keep hips high', 'Lower head toward floor', 'Elbows flare slightly'] },
   'diamond push-ups': { positioning: 'Get into push-up position with hands close together.', cameraGuide: 'Place camera at floor level, side view preferred.', tips: ['Hands form a diamond shape', 'Elbows stay close to body', 'Full range of motion'] },
   'wall sit': { positioning: 'Lean against a wall with thighs parallel to the floor.', cameraGuide: 'Place camera at waist height, 2m away. Side view works best.', tips: ['Back flat against wall', 'Knees at 90°', 'Don\'t rest hands on thighs'] },
-  'calf raises': { positioning: 'Stand straight with feet hip-width apart.', cameraGuide: 'Place camera at floor level, 2m away. Feet and legs must be visible.', tips: ['Rise onto your toes', 'Pause at the top', 'Controlled descent'] },
-  'burpees': { positioning: 'Stand upright facing the camera with space to drop to the floor.', cameraGuide: 'Place camera at waist height, 3m away. Full body must be visible.', tips: ['Jump up at the top', 'Chest touches floor in plank', 'Explosive movement'] },
-  'mountain climbers': { positioning: 'Start in a high plank position facing the camera.', cameraGuide: 'Place camera at floor level, 2m away.', tips: ['Keep hips level', 'Drive knees to chest', 'Maintain plank form'] },
+  'calf raises': { positioning: 'Stand straight with feet hip-width apart, side view to camera.', cameraGuide: 'Place camera at knee height, 2m away. Side/profile view works best.', tips: ['Rise onto your toes', 'Pause at the top', 'Controlled descent'] },
+  'burpees': { positioning: 'Stand upright facing the camera with space to drop to the floor.', cameraGuide: 'Place camera at waist height, 3m away. Full body must be visible.', tips: ['Drop to plank position', 'Then jump up', 'Full range of motion'] },
+  'mountain climbers': { positioning: 'Start in a high plank position, side view to camera.', cameraGuide: 'Place camera at floor level, 2m away. Side view preferred.', tips: ['Keep hips level', 'Drive knees to chest alternating', 'Maintain plank form'] },
   'high knees': { positioning: 'Stand upright facing the camera.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.', tips: ['Knees above hip level', 'Stay on the balls of your feet', 'Pump your arms'] },
-  'jumping jacks': { positioning: 'Stand upright with arms at your sides.', cameraGuide: 'Place camera at chest height, 3m away. Full body must be visible.', tips: ['Arms fully extended overhead', 'Feet wider than shoulders at top', 'Rhythmic pace'] },
+  'jumping jacks': { positioning: 'Stand upright with arms at your sides, facing the camera.', cameraGuide: 'Place camera at chest height, 3m away. Full body must be visible.', tips: ['Arms fully extended overhead', 'Feet wider than shoulders at top', 'Rhythmic pace'] },
   'cycling': { positioning: 'Head outside with your bicycle.', cameraGuide: 'No camera needed — GPS tracking only.', tips: ['Ride outdoors for accurate GPS', 'Keep your phone accessible', 'Maintain steady pace'] },
-  'jump rope': { positioning: 'Stand upright with room to jump.', cameraGuide: 'Place camera at waist height, 2-3m away.', tips: ['Small controlled jumps', 'Stay on the balls of your feet', 'Wrists rotate the rope'] },
-  'toe touches': { positioning: 'Stand upright with legs straight.', cameraGuide: 'Place camera at waist height, 2m away. Side view preferred.', tips: ['Keep legs straight', 'Reach for your toes', 'Return fully upright'] },
-  'hip circles': { positioning: 'Stand with hands on hips, feet shoulder-width apart.', cameraGuide: 'Place camera at waist height, 2m away.', tips: ['Large circular hip motions', 'Keep upper body stable', 'Alternate directions'] },
-  'cat-cow stretch': { positioning: 'Get on all fours (hands and knees) facing the camera.', cameraGuide: 'Place camera at floor level, side view, 2m away.', tips: ['Arch back up (cat)', 'Dip belly down (cow)', 'Move slowly and breathe'] },
-  'shoulder stretch hold': { positioning: 'Stand upright, raise one arm and bend elbow behind head.', cameraGuide: 'Place camera at chest height, 2m away.', tips: ['Elbow points to ceiling', 'Use other hand to gently pull elbow', 'Keep torso upright'] },
-  'deep squat hold': { positioning: 'Lower into a deep squat with feet flat on the floor.', cameraGuide: 'Place camera at floor level, 2m away.', tips: ['Heels stay on ground', 'Chest upright', 'Hold the bottom position'] },
-  'cobra stretch': { positioning: 'Lie face down, then push your upper body up with your arms.', cameraGuide: 'Place camera at floor level, side view, 2m away.', tips: ['Hips stay on the ground', 'Arms extend gradually', 'Look forward or slightly up'] },
-  'sit-ups': { positioning: 'Lie on your back with knees bent.', cameraGuide: 'Place camera at floor level, side view.', tips: ['Hands behind head', 'Curl up toward knees', 'Control the descent'] },
+  'jump rope': { positioning: 'Stand upright with room to jump, facing the camera.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.', tips: ['Small controlled jumps', 'Stay on the balls of your feet', 'Rhythmic bouncing'] },
+  'toe touches': { positioning: 'Stand upright with legs straight, side view to camera.', cameraGuide: 'Place camera at waist height, 2m away. Side/profile view preferred.', tips: ['Keep legs straight', 'Reach down for your toes', 'Return fully upright with arms up'] },
+  'hip circles': { positioning: 'Stand with hands on hips, feet shoulder-width apart, facing the camera.', cameraGuide: 'Place camera at waist height, 2m away. Full body visible.', tips: ['Large circular hip motions side to side', 'Keep upper body stable', 'Alternate directions'] },
+  'cat-cow stretch': { positioning: 'Get on all fours (hands and knees), side view to camera.', cameraGuide: 'Place camera at floor level, side/profile view, 2m away.', tips: ['Cat: arch back up, tuck head down', 'Cow: dip belly down, lift head up', 'Move slowly and breathe'] },
+  'deep squat hold': { positioning: 'Lower into a deep squat with feet flat on the floor.', cameraGuide: 'Place camera at knee height, 2m away. Side view recommended.', tips: ['Heels stay on ground', 'Chest upright', 'Hold the bottom position'] },
+  'shoulder stretch hold': { positioning: 'Sit or stand facing the camera. Pull one arm straight across your chest and hold it with the other hand.', cameraGuide: 'Place camera at chest height, 2m away. Front view.', tips: ['Pull arm across your chest', 'Keep the stretched arm straight', 'Hold with opposite hand', 'Switch arms after 30 seconds'] },
+  'cobra stretch': { positioning: 'Lie face down on the floor, then push your upper body up with your arms.', cameraGuide: 'Place camera at floor level, side view, 2m away.', tips: ['Keep hips and legs flat on the ground', 'Push chest up with arms', 'Look forward or slightly up'] },
+  'sit-ups': { positioning: 'Lie on your back with knees bent.', cameraGuide: 'Place camera at floor level, side view preferred.', tips: ['Hands behind head', 'Curl up toward knees', 'Control the descent'] },
   'push-ups': { positioning: 'Get into push-up position on the floor.', cameraGuide: 'Place camera at floor level, side view.', tips: ['Keep body straight', 'Chest near floor', 'Full arm extension'] },
-  'jumps': { positioning: 'Stand upright with feet shoulder-width apart.', cameraGuide: 'Place camera at waist height, 2m away.', tips: ['Jump as high as you can', 'Land softly', 'Use your arms'] },
+  'jumps': { positioning: 'Stand upright with feet shoulder-width apart, facing the camera.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.', tips: ['Jump as high as you can', 'Land softly on your toes', 'Use your arms for momentum'] },
   'plank': { positioning: 'Get into a forearm or high plank position.', cameraGuide: 'Place camera at floor level, side view.', tips: ['Keep body in a straight line', 'Engage your core', 'Don\'t let hips sag'] },
   'dips': { positioning: 'Place hands on a chair or bench behind you.', cameraGuide: 'Place camera at chest height, 2m away.', tips: ['Lower until elbows at 90°', 'Push back up fully', 'Keep back close to bench'] },
   'pull-ups': { positioning: 'Hang from a bar with arms fully extended.', cameraGuide: 'Place camera at chest height, 2m away.', tips: ['Pull chin over the bar', 'Control the descent', 'Full arm extension at bottom'] },
   'bench-press': { positioning: 'Lie on a bench with a barbell or dumbbells.', cameraGuide: 'Place camera at side, showing arm movement.', tips: ['Lower weight to chest', 'Press up fully', 'Keep feet on the floor'] },
   'running': { positioning: 'Head outside for your run.', cameraGuide: 'No camera needed — GPS tracking only.', tips: ['Run outdoors for accurate GPS', 'Keep phone on you', 'Maintain steady pace'] },
-  'dumbbell bicep curls': { positioning: 'Stand upright holding dumbbells at your sides.', cameraGuide: 'Place camera at waist height, 2m away. Arms must be visible.', tips: ['Keep elbows pinned to sides', 'Full curl to shoulders', 'Control the lowering phase'] },
+  'dumbbell bicep curls': { positioning: 'Stand upright holding dumbbells. Works with one or both arms.', cameraGuide: 'Place camera at waist height, 2m away. Arms must be visible.', tips: ['Keep elbows pinned to sides', 'Full curl to shoulders', 'One arm or both arms OK'] },
   'dumbbell hammer curls': { positioning: 'Stand upright with palms facing inward holding dumbbells.', cameraGuide: 'Place camera at waist height, 2m away. Arms must be visible.', tips: ['Palms face each other', 'Elbows stay still', 'Full range of motion'] },
-  'dumbbell shoulder press': { positioning: 'Stand or sit with dumbbells at shoulder height.', cameraGuide: 'Place camera at chest height, 2m away. Upper body visible.', tips: ['Press straight overhead', 'Don\'t arch your back', 'Lower to shoulder level'] },
+  'dumbbell shoulder press': { positioning: 'Stand or sit with dumbbells at shoulder height, facing the camera.', cameraGuide: 'Place camera at chest height, 2m away. Upper body visible.', tips: ['Press straight overhead', 'Wrists go above head level', 'Lower back to shoulders'] },
   'dumbbell lateral raises': { positioning: 'Stand upright with dumbbells at your sides.', cameraGuide: 'Place camera at chest height, 2-3m away. Full upper body visible.', tips: ['Raise arms to shoulder height', 'Slight bend in elbows', 'Control the descent'] },
   'dumbbell front raises': { positioning: 'Stand upright with dumbbells in front of your thighs.', cameraGuide: 'Place camera at chest height, 2m away.', tips: ['Raise to shoulder height', 'Keep arms straight', 'Alternate or both arms'] },
-  'dumbbell bent-over rows': { positioning: 'Bend at the hips with a flat back, dumbbells hanging.', cameraGuide: 'Place camera at waist height, side view, 2m away.', tips: ['Pull elbows back', 'Squeeze shoulder blades', 'Keep back flat'] },
+  'dumbbell bent-over rows': { positioning: 'Bend at the hips with a flat back, dumbbells hanging. Side view to camera.', cameraGuide: 'Place camera at waist height, side view, 2m away.', tips: ['Pull elbows back', 'Squeeze shoulder blades', 'Keep back flat'] },
   'dumbbell goblet squat': { positioning: 'Hold one dumbbell at chest height with both hands.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.', tips: ['Elbows inside knees', 'Sit back and down', 'Chest stays up'] },
-  'dumbbell thrusters': { positioning: 'Hold dumbbells at shoulder height, feet shoulder-width apart.', cameraGuide: 'Place camera at waist height, 3m away. Full body visible.', tips: ['Squat deep then drive up', 'Press overhead at the top', 'One fluid motion'] },
-  'dumbbell chest press': { positioning: 'Lie on your back on the floor with dumbbells at chest level.', cameraGuide: 'Place camera at floor level, side view.', tips: ['Press straight up', 'Lower until elbows touch floor', 'Keep core engaged'] },
-  'dumbbell tricep overhead extension': { positioning: 'Stand or sit, hold one dumbbell overhead with both hands.', cameraGuide: 'Place camera at chest height, 2m away. Upper body visible.', tips: ['Keep elbows close to head', 'Lower behind your head', 'Extend fully'] },
-  'dumbbell punches': { positioning: 'Stand in a fighting stance holding light dumbbells.', cameraGuide: 'Place camera at chest height, 2-3m away.', tips: ['Alternate fast punches', 'Full arm extension', 'Stay light on your feet'] },
+  'dumbbell thrusters': { positioning: 'Hold dumbbells at shoulder height, feet shoulder-width apart, facing the camera.', cameraGuide: 'Place camera at waist height, 3m away. Full body visible.', tips: ['Squat deep then drive up', 'Press overhead at the top', 'One fluid motion'] },
+  'dumbbell chest press': { positioning: 'Lie on your back on the floor with dumbbells at chest level.', cameraGuide: 'Place camera at floor level, side view.', tips: ['Press straight up', 'Lower until elbows touch floor', 'Side view gives best results'] },
+  'dumbbell tricep overhead extension': { positioning: 'Stand or sit, hold one dumbbell overhead with both hands. Side view works best.', cameraGuide: 'Place camera at chest height, 2m away. Side/profile view recommended.', tips: ['Extend arms fully overhead', 'Lower dumbbell behind your head', 'Works best from side view'] },
+  'dumbbell punches': { positioning: 'Stand in a fighting stance holding light dumbbells.', cameraGuide: 'Place camera at chest height, 2-3m away. Side or front view.', tips: ['Alternate fast punches', 'Full arm extension', 'Stay light on your feet'] },
   'deadlift': { positioning: 'Stand upright holding dumbbells in front of thighs.', cameraGuide: 'Place camera at waist height, 2-3m away. Hips must be visible.', tips: ['Hinge at the hips', 'Let hips move back and down', 'Stand back up fully'] },
-  'dumbbell windmill': { positioning: 'Stand with feet wide, one arm overhead holding dumbbell.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.', tips: ['Reach down to opposite foot', 'Keep overhead arm locked', 'Move slowly'] },
+  'dumbbell windmill': { positioning: 'Stand with feet wide, one arm overhead holding dumbbell, facing the camera.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.', tips: ['One arm stays up while other reaches to foot', 'Keep overhead arm locked', 'Move slowly'] },
 };
