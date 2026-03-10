@@ -491,14 +491,13 @@ export function isWallSitValid(pose: Landmark[]): boolean {
   return kneeAngle >= 65 && kneeAngle <= 125 && shoulderY < hipY;
 }
 
-// FIX v3: Deep Squat Hold — must be in actual squat (hip drops to knee level)
+// FIX v4: Deep Squat Hold — hip must be ABOVE ankles (squatting on feet, not sitting)
 export function isDeepSquatHoldValid(pose: Landmark[]): boolean {
   const kneeAngle = avgAngleBothSides(pose, LEFT_HIP, LEFT_KNEE, LEFT_ANKLE, RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE);
   const shoulderY = avgY(pose, LEFT_SHOULDER, RIGHT_SHOULDER);
   const hipY = avgY(pose, LEFT_HIP, RIGHT_HIP);
-  const kneeY = avgY(pose, LEFT_KNEE, RIGHT_KNEE);
   const ankleY = avgY(pose, LEFT_ANKLE, RIGHT_ANKLE);
-  if (kneeAngle === null || shoulderY === null || hipY === null || kneeY === null) return false;
+  if (kneeAngle === null || shoulderY === null || hipY === null || ankleY === null) return false;
   
   // Knee must be bent deeply
   if (kneeAngle >= 105) return false;
@@ -506,12 +505,11 @@ export function isDeepSquatHoldValid(pose: Landmark[]): boolean {
   // Must be upright: shoulder above hip (not lying down)
   if (shoulderY > hipY) return false;
   
-  // KEY: In a true deep squat, hip drops close to knee level
-  // Hip Y should be close to knee Y (within 15% of frame)
-  if (Math.abs(hipY - kneeY) > 0.15) return false;
-  
-  // Ankle must be below knee (feet on ground, not sitting in chair)
-  if (ankleY !== null && ankleY < kneeY) return false;
+  // KEY: Hip must be significantly HIGHER than ankles (hip Y < ankle Y in screen coords)
+  // When sitting, hip and ankles are at similar Y level (both on floor)
+  // When squatting, hip is above ankles because you're on your feet
+  const hipAboveAnkle = ankleY - hipY;
+  if (hipAboveAnkle < 0.10) return false; // hip must be at least 10% of frame above ankles
   
   return true;
 }
@@ -642,7 +640,7 @@ export const exerciseInstructions: Record<string, ExerciseInstruction> = {
   'dumbbell goblet squat': { positioning: 'Hold one dumbbell at chest height with both hands.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.', tips: ['Elbows inside knees', 'Sit back and down', 'Chest stays up'] },
   'dumbbell thrusters': { positioning: 'Hold dumbbells at shoulder height, feet shoulder-width apart, facing the camera.', cameraGuide: 'Place camera at waist height, 3m away. Full body visible.', tips: ['Squat deep then drive up', 'Press overhead at the top', 'One fluid motion'] },
   'dumbbell chest press': { positioning: 'Lie on your back on the floor with dumbbells at chest level.', cameraGuide: 'Place camera at floor level, side view.', tips: ['Press straight up', 'Lower until elbows touch floor', 'Side view gives best results'] },
-  'dumbbell tricep overhead extension': { positioning: 'Stand or sit, hold one dumbbell overhead with both hands. Side view works best.', cameraGuide: 'Place camera at chest height, 2m away. Side/profile view recommended.', tips: ['Extend arms fully overhead', 'Lower dumbbell behind your head', 'Works best from side view'] },
+  'dumbbell tricep overhead extension': { positioning: 'Stand or sit sideways to the camera (profile view). Hold one dumbbell overhead with both hands.', cameraGuide: 'Place camera at chest height, 2m away. SIDE/PROFILE VIEW ONLY.', tips: ['Stand sideways to camera', 'Extend arms fully overhead', 'Lower dumbbell behind your head', 'Use both hands on one dumbbell'] },
   'dumbbell punches': { positioning: 'Stand in a fighting stance holding light dumbbells.', cameraGuide: 'Place camera at chest height, 2-3m away. Side or front view.', tips: ['Alternate fast punches', 'Full arm extension', 'Stay light on your feet'] },
   'deadlift': { positioning: 'Stand upright holding dumbbells in front of thighs.', cameraGuide: 'Place camera at waist height, 2-3m away. Hips must be visible.', tips: ['Hinge at the hips', 'Let hips move back and down', 'Stand back up fully'] },
   'dumbbell windmill': { positioning: 'Stand with feet wide, one arm overhead holding dumbbell, facing the camera.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body visible.', tips: ['One arm stays up while other reaches to foot', 'Keep overhead arm locked', 'Move slowly'] },
