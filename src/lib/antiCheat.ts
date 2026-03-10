@@ -1,12 +1,6 @@
 /**
  * Anti-cheat types and session tracking for LIONSX.
- * 
- * NOTE: This file now only provides types and basic session tracking.
- * Rep validation has been REMOVED — the exercise detectors themselves
- * are the source of truth for whether a rep counts.
- * 
- * In the future, anti-cheat can be re-added as a REPORTING layer
- * (flagging suspicious sessions after the fact) rather than a BLOCKING layer.
+ * Types only + basic session tracking. No rep blocking.
  */
 
 export type ExerciseType = 
@@ -36,13 +30,11 @@ export function createSessionSuspicionTracker(): SessionSuspicionTracker {
   };
 }
 
-/** Record a completed rep for session-level tracking */
 export function recordRep(tracker: SessionSuspicionTracker) {
   tracker.totalReps++;
   tracker.lpTimestamps.push({ time: Date.now(), lp: 1 });
 }
 
-/** Stub functions kept for backward compatibility with TimedTrainingFlow */
 export interface SuspicionFlags {
   unrealisticSpeed: boolean;
   singleAxisMotion: boolean;
@@ -52,18 +44,10 @@ export interface SuspicionFlags {
 }
 
 export function getSuspicionFlags(_tracker: SessionSuspicionTracker): SuspicionFlags {
-  return {
-    unrealisticSpeed: false,
-    singleAxisMotion: false,
-    microMovements: false,
-    volumeSpike: false,
-    noOrientationChange: false,
-  };
+  return { unrealisticSpeed: false, singleAxisMotion: false, microMovements: false, volumeSpike: false, noOrientationChange: false };
 }
 
-export function computeSuspicionScore(_flags: SuspicionFlags): number {
-  return 0;
-}
+export function computeSuspicionScore(_flags: SuspicionFlags): number { return 0; }
 
 export function getAverageAxisDistribution(_tracker: SessionSuspicionTracker): { x: number; y: number; z: number } {
   return { x: 33, y: 33, z: 34 };
