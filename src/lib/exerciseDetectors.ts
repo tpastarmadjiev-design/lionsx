@@ -179,30 +179,32 @@ export function detectPullUpPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
-// FIX: Use ankle Y position relative to standing — much more reliable than heel landmarks
-let _calfBaselineAnkleY: number | null = null;
+// FIX v3: Calf Raises — track nose Y (most stable high point, biggest movement range)
+let _calfSamples: number[] = [];
 
 export function detectCalfRaisePhase(pose: Landmark[]): Phase {
-  const ankleY = avgY(pose, LEFT_ANKLE, RIGHT_ANKLE);
-  const kneeY = avgY(pose, LEFT_KNEE, RIGHT_KNEE);
-  if (ankleY === null || kneeY === null) return 'neutral';
+  const noseY = pose[NOSE]?.y;
+  const shoulderY = avgY(pose, LEFT_SHOULDER, RIGHT_SHOULDER);
+  const hipY = avgY(pose, LEFT_HIP, RIGHT_HIP);
+  if (noseY === undefined || shoulderY === null || hipY === null) return 'neutral';
   
-  // Set baseline on first detection
-  if (_calfBaselineAnkleY === null) _calfBaselineAnkleY = ankleY;
+  // Must be standing upright
+  if (shoulderY > hipY) return 'neutral';
   
-  // When on toes, ankles rise (Y decreases in screen coords)
-  const rise = _calfBaselineAnkleY - ankleY;
+  // Collect nose Y samples to find baseline (max Y = lowest position = standing flat)
+  _calfSamples.push(noseY);
+  if (_calfSamples.length > 30) _calfSamples.shift();
+  if (_calfSamples.length < 5) return 'neutral';
   
-  if (rise > 0.012) return 'up';   // ankle moved up from baseline
-  if (rise < 0.004) return 'down'; // ankle back at baseline
+  const baseline = Math.max(..._calfSamples); // standing flat = highest Y value
+  const rise = baseline - noseY;
   
-  // Update baseline when in down position (standing flat)
-  if (rise < 0.004) _calfBaselineAnkleY = ankleY;
-  
+  if (rise > 0.015) return 'up';   // body rose noticeably
+  if (rise < 0.005) return 'down'; // body back to baseline
   return 'neutral';
 }
 
-export function resetCalfRaiseState() { _calfBaselineAnkleY = null; }
+export function resetCalfRaiseState() { _calfSamples = []; }
 
 // FIX: Burpees — require actual plank position (nose low + shoulders near hips)
 export function detectBurpeePhase(pose: Landmark[]): Phase {
@@ -393,17 +395,17 @@ export function detectThrusterPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
-// FIX: Tricep Extension — use wrist Y position (works frontal + profile)
+// FIX v3: Tricep Extension — down = wrist at/behind head, up = wrist above head
 export function detectTricepExtensionPhase(pose: Landmark[]): Phase {
   const wristY = avgY(pose, LEFT_WRIST, RIGHT_WRIST);
+  const noseY = pose[NOSE]?.y;
   const shoulderY = avgY(pose, LEFT_SHOULDER, RIGHT_SHOULDER);
-  const hipY = avgY(pose, LEFT_HIP, RIGHT_HIP);
-  if (wristY === null || shoulderY === null) return 'neutral';
+  if (wristY === null || noseY === undefined || shoulderY === null) return 'neutral';
   
-  // Up: wrists above head (extended overhead)
-  if (wristY < shoulderY - 0.06) return 'up';
-  // Down: wrists dropped behind/below head (near shoulder level or below)
-  if (wristY > shoulderY + 0.02) return 'down';
+  // Up: wrists clearly above nose (arms extended overhead)
+  if (wristY < noseY - 0.04) return 'up';
+  // Down: wrists dropped to head/shoulder level (behind head)
+  if (wristY > noseY + 0.03) return 'down';
   return 'neutral';
 }
 
@@ -489,35 +491,64 @@ export function isWallSitValid(pose: Landmark[]): boolean {
   return kneeAngle >= 65 && kneeAngle <= 125 && shoulderY < hipY;
 }
 
-// FIX: More liberal knee angle for deep squat
+// FIX v3: Deep Squat Hold — must be in actual squat (hip drops to knee level)
 export function isDeepSquatHoldValid(pose: Landmark[]): boolean {
   const kneeAngle = avgAngleBothSides(pose, LEFT_HIP, LEFT_KNEE, LEFT_ANKLE, RIGHT_HIP, RIGHT_KNEE, RIGHT_ANKLE);
-  if (kneeAngle === null) return false;
-  return kneeAngle < 105; // was 95, now more liberal
-}
-
-// FIX: Cobra Stretch — require body to be mostly horizontal (prevent sitting false positive)
-export function isCobraStretchValid(pose: Landmark[]): boolean {
-  const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
-  const hip = pose[LEFT_HIP] || pose[RIGHT_HIP];
-  const knee = pose[LEFT_KNEE] || pose[RIGHT_KNEE];
-  const nose = pose[NOSE];
-  if (!shoulder || !hip || !nose) return false;
+  const shoulderY = avgY(pose, LEFT_SHOULDER, RIGHT_SHOULDER);
+  const hipY = avgY(pose, LEFT_HIP, RIGHT_HIP);
+  const kneeY = avgY(pose, LEFT_KNEE, RIGHT_KNEE);
+  const ankleY = avgY(pose, LEFT_ANKLE, RIGHT_ANKLE);
+  if (kneeAngle === null || shoulderY === null || hipY === null || kneeY === null) return false;
   
-  // Hip must be low in frame (lying on ground)
-  if (hip.y < 0.5) return false;
-  // Shoulder must be higher than hip (upper body pushed up)
-  if (shoulder.y > hip.y - 0.05) return false;
-  // Nose above shoulder
-  if (nose.y > shoulder.y) return false;
-  // Key fix: hip and knee must be roughly same height (body horizontal, not sitting)
-  if (knee && Math.abs(knee.y - hip.y) > 0.15) return false;
+  // Knee must be bent deeply
+  if (kneeAngle >= 105) return false;
+  
+  // Must be upright: shoulder above hip (not lying down)
+  if (shoulderY > hipY) return false;
+  
+  // KEY: In a true deep squat, hip drops close to knee level
+  // Hip Y should be close to knee Y (within 15% of frame)
+  if (Math.abs(hipY - kneeY) > 0.15) return false;
+  
+  // Ankle must be below knee (feet on ground, not sitting in chair)
+  if (ankleY !== null && ankleY < kneeY) return false;
   
   return true;
 }
 
-// FIX: Hip Circles — track actual hip X movement over time
-let _hipCircleSamples: number[] = [];
+// FIX v3: Cobra Stretch — must be truly lying face down
+// Require: hip, knee, ankle ALL at very similar Y (horizontal on floor)
+// AND shoulder raised above them AND nose above shoulder
+export function isCobraStretchValid(pose: Landmark[]): boolean {
+  const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
+  const hip = pose[LEFT_HIP] || pose[RIGHT_HIP];
+  const knee = pose[LEFT_KNEE] || pose[RIGHT_KNEE];
+  const ankle = pose[LEFT_ANKLE] || pose[RIGHT_ANKLE];
+  const nose = pose[NOSE];
+  if (!shoulder || !hip || !nose) return false;
+  
+  // Must have at least knee OR ankle to verify lying position
+  if (!knee && !ankle) return false;
+  
+  // Hip must be in lower 40% of frame (on the ground)
+  if (hip.y < 0.6) return false;
+  
+  // Lower body MUST be flat on ground: knee and ankle at same level as hip
+  if (knee && Math.abs(knee.y - hip.y) > 0.08) return false;
+  if (ankle && Math.abs(ankle.y - hip.y) > 0.10) return false;
+  
+  // Upper body must be raised: shoulder clearly above hip
+  if (shoulder.y > hip.y - 0.06) return false;
+  
+  // Nose above shoulder (head up)
+  if (nose.y > shoulder.y) return false;
+  
+  return true;
+}
+
+// FIX v3: Hip Circles — require LARGE continuous hip movement
+// Only counts if hips are moving significantly right now (not just moved in the past)
+let _hipRecentX: number[] = [];
 
 export function isHipCircleValid(pose: Landmark[]): boolean {
   const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
@@ -528,23 +559,25 @@ export function isHipCircleValid(pose: Landmark[]): boolean {
   // Must be standing upright
   if (!(shoulder.y < hip.y && hip.y < knee.y)) return false;
   
-  // Track hip X position
-  _hipCircleSamples.push(hip.x);
-  if (_hipCircleSamples.length > 16) _hipCircleSamples.shift(); // keep last ~2 seconds at 8fps
+  // Track recent hip X positions (last ~1 second at 8fps)
+  _hipRecentX.push(hip.x);
+  if (_hipRecentX.length > 8) _hipRecentX.shift();
   
-  // Need enough samples to detect movement
-  if (_hipCircleSamples.length < 8) return false;
+  if (_hipRecentX.length < 6) return false;
   
-  // Check if hips are actually moving side to side
-  const minX = Math.min(..._hipCircleSamples);
-  const maxX = Math.max(..._hipCircleSamples);
-  const hipMovement = maxX - minX;
+  // Check movement range in the RECENT window only
+  const minX = Math.min(..._hipRecentX);
+  const maxX = Math.max(..._hipRecentX);
+  const range = maxX - minX;
   
-  // Require at least 3% frame width of hip movement
-  return hipMovement > 0.03;
+  // Require at least 8% frame width of hip movement in the last second
+  // This is a big movement — you have to really swing your hips
+  return range > 0.08;
 }
 
-export function resetHipCircleState() { _hipCircleSamples = []; }
+export function resetHipCircleState() { 
+  _hipRecentX = []; 
+}
 
 // FIX: Shoulder Stretch Hold — changed to cross-body stretch (arm pulled across chest)
 // Detects: one wrist crosses past the opposite shoulder X position, at shoulder height
@@ -575,7 +608,7 @@ export interface ExerciseInstruction {
 
 export const exerciseInstructions: Record<string, ExerciseInstruction> = {
   'squats': { positioning: 'Stand with feet shoulder-width apart, facing the camera.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body must be visible.', tips: ['Keep your back straight', 'Knees over toes', 'Go below parallel'] },
-  'lunges': { positioning: 'Stand upright facing the camera with feet together.', cameraGuide: 'Place camera at waist height, 2-3m away. Full body must be visible.', tips: ['Step forward with control', 'Back knee near the floor', 'Alternate legs'] },
+  'lunges': { positioning: 'Stand upright, side view to camera. Step forward into a lunge.', cameraGuide: 'Place camera at waist height, 2-3m away. Side/profile view recommended.', tips: ['Step forward with control', 'Back knee near the floor', 'Alternate legs', 'Side view works best'] },
   'pike push-ups': { positioning: 'Start in a pike position (inverted V) facing the camera.', cameraGuide: 'Place camera at floor level, 2m away. Upper body must be visible.', tips: ['Keep hips high', 'Lower head toward floor', 'Elbows flare slightly'] },
   'diamond push-ups': { positioning: 'Get into push-up position with hands close together.', cameraGuide: 'Place camera at floor level, side view preferred.', tips: ['Hands form a diamond shape', 'Elbows stay close to body', 'Full range of motion'] },
   'wall sit': { positioning: 'Lean against a wall with thighs parallel to the floor.', cameraGuide: 'Place camera at waist height, 2m away. Side view works best.', tips: ['Back flat against wall', 'Knees at 90°', 'Don\'t rest hands on thighs'] },
