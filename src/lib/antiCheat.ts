@@ -12,7 +12,7 @@ export type ExerciseType =
   | 'dumbbell-lateral-raises' | 'dumbbell-front-raises' | 'dumbbell-bent-over-rows'
   | 'dumbbell-goblet-squat' | 'dumbbell-thrusters' | 'dumbbell-chest-press'
   | 'dumbbell-tricep-overhead-extension' | 'dumbbell-punches' | 'dumbbell-romanian-deadlift'
-  | 'dumbbell-windmill';
+  | 'dumbbell-windmill' | 'lat-pulldown' | 'seated-cable-row';
 
 export interface SessionSuspicionTracker {
   totalReps: number;
