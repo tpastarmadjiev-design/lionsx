@@ -100,6 +100,8 @@ function getExerciseType(name: string): import("@/lib/antiCheat").ExerciseType {
   if (normalized.includes("dip")) return "dips";
   if (normalized.includes("pull")) return "pull-ups";
   if (normalized.includes("bench")) return "bench-press";
+  if (normalized === "lat pulldown") return "lat-pulldown";
+  if (normalized === "seated cable row") return "seated-cable-row";
   return "push-ups"; // Default fallback
 }
 
