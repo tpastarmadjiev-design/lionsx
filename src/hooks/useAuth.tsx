@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { resetCameraPermissionFlag } from '@/components/TimedTrainingFlow';
 import { gaEvents } from '@/lib/gtag';
+import { saveUserTimezone } from '@/lib/analyticsTracker';
 
 interface AuthContextType {
   user: User | null;
