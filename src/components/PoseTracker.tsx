@@ -17,6 +17,7 @@ import {
   detectGobletSquatPhase, detectThrusterPhase,
   detectTricepExtensionPhase, detectPunchPhase,
   detectRomanianDeadliftPhase, detectWindmillPhase,
+  detectLatPulldownPhase, detectSeatedCableRowPhase,
   isPlankValid, isWallSitValid, isDeepSquatHoldValid,
   isShoulderStretchValid, isCobraStretchValid, isHipCircleValid,
   resetMountainClimberState, resetHighKneeState, resetPunchState,
@@ -177,6 +178,8 @@ export function PoseTracker({
       case 'dumbbell-punches': return detectPunchPhase(pose);
       case 'dumbbell-romanian-deadlift': return detectRomanianDeadliftPhase(pose);
       case 'dumbbell-windmill': return detectWindmillPhase(pose);
+      case 'lat-pulldown': return detectLatPulldownPhase(pose);
+      case 'seated-cable-row': return detectSeatedCableRowPhase(pose);
       default: return 'neutral';
     }
   }, [exercise]);
