@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          timezone: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          timezone?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          timezone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           category: string
@@ -58,17 +85,23 @@ export type Database = {
           avatar_url: string | null
           country: string
           created_at: string
+          current_streak: number
           daily_lp: number
           email: string | null
           endurance: number
+          first_session_at: string | null
           id: string
           last_count_reset: string | null
           last_lp_reset: string | null
+          last_training_date: string | null
+          longest_streak: number
           lp: number
           mobility: number
           nickname: string
           no_proof_count: number
+          preferred_location: string | null
           strength: number
+          timezone: string | null
           total_exercises_count: number
           updated_at: string
         }
@@ -76,17 +109,23 @@ export type Database = {
           avatar_url?: string | null
           country?: string
           created_at?: string
+          current_streak?: number
           daily_lp?: number
           email?: string | null
           endurance?: number
+          first_session_at?: string | null
           id: string
           last_count_reset?: string | null
           last_lp_reset?: string | null
+          last_training_date?: string | null
+          longest_streak?: number
           lp?: number
           mobility?: number
           nickname: string
           no_proof_count?: number
+          preferred_location?: string | null
           strength?: number
+          timezone?: string | null
           total_exercises_count?: number
           updated_at?: string
         }
@@ -94,19 +133,76 @@ export type Database = {
           avatar_url?: string | null
           country?: string
           created_at?: string
+          current_streak?: number
           daily_lp?: number
           email?: string | null
           endurance?: number
+          first_session_at?: string | null
           id?: string
           last_count_reset?: string | null
           last_lp_reset?: string | null
+          last_training_date?: string | null
+          longest_streak?: number
           lp?: number
           mobility?: number
           nickname?: string
           no_proof_count?: number
+          preferred_location?: string | null
           strength?: number
+          timezone?: string | null
           total_exercises_count?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      share_events: {
+        Row: {
+          id: string
+          platform: string | null
+          share_type: string
+          shared_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          platform?: string | null
+          share_type: string
+          shared_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          platform?: string | null
+          share_type?: string
+          shared_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shop_visits: {
+        Row: {
+          id: string
+          made_purchase: boolean
+          purchase_amount: number | null
+          source: string | null
+          user_id: string
+          visited_at: string
+        }
+        Insert: {
+          id?: string
+          made_purchase?: boolean
+          purchase_amount?: number | null
+          source?: string | null
+          user_id: string
+          visited_at?: string
+        }
+        Update: {
+          id?: string
+          made_purchase?: boolean
+          purchase_amount?: number | null
+          source?: string | null
+          user_id?: string
+          visited_at?: string
         }
         Relationships: []
       }
@@ -208,6 +304,48 @@ export type Database = {
           },
         ]
       }
+      training_sessions: {
+        Row: {
+          completed_at: string | null
+          exercise_name: string
+          id: string
+          location: string | null
+          lp_earned: number | null
+          reps_achieved: number | null
+          session_duration_seconds: number | null
+          started_at: string
+          timezone: string | null
+          user_id: string
+          was_completed: boolean
+        }
+        Insert: {
+          completed_at?: string | null
+          exercise_name: string
+          id?: string
+          location?: string | null
+          lp_earned?: number | null
+          reps_achieved?: number | null
+          session_duration_seconds?: number | null
+          started_at?: string
+          timezone?: string | null
+          user_id: string
+          was_completed?: boolean
+        }
+        Update: {
+          completed_at?: string | null
+          exercise_name?: string
+          id?: string
+          location?: string | null
+          lp_earned?: number | null
+          reps_achieved?: number | null
+          session_duration_seconds?: number | null
+          started_at?: string
+          timezone?: string | null
+          user_id?: string
+          was_completed?: boolean
+        }
+        Relationships: []
+      }
       user_analytics: {
         Row: {
           device_type: string | null
@@ -260,13 +398,17 @@ export type Database = {
           avatar_url: string | null
           country: string | null
           created_at: string | null
+          current_streak: number | null
           daily_lp: number | null
           endurance: number | null
           id: string | null
+          longest_streak: number | null
           lp: number | null
           mobility: number | null
           nickname: string | null
+          preferred_location: string | null
           strength: number | null
+          timezone: string | null
           total_exercises_count: number | null
           updated_at: string | null
         }
@@ -274,13 +416,17 @@ export type Database = {
           avatar_url?: string | null
           country?: string | null
           created_at?: string | null
+          current_streak?: number | null
           daily_lp?: number | null
           endurance?: number | null
           id?: string | null
+          longest_streak?: number | null
           lp?: number | null
           mobility?: number | null
           nickname?: string | null
+          preferred_location?: string | null
           strength?: number | null
+          timezone?: string | null
           total_exercises_count?: number | null
           updated_at?: string | null
         }
@@ -288,13 +434,17 @@ export type Database = {
           avatar_url?: string | null
           country?: string | null
           created_at?: string | null
+          current_streak?: number | null
           daily_lp?: number | null
           endurance?: number | null
           id?: string | null
+          longest_streak?: number | null
           lp?: number | null
           mobility?: number | null
           nickname?: string | null
+          preferred_location?: string | null
           strength?: number | null
+          timezone?: string | null
           total_exercises_count?: number | null
           updated_at?: string | null
         }
