@@ -55,9 +55,20 @@ export default function Training() {
         proofType: 'timed',
       });
       gaEvents.trainingCompleted(selectedExercise.name, reps, reps);
+
+      // Analytics: complete session, update streak, mark first session
+      if (user?.id) {
+        const durationSeconds = Math.round((Date.now() - sessionStartTimeRef.current) / 1000);
+        if (analyticsSessionIdRef.current) {
+          completeTrainingSession(analyticsSessionIdRef.current, reps, reps, durationSeconds);
+        }
+        updateStreak(user.id);
+        markFirstSession(user.id);
+      }
     } catch (error) {
       console.error('Error completing training:', error);
     }
+    analyticsSessionIdRef.current = null;
     setShowFlow(false);
     setSelectedExercise(null);
   };
