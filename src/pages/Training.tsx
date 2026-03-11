@@ -178,7 +178,10 @@ export default function Training() {
 
       {/* Location Selection or Exercise Grid */}
       {!selectedLocation ? (
-        <LocationSelector onSelect={setSelectedLocation} />
+        <LocationSelector onSelect={(loc) => {
+          setSelectedLocation(loc);
+          if (user?.id) trackLocationPreference(user.id, loc);
+        }} />
       ) : (
         <ExerciseGrid
           exercises={filteredExercises}
