@@ -321,8 +321,9 @@ export function detectCatCowPhase(pose: Landmark[]): Phase {
 export function detectBenchPressPhase(pose: Landmark[]): Phase {
   const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
   if (elbowAngle === null) return 'neutral';
-  if (elbowAngle < 100) return 'down';
-  if (elbowAngle > 155) return 'up';
+  // Liberal thresholds for lying position (same as chest press)
+  if (elbowAngle < 110) return 'down';
+  if (elbowAngle > 145) return 'up';
   return 'neutral';
 }
 
@@ -464,6 +465,33 @@ export function detectWindmillPhase(pose: Landmark[]): Phase {
   // Up: both wrists roughly at same height (standing upright with arms)
   const spread = Math.abs(lWrist.y - rWrist.y);
   if (spread < 0.15) return 'up';
+  return 'neutral';
+}
+
+// ─── LAT PULLDOWN ───
+// Elbow Y relative to shoulder Y: above shoulder = up (bar at top), below shoulder = down (pulled down)
+export function detectLatPulldownPhase(pose: Landmark[]): Phase {
+  const elbowY = avgY(pose, LEFT_ELBOW, RIGHT_ELBOW);
+  const shoulderY = avgY(pose, LEFT_SHOULDER, RIGHT_SHOULDER);
+  if (elbowY === null || shoulderY === null) return 'neutral';
+  
+  // Up: elbows above shoulders (arms reaching up for the bar)
+  if (elbowY < shoulderY - 0.04) return 'up';
+  // Down: elbows below shoulders (bar pulled down)
+  if (elbowY > shoulderY + 0.04) return 'down';
+  return 'neutral';
+}
+
+// ─── SEATED CABLE ROW ───
+// Elbow angle: arms extended = up (handle away), arms pulled back = down (handle at chest)
+export function detectSeatedCableRowPhase(pose: Landmark[]): Phase {
+  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
+  if (elbowAngle === null) return 'neutral';
+  
+  // Up: arms extended forward (reaching for the handle)
+  if (elbowAngle > 145) return 'up';
+  // Down: arms pulled back (handle at chest, elbows behind body)
+  if (elbowAngle < 80) return 'down';
   return 'neutral';
 }
 
@@ -630,6 +658,8 @@ export const exerciseInstructions: Record<string, ExerciseInstruction> = {
   'dips': { positioning: 'Place hands on a chair or bench behind you.', cameraGuide: 'Place camera at chest height, 2m away.', tips: ['Lower until elbows at 90°', 'Push back up fully', 'Keep back close to bench'] },
   'pull-ups': { positioning: 'Hang from a bar with arms fully extended.', cameraGuide: 'Place camera at chest height, 2m away.', tips: ['Pull chin over the bar', 'Control the descent', 'Full arm extension at bottom'] },
   'bench-press': { positioning: 'Lie on a bench with a barbell or dumbbells.', cameraGuide: 'Place camera at side, showing arm movement.', tips: ['Lower weight to chest', 'Press up fully', 'Keep feet on the floor'] },
+  'lat-pulldown': { positioning: 'Sit at the lat pulldown machine facing or sideways to the camera.', cameraGuide: 'Place camera at chest height, 2m away. Front or side view.', tips: ['Reach up and grab the bar', 'Pull the bar down to chest level', 'Control the return up', 'Keep your back straight'] },
+  'seated-cable-row': { positioning: 'Sit at the cable row machine with feet on the platform. Front or side view to camera.', cameraGuide: 'Place camera at chest height, 2m away. Front or side view.', tips: ['Grab the triangle handle', 'Pull it toward your chest/stomach', 'Squeeze shoulder blades together', 'Control the return forward'] },
   'running': { positioning: 'Head outside for your run.', cameraGuide: 'No camera needed — GPS tracking only.', tips: ['Run outdoors for accurate GPS', 'Keep phone on you', 'Maintain steady pace'] },
   'dumbbell bicep curls': { positioning: 'Stand upright holding dumbbells. Works with one or both arms.', cameraGuide: 'Place camera at waist height, 2m away. Arms must be visible.', tips: ['Keep elbows pinned to sides', 'Full curl to shoulders', 'One arm or both arms OK'] },
   'dumbbell hammer curls': { positioning: 'Stand upright with palms facing inward holding dumbbells.', cameraGuide: 'Place camera at waist height, 2m away. Arms must be visible.', tips: ['Palms face each other', 'Elbows stay still', 'Full range of motion'] },
