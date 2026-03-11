@@ -43,6 +43,8 @@ const STREET_EXERCISES = [
 const GYM_ONLY_EXERCISES = [
   'Bench Press',
   'Treadmill Run',
+  'Lat Pulldown',
+  'Seated Cable Row',
 ];
 
 // Home exercises = bodyweight + mobility + dumbbell
