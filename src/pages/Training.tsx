@@ -31,6 +31,8 @@ export default function Training() {
   const [selectedLocation, setSelectedLocation] = useState<TrainingLocation | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [showFlow, setShowFlow] = useState(false);
+  const analyticsSessionIdRef = useRef<string | null>(null);
+  const sessionStartTimeRef = useRef<number>(0);
   const navigate = useNavigate();
 
   useTrackScreen('training');
