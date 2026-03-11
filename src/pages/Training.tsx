@@ -15,6 +15,14 @@ import { Zap, Play, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrainingLocation, filterExercisesByLocation } from '@/lib/exerciseLocations';
 import { gaEvents } from '@/lib/gtag';
+import {
+  startTrainingSession,
+  completeTrainingSession,
+  updateStreak,
+  markFirstSession,
+  trackLocationPreference,
+} from '@/lib/analyticsTracker';
+import { useRef } from 'react';
 
 export default function Training() {
   const { user, loading: authLoading } = useAuth();
@@ -23,6 +31,8 @@ export default function Training() {
   const [selectedLocation, setSelectedLocation] = useState<TrainingLocation | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [showFlow, setShowFlow] = useState(false);
+  const analyticsSessionIdRef = useRef<string | null>(null);
+  const sessionStartTimeRef = useRef<number>(0);
   const navigate = useNavigate();
 
   useTrackScreen('training');
@@ -45,9 +55,20 @@ export default function Training() {
         proofType: 'timed',
       });
       gaEvents.trainingCompleted(selectedExercise.name, reps, reps);
+
+      // Analytics: complete session, update streak, mark first session
+      if (user?.id) {
+        const durationSeconds = Math.round((Date.now() - sessionStartTimeRef.current) / 1000);
+        if (analyticsSessionIdRef.current) {
+          completeTrainingSession(analyticsSessionIdRef.current, reps, reps, durationSeconds);
+        }
+        updateStreak(user.id);
+        markFirstSession(user.id);
+      }
     } catch (error) {
       console.error('Error completing training:', error);
     }
+    analyticsSessionIdRef.current = null;
     setShowFlow(false);
     setSelectedExercise(null);
   };
@@ -157,7 +178,10 @@ export default function Training() {
 
       {/* Location Selection or Exercise Grid */}
       {!selectedLocation ? (
-        <LocationSelector onSelect={setSelectedLocation} />
+        <LocationSelector onSelect={(loc) => {
+          setSelectedLocation(loc);
+          if (user?.id) trackLocationPreference(user.id, loc);
+        }} />
       ) : (
         <ExerciseGrid
           exercises={filteredExercises}
@@ -179,7 +203,14 @@ export default function Training() {
             variant="hero"
             size="xl"
             className="w-full animate-slide-up"
-            onClick={() => setShowFlow(true)}
+            onClick={async () => {
+              setShowFlow(true);
+              sessionStartTimeRef.current = Date.now();
+              if (user?.id && selectedExercise) {
+                const sessionId = await startTrainingSession(user.id, selectedExercise.name, selectedLocation || undefined);
+                analyticsSessionIdRef.current = sessionId;
+              }
+            }}
           >
             <Play className="w-5 h-5" />
             Start {selectedExercise.name}

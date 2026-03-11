@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { resetCameraPermissionFlag } from '@/components/TimedTrainingFlow';
 import { gaEvents } from '@/lib/gtag';
+import { saveUserTimezone } from '@/lib/analyticsTracker';
 
 interface AuthContextType {
   user: User | null;
@@ -76,6 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     gaEvents.login('email');
+    
+    // Save user timezone on login
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      saveUserTimezone(session.user.id);
+    }
+    
     toast.success('Welcome back, Lion!');
     return { error: null };
   };
