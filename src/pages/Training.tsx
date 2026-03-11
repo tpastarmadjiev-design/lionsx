@@ -15,6 +15,14 @@ import { Zap, Play, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrainingLocation, filterExercisesByLocation } from '@/lib/exerciseLocations';
 import { gaEvents } from '@/lib/gtag';
+import {
+  startTrainingSession,
+  completeTrainingSession,
+  updateStreak,
+  markFirstSession,
+  trackLocationPreference,
+} from '@/lib/analyticsTracker';
+import { useRef } from 'react';
 
 export default function Training() {
   const { user, loading: authLoading } = useAuth();
