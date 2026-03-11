@@ -77,6 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     gaEvents.login('email');
+    
+    // Save user timezone on login
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      saveUserTimezone(session.user.id);
+    }
+    
     toast.success('Welcome back, Lion!');
     return { error: null };
   };

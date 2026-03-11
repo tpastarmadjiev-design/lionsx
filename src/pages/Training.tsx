@@ -203,7 +203,14 @@ export default function Training() {
             variant="hero"
             size="xl"
             className="w-full animate-slide-up"
-            onClick={() => setShowFlow(true)}
+            onClick={async () => {
+              setShowFlow(true);
+              sessionStartTimeRef.current = Date.now();
+              if (user?.id && selectedExercise) {
+                const sessionId = await startTrainingSession(user.id, selectedExercise.name, selectedLocation || undefined);
+                analyticsSessionIdRef.current = sessionId;
+              }
+            }}
           >
             <Play className="w-5 h-5" />
             Start {selectedExercise.name}
