@@ -201,10 +201,6 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    if (gpsLockTimerRef.current) {
-      clearTimeout(gpsLockTimerRef.current);
-      gpsLockTimerRef.current = null;
-    }
     setStep('finish');
   }, []);
 
