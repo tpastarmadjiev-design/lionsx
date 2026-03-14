@@ -164,10 +164,19 @@ export function detectJumpPhase(pose: Landmark[]): Phase {
 }
 
 export function detectDipPhase(pose: Landmark[]): Phase {
-  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
-  if (elbowAngle === null) return 'neutral';
-  if (elbowAngle < 100) return 'down';
-  if (elbowAngle > 155) return 'up';
+  const lShoulder = pose[LEFT_SHOULDER];
+  const rShoulder = pose[RIGHT_SHOULDER];
+  const lWrist = pose[LEFT_WRIST];
+  const rWrist = pose[RIGHT_WRIST];
+  if (!lShoulder || !rShoulder || !lWrist || !rWrist) return 'neutral';
+
+  const avgShoulderY = (lShoulder.y + rShoulder.y) / 2;
+  const avgWristY = (lWrist.y + rWrist.y) / 2;
+
+  // DOWN: shoulders drop near or below wrist level
+  if (avgShoulderY > avgWristY - 0.05) return 'down';
+  // UP: shoulders clearly above wrists
+  if (avgShoulderY < avgWristY - 0.12) return 'up';
   return 'neutral';
 }
 
