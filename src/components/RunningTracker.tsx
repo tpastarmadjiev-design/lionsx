@@ -18,16 +18,17 @@ interface Position {
   accuracy?: number;
 }
 
-// Anti-cheat constants
-const MIN_DISTANCE_THRESHOLD = 1.5; // meters - ignore GPS drift below this
-const MIN_SPEED_KMH = 1.0; // km/h - anything below is not real movement
-const MAX_TELEPORT_SPEED = 25; // m/s (~90 km/h) - above this = GPS error
-const CONSECUTIVE_VALID_REQUIRED = 1; // need 1 valid update before awarding
-const LOW_ACCURACY_THRESHOLD = 30; // meters - warn if GPS accuracy is poor
+// GPS tracking constants
+const GPS_LOCK_DURATION = 8000; // ms - wait before counting distance
+const MAX_ACCURACY = 20; // meters - ignore points with worse accuracy
+const MIN_DISTANCE_BETWEEN_POINTS = 5; // meters - ignore smaller moves (drift)
+const MAX_SPEED_KMH = 25; // km/h - above = teleport/GPS jump
+const MIN_SPEED_KMH = 0.5; // km/h - below = standing still
+const SMOOTHING_BUFFER_SIZE = 3; // number of accepted points to average
 
 // Haversine formula to calculate distance between two GPS points in meters
 function calculateDistance(pos1: Position, pos2: Position): number {
-  const R = 6371000; // Earth's radius in meters
+  const R = 6371000;
   const dLat = (pos2.lat - pos1.lat) * Math.PI / 180;
   const dLon = (pos2.lng - pos1.lng) * Math.PI / 180;
   const a = 
@@ -36,6 +37,18 @@ function calculateDistance(pos1: Position, pos2: Position): number {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+// Average position from multiple points
+function averagePosition(positions: Position[]): Position {
+  const len = positions.length;
+  const sumLat = positions.reduce((s, p) => s + p.lat, 0);
+  const sumLng = positions.reduce((s, p) => s + p.lng, 0);
+  return {
+    lat: sumLat / len,
+    lng: sumLng / len,
+    timestamp: positions[len - 1].timestamp,
+  };
 }
 
 export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCancel }: RunningTrackerProps) {
@@ -47,13 +60,16 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
   const [lowAccuracy, setLowAccuracy] = useState(false);
+  const [gpsLocked, setGpsLocked] = useState(false);
   
   const positionsRef = useRef<Position[]>([]);
+  const acceptedPositionsRef = useRef<Position[]>([]); // smoothing buffer (last N accepted)
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
-  const consecutiveValidRef = useRef<number>(0);
-  const movementUnlockedRef = useRef<boolean>(false);
+  const gpsLockTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const gpsLockedRef = useRef<boolean>(false);
+  const lastAcceptedRef = useRef<Position | null>(null); // last point used for distance
 
   // Check permission status on mount
   useEffect(() => {
@@ -101,11 +117,20 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
 
     setStep('active');
     setGpsError(null);
+    setGpsLocked(false);
     startTimeRef.current = Date.now();
     positionsRef.current = [];
-    consecutiveValidRef.current = 0;
-    movementUnlockedRef.current = false;
+    acceptedPositionsRef.current = [];
+    lastAcceptedRef.current = null;
+    gpsLockedRef.current = false;
     setLowAccuracy(false);
+
+    // GPS lock phase: wait 8 seconds before counting distance
+    gpsLockTimerRef.current = setTimeout(() => {
+      gpsLockedRef.current = true;
+      setGpsLocked(true);
+    }, GPS_LOCK_DURATION);
+
     // Start timer
     timerRef.current = setInterval(() => {
       setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
@@ -121,56 +146,82 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
           accuracy: position.coords.accuracy,
         };
 
-        // Check GPS accuracy
-        if (position.coords.accuracy && position.coords.accuracy > LOW_ACCURACY_THRESHOLD) {
+        // RULE 2: Accuracy filter — ignore inaccurate points completely
+        if (position.coords.accuracy && position.coords.accuracy > MAX_ACCURACY) {
           setLowAccuracy(true);
-        } else {
-          setLowAccuracy(false);
+          return; // Skip this point entirely
+        }
+        setLowAccuracy(false);
+
+        // Store all raw positions (for reference)
+        positionsRef.current.push(newPos);
+
+        // RULE 1: GPS lock phase — collect but don't count distance
+        if (!gpsLockedRef.current) {
+          // Set lastAccepted to latest good point so we have a starting reference
+          lastAcceptedRef.current = newPos;
+          return;
         }
 
-        // Calculate distance from last position
-        if (positionsRef.current.length > 0) {
-          const lastPos = positionsRef.current[positionsRef.current.length - 1];
-          const distance = calculateDistance(lastPos, newPos);
-          const timeDiff = (newPos.timestamp - lastPos.timestamp) / 1000;
-          
-          if (timeDiff > 0) {
-            const speedMs = distance / timeDiff;
-            const speedKmh = speedMs * 3.6;
+        // If no accepted point yet after lock, use this as first reference
+        if (!lastAcceptedRef.current) {
+          lastAcceptedRef.current = newPos;
+          acceptedPositionsRef.current = [newPos];
+          return;
+        }
 
-            // Teleportation detection: ignore unrealistic jumps
-            if (speedMs > MAX_TELEPORT_SPEED) {
-              // GPS teleport — skip this point entirely
-              positionsRef.current.push(newPos);
-              setGpsError(null);
-              return;
-            }
+        const lastAccepted = lastAcceptedRef.current;
+        const rawDistance = calculateDistance(lastAccepted, newPos);
+        const timeDiff = (newPos.timestamp - lastAccepted.timestamp) / 1000;
 
-            // Check minimum distance AND minimum speed
-            const isValidMovement = distance >= MIN_DISTANCE_THRESHOLD && speedKmh >= MIN_SPEED_KMH;
+        // RULE 3: Minimum distance filter — skip GPS drift
+        if (rawDistance < MIN_DISTANCE_BETWEEN_POINTS) {
+          return; // Too close, likely drift — skip
+        }
 
-            if (isValidMovement) {
-              consecutiveValidRef.current += 1;
+        // RULE 5: Speed checks
+        if (timeDiff > 0) {
+          const speedKmh = (rawDistance / timeDiff) * 3.6;
 
-              // Only award distance after enough consecutive valid updates
-              if (consecutiveValidRef.current >= CONSECUTIVE_VALID_REQUIRED) {
-                movementUnlockedRef.current = true;
-              }
+          // Teleport detection — skip unrealistic jumps
+          if (speedKmh > MAX_SPEED_KMH) {
+            return; // GPS jump — skip this point
+          }
 
-              if (movementUnlockedRef.current) {
-                setTotalDistance(prev => prev + distance);
-              }
-
-              setCurrentSpeed(speedMs);
-            } else {
-              // Invalid movement — reset consecutive counter but keep unlocked state
-              consecutiveValidRef.current = 0;
-              setCurrentSpeed(0);
-            }
+          // Standing still detection — don't add distance
+          if (speedKmh < MIN_SPEED_KMH) {
+            return; // Too slow, standing still
           }
         }
 
-        positionsRef.current.push(newPos);
+        // Point is accepted — add to smoothing buffer
+        acceptedPositionsRef.current.push(newPos);
+        if (acceptedPositionsRef.current.length > SMOOTHING_BUFFER_SIZE) {
+          acceptedPositionsRef.current = acceptedPositionsRef.current.slice(-SMOOTHING_BUFFER_SIZE);
+        }
+
+        // RULE 4: Smoothing — calculate distance using averaged positions
+        let distanceToAdd: number;
+        if (acceptedPositionsRef.current.length >= 2) {
+          // Get smoothed current position from buffer
+          const smoothedCurrent = averagePosition(acceptedPositionsRef.current);
+          distanceToAdd = calculateDistance(lastAccepted, smoothedCurrent);
+        } else {
+          distanceToAdd = rawDistance;
+        }
+
+        // RULE 6: Never reset accumulated distance — only add
+        if (distanceToAdd > 0) {
+          setTotalDistance(prev => prev + distanceToAdd);
+        }
+
+        // Update speed display from last 2 accepted points
+        if (timeDiff > 0) {
+          setCurrentSpeed(rawDistance / timeDiff);
+        }
+
+        // Update last accepted reference to current point
+        lastAcceptedRef.current = newPos;
         setGpsError(null);
       },
       (error) => {
@@ -207,19 +258,20 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    if (gpsLockTimerRef.current) {
+      clearTimeout(gpsLockTimerRef.current);
+      gpsLockTimerRef.current = null;
+    }
     setStep('finish');
   }, []);
 
   const handleConfirm = async () => {
     setIsSubmitting(true);
-    
-    // Calculate skill XP based on capped LP
     const skillXp = {
       strength: exercise.skill_strength * cappedLP,
       endurance: exercise.skill_endurance * cappedLP,
       mobility: exercise.skill_mobility * cappedLP,
     };
-
     await onComplete(cappedLP, skillXp);
     setIsSubmitting(false);
   };
@@ -232,6 +284,9 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
       }
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (gpsLockTimerRef.current) {
+        clearTimeout(gpsLockTimerRef.current);
       }
     };
   }, []);
@@ -320,11 +375,19 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
             </div>
           )}
 
+          {/* GPS Lock Phase Indicator */}
+          {!gpsLocked && !gpsError && (
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-4 flex items-center gap-2">
+              <Navigation className="w-5 h-5 text-primary shrink-0 animate-pulse" />
+              <p className="text-primary text-sm">Locking GPS signal... Distance tracking starts in a few seconds.</p>
+            </div>
+          )}
+
           {/* Low Accuracy Warning */}
-          {lowAccuracy && !gpsError && (
+          {lowAccuracy && !gpsError && gpsLocked && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
-              <p className="text-amber-500 text-sm">Low GPS accuracy detected. Running tracking may not work correctly until the signal improves.</p>
+              <p className="text-amber-500 text-sm">Low GPS accuracy. Points with accuracy worse than {MAX_ACCURACY}m are being skipped.</p>
             </div>
           )}
 
