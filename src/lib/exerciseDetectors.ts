@@ -173,9 +173,12 @@ export function detectDipPhase(pose: Landmark[]): Phase {
   const avgShoulderY = (lShoulder.y + rShoulder.y) / 2;
   const avgWristY = (lWrist.y + rWrist.y) / 2;
 
-  // DOWN: shoulders drop near or below wrist level
-  if (avgShoulderY > avgWristY - 0.05) return 'down';
-  // UP: shoulders clearly above wrists
+  // The full range is from UP position (shoulders well above wrists) to wrist level.
+  // DOWN: shoulders drop to halfway between their UP position and wrist level.
+  const midpointY = (avgWristY + avgShoulderY) / 2;
+  // When shoulders sink past the midpoint toward wrists → down
+  if (avgShoulderY > avgWristY - 0.08) return 'down';
+  // UP: shoulders clearly above wrists (arms extended)
   if (avgShoulderY < avgWristY - 0.12) return 'up';
   return 'neutral';
 }
