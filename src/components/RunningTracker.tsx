@@ -19,11 +19,11 @@ interface Position {
 }
 
 // Anti-cheat constants
-const MIN_DISTANCE_THRESHOLD = 3; // meters - ignore GPS drift below this
-const MIN_SPEED_KMH = 1.5; // km/h - anything below is not real movement
-const MAX_TELEPORT_SPEED = 20; // m/s (~72 km/h) - above this = GPS error
-const CONSECUTIVE_VALID_REQUIRED = 2; // need 2 valid updates before awarding
-const LOW_ACCURACY_THRESHOLD = 25; // meters - warn if GPS accuracy is poor
+const MIN_DISTANCE_THRESHOLD = 1.5; // meters - ignore GPS drift below this
+const MIN_SPEED_KMH = 1.0; // km/h - anything below is not real movement
+const MAX_TELEPORT_SPEED = 25; // m/s (~90 km/h) - above this = GPS error
+const CONSECUTIVE_VALID_REQUIRED = 1; // need 1 valid update before awarding
+const LOW_ACCURACY_THRESHOLD = 30; // meters - warn if GPS accuracy is poor
 
 // Haversine formula to calculate distance between two GPS points in meters
 function calculateDistance(pos1: Position, pos2: Position): number {
