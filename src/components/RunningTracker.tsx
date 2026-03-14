@@ -48,13 +48,16 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
   const [lowAccuracy, setLowAccuracy] = useState(false);
+  const [gpsLocked, setGpsLocked] = useState(false);
   
   const positionsRef = useRef<Position[]>([]);
+  const acceptedPositionsRef = useRef<Position[]>([]); // smoothing buffer (last N accepted)
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
-  const consecutiveValidRef = useRef<number>(0);
-  const movementUnlockedRef = useRef<boolean>(false);
+  const gpsLockTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const gpsLockedRef = useRef<boolean>(false);
+  const lastAcceptedRef = useRef<Position | null>(null); // last point used for distance
 
   // Check permission status on mount
   useEffect(() => {
