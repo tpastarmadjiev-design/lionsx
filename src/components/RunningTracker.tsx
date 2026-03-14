@@ -100,19 +100,10 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
 
     setStep('active');
     setGpsError(null);
-    setGpsLocked(false);
     startTimeRef.current = Date.now();
     positionsRef.current = [];
-    acceptedPositionsRef.current = [];
     lastAcceptedRef.current = null;
-    gpsLockedRef.current = false;
     setLowAccuracy(false);
-
-    // GPS lock phase: wait 8 seconds before counting distance
-    gpsLockTimerRef.current = setTimeout(() => {
-      gpsLockedRef.current = true;
-      setGpsLocked(true);
-    }, GPS_LOCK_DURATION);
 
     // Start timer
     timerRef.current = setInterval(() => {
