@@ -19,12 +19,12 @@ interface Position {
 }
 
 // GPS tracking constants
-const GPS_LOCK_DURATION = 8000; // ms - wait before counting distance
-const MAX_ACCURACY = 20; // meters - ignore points with worse accuracy
-const MIN_DISTANCE_BETWEEN_POINTS = 5; // meters - ignore smaller moves (drift)
+const GPS_LOCK_DURATION = 4000; // ms - wait before counting distance
+const MAX_ACCURACY = 30; // meters - ignore points with worse accuracy
+const MIN_DISTANCE_BETWEEN_POINTS = 2; // meters - ignore smaller moves (drift)
 const MAX_SPEED_KMH = 25; // km/h - above = teleport/GPS jump
-const MIN_SPEED_KMH = 0.5; // km/h - below = standing still
-const SMOOTHING_BUFFER_SIZE = 3; // number of accepted points to average
+const MIN_SPEED_KMH = 0.3; // km/h - below = standing still
+const SMOOTHING_BUFFER_SIZE = 2; // number of accepted points to average
 
 // Haversine formula to calculate distance between two GPS points in meters
 function calculateDistance(pos1: Position, pos2: Position): number {
