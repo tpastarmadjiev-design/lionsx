@@ -163,9 +163,8 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
 
               setCurrentSpeed(speedMs);
             } else {
-              // Invalid movement — reset consecutive counter
+              // Invalid movement — reset consecutive counter but keep unlocked state
               consecutiveValidRef.current = 0;
-              movementUnlockedRef.current = false;
               setCurrentSpeed(0);
             }
           }
