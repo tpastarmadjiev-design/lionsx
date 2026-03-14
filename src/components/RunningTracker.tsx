@@ -28,7 +28,7 @@ const SMOOTHING_BUFFER_SIZE = 3; // number of accepted points to average
 
 // Haversine formula to calculate distance between two GPS points in meters
 function calculateDistance(pos1: Position, pos2: Position): number {
-  const R = 6371000; // Earth's radius in meters
+  const R = 6371000;
   const dLat = (pos2.lat - pos1.lat) * Math.PI / 180;
   const dLon = (pos2.lng - pos1.lng) * Math.PI / 180;
   const a = 
@@ -37,6 +37,18 @@ function calculateDistance(pos1: Position, pos2: Position): number {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+// Average position from multiple points
+function averagePosition(positions: Position[]): Position {
+  const len = positions.length;
+  const sumLat = positions.reduce((s, p) => s + p.lat, 0);
+  const sumLng = positions.reduce((s, p) => s + p.lng, 0);
+  return {
+    lat: sumLat / len,
+    lng: sumLng / len,
+    timestamp: positions[len - 1].timestamp,
+  };
 }
 
 export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCancel }: RunningTrackerProps) {
