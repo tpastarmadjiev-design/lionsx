@@ -130,17 +130,9 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
         // Store all raw positions (for reference)
         positionsRef.current.push(newPos);
 
-        // RULE 1: GPS lock phase — collect but don't count distance
-        if (!gpsLockedRef.current) {
-          // Set lastAccepted to latest good point so we have a starting reference
-          lastAcceptedRef.current = newPos;
-          return;
-        }
-
-        // If no accepted point yet after lock, use this as first reference
+        // If no accepted point yet, use this as first reference
         if (!lastAcceptedRef.current) {
           lastAcceptedRef.current = newPos;
-          acceptedPositionsRef.current = [newPos];
           return;
         }
 
@@ -148,53 +140,30 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
         const rawDistance = calculateDistance(lastAccepted, newPos);
         const timeDiff = (newPos.timestamp - lastAccepted.timestamp) / 1000;
 
-        // RULE 3: Minimum distance filter — skip GPS drift
+        // Minimum distance filter — skip GPS drift
         if (rawDistance < MIN_DISTANCE_BETWEEN_POINTS) {
-          return; // Too close, likely drift — skip
+          return;
         }
 
-        // RULE 5: Speed checks
+        // Speed checks
         if (timeDiff > 0) {
           const speedKmh = (rawDistance / timeDiff) * 3.6;
 
-          // Teleport detection — skip unrealistic jumps
           if (speedKmh > MAX_SPEED_KMH) {
-            return; // GPS jump — skip this point
+            return; // GPS jump
           }
 
-          // Standing still detection — don't add distance
           if (speedKmh < MIN_SPEED_KMH) {
-            return; // Too slow, standing still
+            return; // Standing still
           }
-        }
 
-        // Point is accepted — add to smoothing buffer
-        acceptedPositionsRef.current.push(newPos);
-        if (acceptedPositionsRef.current.length > SMOOTHING_BUFFER_SIZE) {
-          acceptedPositionsRef.current = acceptedPositionsRef.current.slice(-SMOOTHING_BUFFER_SIZE);
-        }
-
-        // RULE 4: Smoothing — calculate distance using averaged positions
-        let distanceToAdd: number;
-        if (acceptedPositionsRef.current.length >= 2) {
-          // Get smoothed current position from buffer
-          const smoothedCurrent = averagePosition(acceptedPositionsRef.current);
-          distanceToAdd = calculateDistance(lastAccepted, smoothedCurrent);
-        } else {
-          distanceToAdd = rawDistance;
-        }
-
-        // RULE 6: Never reset accumulated distance — only add
-        if (distanceToAdd > 0) {
-          setTotalDistance(prev => prev + distanceToAdd);
-        }
-
-        // Update speed display from last 2 accepted points
-        if (timeDiff > 0) {
           setCurrentSpeed(rawDistance / timeDiff);
         }
 
-        // Update last accepted reference to current point
+        // Add distance directly from raw points
+        setTotalDistance(prev => prev + rawDistance);
+
+        // Update last accepted reference
         lastAcceptedRef.current = newPos;
         setGpsError(null);
       },
