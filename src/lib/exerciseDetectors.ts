@@ -172,10 +172,23 @@ export function detectDipPhase(pose: Landmark[]): Phase {
 }
 
 export function detectPullUpPhase(pose: Landmark[]): Phase {
-  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
-  if (elbowAngle === null) return 'neutral';
-  if (elbowAngle < 90) return 'up';
-  if (elbowAngle > 155) return 'down';
+  const nose = pose[0];
+  const lWrist = pose[LEFT_WRIST];
+  const rWrist = pose[RIGHT_WRIST];
+  const lShoulder = pose[LEFT_SHOULDER];
+  const rShoulder = pose[RIGHT_SHOULDER];
+
+  // Require wrists above shoulders (arms raised / hanging from bar)
+  const wristsAboveShoulders =
+    lWrist.y < lShoulder.y && rWrist.y < rShoulder.y;
+  if (!wristsAboveShoulders) return 'neutral';
+
+  const avgWristY = (lWrist.y + rWrist.y) / 2;
+
+  // DOWN: wrists clearly above nose (hanging, arms extended up)
+  if (avgWristY < nose.y - 0.1) return 'down';
+  // UP: nose rises to wrist level (chin over bar)
+  if (nose.y <= avgWristY + 0.03) return 'up';
   return 'neutral';
 }
 
