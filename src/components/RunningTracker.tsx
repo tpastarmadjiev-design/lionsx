@@ -37,17 +37,6 @@ function calculateDistance(pos1: Position, pos2: Position): number {
   return R * c;
 }
 
-// Average position from multiple points
-function averagePosition(positions: Position[]): Position {
-  const len = positions.length;
-  const sumLat = positions.reduce((s, p) => s + p.lat, 0);
-  const sumLng = positions.reduce((s, p) => s + p.lng, 0);
-  return {
-    lat: sumLat / len,
-    lng: sumLng / len,
-    timestamp: positions[len - 1].timestamp,
-  };
-}
 
 export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCancel }: RunningTrackerProps) {
   const [step, setStep] = useState<'ready' | 'active' | 'finish'>('ready');
