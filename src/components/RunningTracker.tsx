@@ -375,11 +375,19 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
             </div>
           )}
 
+          {/* GPS Lock Phase Indicator */}
+          {!gpsLocked && !gpsError && (
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-4 flex items-center gap-2">
+              <Navigation className="w-5 h-5 text-primary shrink-0 animate-pulse" />
+              <p className="text-primary text-sm">Locking GPS signal... Distance tracking starts in a few seconds.</p>
+            </div>
+          )}
+
           {/* Low Accuracy Warning */}
-          {lowAccuracy && !gpsError && (
+          {lowAccuracy && !gpsError && gpsLocked && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
-              <p className="text-amber-500 text-sm">Low GPS accuracy detected. Running tracking may not work correctly until the signal improves.</p>
+              <p className="text-amber-500 text-sm">Low GPS accuracy. Points with accuracy worse than {MAX_ACCURACY}m are being skipped.</p>
             </div>
           )}
 
