@@ -224,9 +224,6 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      if (gpsLockTimerRef.current) {
-        clearTimeout(gpsLockTimerRef.current);
-      }
     };
   }, []);
 
