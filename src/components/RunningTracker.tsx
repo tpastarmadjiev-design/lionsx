@@ -47,7 +47,6 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
   const [lowAccuracy, setLowAccuracy] = useState(false);
-  const [gpsLocked, setGpsLocked] = useState(false);
   
   const positionsRef = useRef<Position[]>([]);
   const acceptedPositionsRef = useRef<Position[]>([]); // smoothing buffer (last N accepted)
