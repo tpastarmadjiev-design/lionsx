@@ -226,6 +226,12 @@ export function PoseTracker({
     // --- REP-BASED: count on down → up ---
     const currentPhase = getPhase(pose);
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
+      // Bench press: enforce 500ms minimum between reps to prevent double counting
+      if (exercise === 'bench-press') {
+        const now = Date.now();
+        if (now - lastRepTimeRef.current < 500) return;
+        lastRepTimeRef.current = now;
+      }
       if (suspicionTracker) recordRep(suspicionTracker);
       onRepComplete();
     }
