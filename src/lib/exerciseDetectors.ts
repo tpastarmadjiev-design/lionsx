@@ -345,12 +345,12 @@ export function detectCatCowPhase(pose: Landmark[]): Phase {
 
 export function detectBenchPressPhase(pose: Landmark[]): Phase {
   const noseY = pose[NOSE]?.y;
-  const elbowY = avgY(pose, LEFT_ELBOW, RIGHT_ELBOW);
-  if (noseY === undefined || elbowY === null) return 'neutral';
-  // DOWN: elbows dropped near/above nose level (bar at chest)
-  if (elbowY > noseY - 0.05) return 'down';
-  // UP: elbows clearly below nose (arms extended, bar pushed up)
-  if (elbowY < noseY - 0.12) return 'up';
+  const wristY = avgY(pose, LEFT_WRIST, RIGHT_WRIST);
+  if (noseY === undefined || wristY === null) return 'neutral';
+  // DOWN: wrists near nose level (bar at chest)
+  if (wristY > noseY - 0.05) return 'down';
+  // UP: wrists clearly above nose (arms extended, bar pushed up)
+  if (wristY < noseY - 0.12) return 'up';
   return 'neutral';
 }
 
