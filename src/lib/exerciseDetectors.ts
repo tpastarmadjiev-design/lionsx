@@ -344,11 +344,13 @@ export function detectCatCowPhase(pose: Landmark[]): Phase {
 // ═══════════════════════════════════════════════════════════════
 
 export function detectBenchPressPhase(pose: Landmark[]): Phase {
-  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
-  if (elbowAngle === null) return 'neutral';
-  // Liberal thresholds for lying position (same as chest press)
-  if (elbowAngle < 110) return 'down';
-  if (elbowAngle > 145) return 'up';
+  const noseY = pose[NOSE]?.y;
+  const elbowY = avgY(pose, LEFT_ELBOW, RIGHT_ELBOW);
+  if (noseY === undefined || elbowY === null) return 'neutral';
+  // DOWN: elbows dropped near/above nose level (bar at chest)
+  if (elbowY > noseY - 0.05) return 'down';
+  // UP: elbows clearly below nose (arms extended, bar pushed up)
+  if (elbowY < noseY - 0.12) return 'up';
   return 'neutral';
 }
 
