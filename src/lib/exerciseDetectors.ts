@@ -515,9 +515,9 @@ export function detectSeatedCableRowPhase(pose: Landmark[]): Phase {
   if (elbowAngle === null) return 'neutral';
   
   // Up: arms extended forward (reaching for the handle)
-  if (elbowAngle > 145) return 'up';
+  if (elbowAngle > 130) return 'up';
   // Down: arms pulled back (handle at chest, elbows behind body)
-  if (elbowAngle < 80) return 'down';
+  if (elbowAngle < 100) return 'down';
   return 'neutral';
 }
 
