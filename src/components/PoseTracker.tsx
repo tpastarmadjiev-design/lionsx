@@ -55,6 +55,7 @@ export function PoseTracker({
   const lastPhaseRef = useRef<Phase>('neutral');
   const holdStartRef = useRef<number | null>(null);
   const lastHoldPointRef = useRef<number>(0);
+  const lastRepTimeRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
   const lastProcessTimeRef = useRef<number>(0);
   const ML_INTERVAL_MS = 125;
@@ -225,6 +226,12 @@ export function PoseTracker({
     // --- REP-BASED: count on down → up ---
     const currentPhase = getPhase(pose);
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
+      // Bench press: enforce 500ms minimum between reps to prevent double counting
+      if (exercise === 'bench-press') {
+        const now = Date.now();
+        if (now - lastRepTimeRef.current < 500) return;
+        lastRepTimeRef.current = now;
+      }
       if (suspicionTracker) recordRep(suspicionTracker);
       onRepComplete();
     }
