@@ -55,6 +55,7 @@ export function PoseTracker({
   const lastPhaseRef = useRef<Phase>('neutral');
   const holdStartRef = useRef<number | null>(null);
   const lastHoldPointRef = useRef<number>(0);
+  const lastRepTimeRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
   const lastProcessTimeRef = useRef<number>(0);
   const ML_INTERVAL_MS = 125;
