@@ -28,6 +28,8 @@ interface Landmark {
 }
 
 const NOSE = 0;
+const LEFT_EAR = 7;
+const RIGHT_EAR = 8;
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
 const LEFT_ELBOW = 13;
