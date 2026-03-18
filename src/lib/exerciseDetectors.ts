@@ -28,6 +28,8 @@ interface Landmark {
 }
 
 const NOSE = 0;
+const LEFT_EAR = 7;
+const RIGHT_EAR = 8;
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
 const LEFT_ELBOW = 13;
@@ -344,13 +346,13 @@ export function detectCatCowPhase(pose: Landmark[]): Phase {
 // ═══════════════════════════════════════════════════════════════
 
 export function detectBenchPressPhase(pose: Landmark[]): Phase {
-  const noseY = pose[NOSE]?.y;
+  const headY = avgY(pose, LEFT_EAR, RIGHT_EAR);
   const wristY = avgY(pose, LEFT_WRIST, RIGHT_WRIST);
-  if (noseY === undefined || wristY === null) return 'neutral';
-  // DOWN: wrists near nose level (bar at chest)
-  if (wristY > noseY - 0.05) return 'down';
-  // UP: wrists clearly above nose (arms extended, bar pushed up)
-  if (wristY < noseY - 0.12) return 'up';
+  if (headY === null || wristY === null) return 'neutral';
+  // DOWN: wrists near head level (bar at chest)
+  if (wristY > headY - 0.05) return 'down';
+  // UP: wrists clearly above head (arms extended, bar pushed up)
+  if (wristY < headY - 0.12) return 'up';
   return 'neutral';
 }
 
