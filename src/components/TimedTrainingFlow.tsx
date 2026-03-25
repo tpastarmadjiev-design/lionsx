@@ -417,17 +417,16 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
             {/* Active: Timer + Reps overlaid on camera */}
             {step === "active" && (
               <>
-                {/* Stop Early button - top right */}
-                <button
-                  onClick={() => setShowStopConfirm(true)}
-                  className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white/60 hover:text-white/90 hover:bg-black/60 transition-all text-xs"
-                >
-                  <Square className="w-3 h-3" />
-                  <span>Stop</span>
-                </button>
-
-                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
-                  <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm">
+                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowStopConfirm(true)}
+                      className="px-3 py-2 rounded-2xl bg-destructive/80 backdrop-blur-sm flex items-center gap-1.5 hover:bg-destructive transition-all pointer-events-auto"
+                    >
+                      <Square className="w-3 h-3 text-destructive-foreground" />
+                      <span className="text-destructive-foreground text-xs font-semibold">Stop</span>
+                    </button>
+                    <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm pointer-events-none">
                     <span
                       className={cn(
                         "text-4xl font-display font-bold tabular-nums",
