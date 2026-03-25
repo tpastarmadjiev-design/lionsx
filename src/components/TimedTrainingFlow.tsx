@@ -668,6 +668,22 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
 
       {/* Suspicious Activity Warning Popup */}
       <SuspiciousActivityWarning open={showWarning} onClose={() => setShowWarning(false)} />
+
+      {/* Stop Early Confirmation */}
+      <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Stop exercise early?</AlertDialogTitle>
+            <AlertDialogDescription>You will keep your earned points.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue</AlertDialogCancel>
+            <AlertDialogAction onClick={handleEarlyStop} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Stop
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
