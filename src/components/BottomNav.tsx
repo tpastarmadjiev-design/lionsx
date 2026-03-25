@@ -17,6 +17,7 @@ export function BottomNav() {
     { path: '/training', icon: Dumbbell, label: 'Train' },
     { path: '/ranks', icon: Trophy, label: 'Ranks' },
     { path: '/profile', icon: User, label: 'Profile' },
+    { path: '__social__', icon: Heart, label: 'Follow' },
     ...(isAdmin ? [{ path: '/admin', icon: Shield, label: 'Admin' }] : []),
   ];
 
