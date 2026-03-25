@@ -206,7 +206,33 @@ export function PoseTracker({
     if (!landmarks || landmarks.length === 0) return;
     const pose = landmarks[0];
 
-    // --- TIMED HOLDS: 1 point per 1.5 seconds ---
+    // Camera stability check — skip frame if camera is shaking
+    if (CAMERA_STABILITY_ENABLED) {
+      let sumX = 0, sumY = 0, count = 0;
+      for (const lm of pose) {
+        if (lm.visibility > 0.5) {
+          sumX += lm.x;
+          sumY += lm.y;
+          count++;
+        }
+      }
+      if (count > 0) {
+        const avgX = sumX / count;
+        const avgY = sumY / count;
+        const prev = prevAvgPosRef.current;
+        prevAvgPosRef.current = { x: avgX, y: avgY };
+        if (prev) {
+          const dx = avgX - prev.x;
+          const dy = avgY - prev.y;
+          const shift = Math.sqrt(dx * dx + dy * dy);
+          if (shift > CAMERA_SHAKE_THRESHOLD) {
+            return; // camera shaking — skip this frame
+          }
+        } else {
+          return; // first frame — no previous reference, skip
+        }
+      }
+    }
     if (isTimedHold) {
       const valid = isHoldValid(pose);
       if (valid) {
