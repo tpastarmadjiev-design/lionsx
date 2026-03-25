@@ -61,6 +61,7 @@ export function PoseTracker({
   const lastRepTimeRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
   const lastProcessTimeRef = useRef<number>(0);
+  const prevAvgPosRef = useRef<{ x: number; y: number } | null>(null);
   const ML_INTERVAL_MS = 125;
 
   const [isLoading, setIsLoading] = useState(true);
