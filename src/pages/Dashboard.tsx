@@ -5,8 +5,9 @@ import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { CircularSkillProgress } from '@/components/CircularSkillProgress';
 import { Crown, ChevronRight } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getRank } from '@/lib/ranks';
+import { SocialLinksModal } from '@/components/SocialLinksModal';
 
 import trainingCardBg from '@/assets/training-card-bg.jpg';
 import shopCardBg from '@/assets/shop-card-bg.jpg';
