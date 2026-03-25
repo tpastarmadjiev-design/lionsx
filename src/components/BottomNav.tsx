@@ -65,6 +65,7 @@ export function BottomNav() {
           <span className="text-xs font-medium">Logout</span>
         </button>
       </div>
+      <SocialLinksModal open={socialOpen} onOpenChange={setSocialOpen} />
     </nav>
   );
 }

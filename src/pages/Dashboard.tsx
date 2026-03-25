@@ -20,6 +20,7 @@ export default function Dashboard() {
   const { profile, isLoading, getEffectiveDailyLP, dailyLPCap } = useProfile();
   const navigate = useNavigate();
   
+  const [socialOpen, setSocialOpen] = useState(false);
   useTrackScreen('dashboard');
 
   useEffect(() => {
