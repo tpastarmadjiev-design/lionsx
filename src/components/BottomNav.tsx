@@ -1,13 +1,16 @@
-import { Home, Dumbbell, User, LogOut, Shield, Trophy } from 'lucide-react';
+import { Home, Dumbbell, User, LogOut, Shield, Trophy, Heart } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { cn } from '@/lib/utils';
+import { SocialLinksModal } from '@/components/SocialLinksModal';
 
 export function BottomNav() {
   const location = useLocation();
   const { signOut } = useAuth();
   const { isAdmin } = useAdmin();
+  const [socialOpen, setSocialOpen] = useState(false);
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
