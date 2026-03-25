@@ -5,7 +5,17 @@ import { PoseTracker } from "@/components/PoseTracker";
 import { SuspiciousActivityWarning } from "@/components/SuspiciousActivityWarning";
 import { ExerciseInstructions } from "@/components/ExerciseInstructions";
 import { CameraSelector, type CameraFacing } from "@/components/CameraSelector";
-import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus } from "lucide-react";
+import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus, Square } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { getDailyLPCap } from "@/lib/ranks";
 import { useAuth } from "@/hooks/useAuth";
