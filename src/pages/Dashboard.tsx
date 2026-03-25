@@ -5,8 +5,9 @@ import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { CircularSkillProgress } from '@/components/CircularSkillProgress';
 import { Crown, ChevronRight } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getRank } from '@/lib/ranks';
+import { SocialLinksModal } from '@/components/SocialLinksModal';
 
 import trainingCardBg from '@/assets/training-card-bg.jpg';
 import shopCardBg from '@/assets/shop-card-bg.jpg';
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const { profile, isLoading, getEffectiveDailyLP, dailyLPCap } = useProfile();
   const navigate = useNavigate();
   
+  const [socialOpen, setSocialOpen] = useState(false);
   useTrackScreen('dashboard');
 
   useEffect(() => {
@@ -192,7 +194,26 @@ export default function Dashboard() {
           </div>
           <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
         </button>
+
+        {/* Follow Us Card */}
+        <button
+          onClick={() => setSocialOpen(true)}
+          className="relative w-full h-32 rounded-2xl overflow-hidden group"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035] to-[#5a1523]" />
+          <div className="relative z-10 h-full flex flex-col justify-center px-5">
+            <h3 className="text-xl font-display font-bold text-foreground text-left">
+              FOLLOW US
+            </h3>
+            <p className="text-sm text-muted-foreground text-left">
+              Join the Lions-X community
+            </p>
+          </div>
+          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
+        </button>
       </div>
+
+      <SocialLinksModal open={socialOpen} onOpenChange={setSocialOpen} />
     </AppLayout>
   );
 }
