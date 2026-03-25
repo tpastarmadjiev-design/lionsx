@@ -125,6 +125,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
   const [detectedReps, setDetectedReps] = useState(0);
   const [manualCount, setManualCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   const [showWarning, setShowWarning] = useState(false);
   const [countdownValue, setCountdownValue] = useState<number | string | null>(null);
