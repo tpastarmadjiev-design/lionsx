@@ -421,20 +421,21 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setShowStopConfirm(true)}
-                      className="px-3 py-2 rounded-2xl bg-destructive/80 backdrop-blur-sm flex items-center gap-1.5 hover:bg-destructive transition-all pointer-events-auto"
+                      className="px-3 py-2 rounded-2xl bg-destructive/80 backdrop-blur-sm flex items-center gap-1.5 hover:bg-destructive transition-all"
                     >
                       <Square className="w-3 h-3 text-destructive-foreground" />
                       <span className="text-destructive-foreground text-xs font-semibold">Stop</span>
                     </button>
-                    <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm pointer-events-none">
-                    <span
-                      className={cn(
-                        "text-4xl font-display font-bold tabular-nums",
-                        timeRemaining <= 10 ? "text-red-400" : "text-white",
-                      )}
-                    >
-                      {formatTime(timeRemaining)}
-                    </span>
+                    <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm">
+                      <span
+                        className={cn(
+                          "text-4xl font-display font-bold tabular-nums",
+                          timeRemaining <= 10 ? "text-destructive" : "text-white",
+                        )}
+                      >
+                        {formatTime(timeRemaining)}
+                      </span>
+                    </div>
                   </div>
                   <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm flex items-center gap-2">
                     <span className="text-white/70 text-sm">{isTimedHold ? "Pts" : "Reps"}</span>
