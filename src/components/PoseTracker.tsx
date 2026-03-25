@@ -79,6 +79,7 @@ export function PoseTracker({
     lastPhaseRef.current = 'neutral';
     holdStartRef.current = null;
     lastHoldPointRef.current = 0;
+    prevAvgPosRef.current = null;
   }, [exercise]);
 
   // Initialize MediaPipe
