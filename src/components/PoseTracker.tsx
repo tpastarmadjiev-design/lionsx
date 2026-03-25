@@ -36,6 +36,9 @@ interface PoseTrackerProps {
   onCameraError?: (message: string) => void;
 }
 
+const CAMERA_STABILITY_ENABLED = true;
+const CAMERA_SHAKE_THRESHOLD = 0.06;
+
 const TIMED_HOLD_EXERCISES: ExerciseType[] = [
   'plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'
 ];
