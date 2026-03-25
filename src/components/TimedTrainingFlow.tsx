@@ -287,6 +287,16 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
     setRepCount((prev) => prev + 1);
   }, []);
 
+  // Early stop: stop timer, camera, go to manual-input with earned reps
+  const handleEarlyStop = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setCameraActive(false);
+    setDetectedReps(repCount);
+    setStep("manual-input");
+    logSuspicionFlags();
+    setShowStopConfirm(false);
+  }, [repCount, logSuspicionFlags]);
+
   // Confirm reps and complete
   const handleConfirm = useCallback(
     (finalCount: number) => {
