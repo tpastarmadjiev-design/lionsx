@@ -36,15 +36,94 @@ interface PoseTrackerProps {
   onCameraError?: (message: string) => void;
 }
 
+// ─── TOGGLES ───
 const CAMERA_STABILITY_ENABLED = true;
 const CAMERA_SHAKE_THRESHOLD = 0.06;
+const VISIBILITY_CHECK_ENABLED = true;
+const GRACE_PERIOD_MS = 2000; // ignore first 2 seconds
+
+// ─── PER-EXERCISE MINIMUM VISIBLE LANDMARKS ───
+// Each exercise needs specific body parts visible to count reps.
+// If fewer landmarks are visible than required, the frame is SKIPPED.
+// 
+// Landmarks reference:
+// 0=nose, 11-12=shoulders, 13-14=elbows, 15-16=wrists
+// 23-24=hips, 25-26=knees, 27-28=ankles
+//
+// "Visible" = landmark exists AND visibility > 0.3
+//
+// Logic per exercise:
+// - Full body (squats, lunges, jumps, etc): need shoulders + hips + knees = ~10+
+// - Upper body (push-ups, curls, press): need shoulders + elbows + wrists = ~6+
+// - Seated/machine (lat pulldown, cable row): need shoulders + elbows = ~4+
+// - Timed holds (plank, cobra): need shoulders + hips = ~4+
+// - Face-only visible = 2-3 landmarks → ALWAYS skip
+
+const MIN_LANDMARKS: Record<string, number> = {
+  // Full body exercises — need to see torso + legs
+  'squats': 10,
+  'lunges': 10,
+  'jumps': 8,
+  'burpees': 8,
+  'mountain-climbers': 8,
+  'high-knees': 10,
+  'jumping-jacks': 12,
+  'jump-rope': 8,
+  'calf-raises': 8,
+  'dumbbell-goblet-squat': 10,
+  'dumbbell-thrusters': 10,
+  'dumbbell-windmill': 10,
+  'toe-touches': 8,
+  'dumbbell-romanian-deadlift': 8,
+
+  // Upper body — need shoulders + arms visible
+  'push-ups': 6,
+  'pike-push-ups': 6,
+  'diamond-push-ups': 6,
+  'sit-ups': 6,
+  'dips': 6,
+  'pull-ups': 6,
+  'bench-press': 5,
+  'dumbbell-chest-press': 5,
+  'dumbbell-bicep-curls': 5,
+  'dumbbell-hammer-curls': 5,
+  'dumbbell-shoulder-press': 5,
+  'dumbbell-lateral-raises': 6,
+  'dumbbell-front-raises': 6,
+  'dumbbell-bent-over-rows': 5,
+  'dumbbell-tricep-overhead-extension': 5,
+  'dumbbell-punches': 5,
+  'cat-cow-stretch': 5,
+
+  // Seated/machine exercises
+  'lat-pulldown': 4,
+  'seated-cable-row': 4,
+
+  // Timed holds — more relaxed
+  'plank': 4,
+  'wall-sit': 6,
+  'deep-squat-hold': 8,
+  'cobra-stretch': 4,
+  'hip-circles': 8,
+  'shoulder-stretch-hold': 4,
+};
 
 const TIMED_HOLD_EXERCISES: ExerciseType[] = [
   'plank', 'wall-sit', 'hip-circles', 'shoulder-stretch-hold', 'deep-squat-hold', 'cobra-stretch'
 ];
 
-// Points awarded every 1.5 seconds for timed holds
 const HOLD_SECONDS_PER_POINT = 1.5;
+
+/** Count how many landmarks have good visibility */
+function countVisibleLandmarks(pose: any[]): number {
+  let count = 0;
+  for (const lm of pose) {
+    if (lm && (lm.visibility === undefined || lm.visibility > 0.3)) {
+      count++;
+    }
+  }
+  return count;
+}
 
 export function PoseTracker({
   exercise, isActive, facingMode = 'user',
@@ -62,6 +141,7 @@ export function PoseTracker({
   const streamRef = useRef<MediaStream | null>(null);
   const lastProcessTimeRef = useRef<number>(0);
   const prevAvgPosRef = useRef<{ x: number; y: number } | null>(null);
+  const activeStartTimeRef = useRef<number>(0);
   const ML_INTERVAL_MS = 125;
 
   const [isLoading, setIsLoading] = useState(true);
@@ -79,8 +159,17 @@ export function PoseTracker({
     lastPhaseRef.current = 'neutral';
     holdStartRef.current = null;
     lastHoldPointRef.current = 0;
+    lastRepTimeRef.current = 0;
     prevAvgPosRef.current = null;
+    activeStartTimeRef.current = Date.now();
   }, [exercise]);
+
+  // Also reset start time when exercise becomes active
+  useEffect(() => {
+    if (isActive) {
+      activeStartTimeRef.current = Date.now();
+    }
+  }, [isActive]);
 
   // Initialize MediaPipe
   useEffect(() => {
@@ -206,11 +295,25 @@ export function PoseTracker({
     if (!landmarks || landmarks.length === 0) return;
     const pose = landmarks[0];
 
-    // Camera stability check — skip frame if camera is shaking
+    // ─── PROTECTION 1: Grace period — skip first 2 seconds ───
+    if (Date.now() - activeStartTimeRef.current < GRACE_PERIOD_MS) {
+      return;
+    }
+
+    // ─── PROTECTION 2: Minimum visible landmarks per exercise ───
+    if (VISIBILITY_CHECK_ENABLED) {
+      const visibleCount = countVisibleLandmarks(pose);
+      const minRequired = MIN_LANDMARKS[exercise] || 6; // default 6 if not listed
+      if (visibleCount < minRequired) {
+        return; // not enough body visible — skip frame
+      }
+    }
+
+    // ─── PROTECTION 3: Camera stability — skip if camera is shaking ───
     if (CAMERA_STABILITY_ENABLED) {
       let sumX = 0, sumY = 0, count = 0;
       for (const lm of pose) {
-        if (lm.visibility > 0.5) {
+        if (lm && lm.visibility > 0.5) {
           sumX += lm.x;
           sumY += lm.y;
           count++;
@@ -233,6 +336,8 @@ export function PoseTracker({
         }
       }
     }
+
+    // ─── TIMED HOLDS ───
     if (isTimedHold) {
       const valid = isHoldValid(pose);
       if (valid) {
@@ -254,7 +359,7 @@ export function PoseTracker({
       return;
     }
 
-    // --- REP-BASED: count on down → up ---
+    // ─── REP-BASED: count on down → up ───
     const currentPhase = getPhase(pose);
     if (lastPhaseRef.current === 'down' && currentPhase === 'up') {
       // Bench press: enforce 500ms minimum between reps to prevent double counting
@@ -271,6 +376,7 @@ export function PoseTracker({
     }
   }, [exercise, isTimedHold, isHoldValid, getPhase, onRepComplete, onSecondComplete, suspicionTracker]);
 
+  // ─── Pose detection loop ───
   useEffect(() => {
     if (!isActive || isLoading || !videoRef.current || !canvasRef.current || !poseLandmarkerRef.current) return;
     const video = videoRef.current;
@@ -306,6 +412,7 @@ export function PoseTracker({
     return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); };
   }, [isActive, isLoading, detectRep]);
 
+  // ─── Render ───
   if (error) {
     return (
       <div className="w-full aspect-[4/3] bg-secondary rounded-xl flex items-center justify-center">
