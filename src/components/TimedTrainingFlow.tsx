@@ -5,7 +5,17 @@ import { PoseTracker } from "@/components/PoseTracker";
 import { SuspiciousActivityWarning } from "@/components/SuspiciousActivityWarning";
 import { ExerciseInstructions } from "@/components/ExerciseInstructions";
 import { CameraSelector, type CameraFacing } from "@/components/CameraSelector";
-import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus } from "lucide-react";
+import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus, Square } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { getDailyLPCap } from "@/lib/ranks";
 import { useAuth } from "@/hooks/useAuth";
@@ -115,6 +125,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
   const [detectedReps, setDetectedReps] = useState(0);
   const [manualCount, setManualCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   const [showWarning, setShowWarning] = useState(false);
   const [countdownValue, setCountdownValue] = useState<number | string | null>(null);
@@ -276,6 +287,16 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
     setRepCount((prev) => prev + 1);
   }, []);
 
+  // Early stop: stop timer, camera, go to manual-input with earned reps
+  const handleEarlyStop = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setCameraActive(false);
+    setDetectedReps(repCount);
+    setStep("manual-input");
+    logSuspicionFlags();
+    setShowStopConfirm(false);
+  }, [repCount, logSuspicionFlags]);
+
   // Confirm reps and complete
   const handleConfirm = useCallback(
     (finalCount: number) => {
@@ -395,22 +416,33 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
 
             {/* Active: Timer + Reps overlaid on camera */}
             {step === "active" && (
-              <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
-                <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm">
-                  <span
-                    className={cn(
-                      "text-4xl font-display font-bold tabular-nums",
-                      timeRemaining <= 10 ? "text-red-400" : "text-white",
-                    )}
-                  >
-                    {formatTime(timeRemaining)}
-                  </span>
+              <>
+                {/* Stop Early button - top right */}
+                <button
+                  onClick={() => setShowStopConfirm(true)}
+                  className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white/60 hover:text-white/90 hover:bg-black/60 transition-all text-xs"
+                >
+                  <Square className="w-3 h-3" />
+                  <span>Stop</span>
+                </button>
+
+                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
+                  <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm">
+                    <span
+                      className={cn(
+                        "text-4xl font-display font-bold tabular-nums",
+                        timeRemaining <= 10 ? "text-red-400" : "text-white",
+                      )}
+                    >
+                      {formatTime(timeRemaining)}
+                    </span>
+                  </div>
+                  <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm flex items-center gap-2">
+                    <span className="text-white/70 text-sm">{isTimedHold ? "Pts" : "Reps"}</span>
+                    <span className="text-4xl font-display font-bold text-primary">{repCount}</span>
+                  </div>
                 </div>
-                <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm flex items-center gap-2">
-                  <span className="text-white/70 text-sm">{isTimedHold ? "Pts" : "Reps"}</span>
-                  <span className="text-4xl font-display font-bold text-primary">{repCount}</span>
-                </div>
-              </div>
+              </>
             )}
           </div>
         )}
@@ -636,6 +668,22 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
 
       {/* Suspicious Activity Warning Popup */}
       <SuspiciousActivityWarning open={showWarning} onClose={() => setShowWarning(false)} />
+
+      {/* Stop Early Confirmation */}
+      <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Stop exercise early?</AlertDialogTitle>
+            <AlertDialogDescription>You will keep your earned points.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue</AlertDialogCancel>
+            <AlertDialogAction onClick={handleEarlyStop} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Stop
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
