@@ -13,10 +13,10 @@ const TikTokIcon = () => (
 );
 
 const socialLinks = [
-  { name: 'Facebook', icon: Facebook, url: 'https://facebook.com', color: '#1877F2' },
-  { name: 'Instagram', icon: Instagram, url: 'https://instagram.com', color: '#E4405F' },
-  { name: 'TikTok', icon: TikTokIcon, url: 'https://tiktok.com', color: '#ffffff' },
-  { name: 'YouTube', icon: Youtube, url: 'https://youtube.com', color: '#FF0000' },
+  { name: 'Facebook', icon: Facebook, url: 'https://www.facebook.com/profile.php?id=61587451220946&sk=followers', color: '#1877F2' },
+  { name: 'Instagram', icon: Instagram, url: 'https://www.instagram.com/lionsxoriginal/', color: '#E4405F' },
+  { name: 'TikTok', icon: TikTokIcon, url: 'https://www.tiktok.com/@lions_x_original', color: '#ffffff' },
+  { name: 'YouTube', icon: Youtube, url: 'https://www.youtube.com/@Lions_X_original', color: '#FF0000' },
 ];
 
 interface SocialLinksModalProps {
