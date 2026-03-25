@@ -416,22 +416,33 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
 
             {/* Active: Timer + Reps overlaid on camera */}
             {step === "active" && (
-              <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
-                <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm">
-                  <span
-                    className={cn(
-                      "text-4xl font-display font-bold tabular-nums",
-                      timeRemaining <= 10 ? "text-red-400" : "text-white",
-                    )}
-                  >
-                    {formatTime(timeRemaining)}
-                  </span>
+              <>
+                {/* Stop Early button - top right */}
+                <button
+                  onClick={() => setShowStopConfirm(true)}
+                  className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white/60 hover:text-white/90 hover:bg-black/60 transition-all text-xs"
+                >
+                  <Square className="w-3 h-3" />
+                  <span>Stop</span>
+                </button>
+
+                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
+                  <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm">
+                    <span
+                      className={cn(
+                        "text-4xl font-display font-bold tabular-nums",
+                        timeRemaining <= 10 ? "text-red-400" : "text-white",
+                      )}
+                    >
+                      {formatTime(timeRemaining)}
+                    </span>
+                  </div>
+                  <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm flex items-center gap-2">
+                    <span className="text-white/70 text-sm">{isTimedHold ? "Pts" : "Reps"}</span>
+                    <span className="text-4xl font-display font-bold text-primary">{repCount}</span>
+                  </div>
                 </div>
-                <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-sm flex items-center gap-2">
-                  <span className="text-white/70 text-sm">{isTimedHold ? "Pts" : "Reps"}</span>
-                  <span className="text-4xl font-display font-bold text-primary">{repCount}</span>
-                </div>
-              </div>
+              </>
             )}
           </div>
         )}
