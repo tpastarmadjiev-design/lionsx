@@ -27,6 +27,19 @@ export function BottomNav() {
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
+
+          if (item.path === '__social__') {
+            return (
+              <button
+                key={item.path}
+                onClick={() => setSocialOpen(true)}
+                className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 text-muted-foreground hover:text-foreground"
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{item.label}</span>
+              </button>
+            );
+          }
           
           return (
             <Link
