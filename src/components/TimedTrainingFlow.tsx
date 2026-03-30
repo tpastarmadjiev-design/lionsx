@@ -41,6 +41,7 @@ export function resetCameraPermissionFlag() {
 type FlowStep =
   | "ready"
   | "gif-preview"
+  | "place-phone"
   | "camera-select"
   | "camera-init"
   | "camera-ready"
