@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -10,10 +10,12 @@ import { RunningTracker } from '@/components/RunningTracker';
 import { TreadmillTracker } from '@/components/TreadmillTracker';
 import { LocationSelector } from '@/components/training/LocationSelector';
 import { ExerciseGrid } from '@/components/training/ExerciseGrid';
+import { ExerciseInstructions } from '@/components/ExerciseInstructions';
 import { Button } from '@/components/ui/button';
 import { Zap, Play, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrainingLocation, filterExercisesByLocation } from '@/lib/exerciseLocations';
+import { getDailyLPCap } from '@/lib/ranks';
 import { gaEvents } from '@/lib/gtag';
 import {
   startTrainingSession,
@@ -22,7 +24,6 @@ import {
   markFirstSession,
   trackLocationPreference,
 } from '@/lib/analyticsTracker';
-import { useRef } from 'react';
 
 export default function Training() {
   const { user, loading: authLoading } = useAuth();
