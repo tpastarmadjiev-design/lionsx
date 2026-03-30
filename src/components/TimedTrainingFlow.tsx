@@ -373,7 +373,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
       </div>
 
       {/* Content */}
-      <div ref={scrollContainerRef} className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
+      <div ref={scrollContainerRef} className={cn("flex-1 flex flex-col items-center p-4 overflow-y-auto", step !== "ready" && "justify-center")}>
         {/* Single PoseTracker instance - persists across camera-init, camera-ready, countdown, active */}
         {(step === "camera-init" || step === "camera-ready" || step === "countdown" || step === "active") && (
           <div className="w-full max-w-lg mx-auto relative overflow-hidden rounded-xl" style={{ aspectRatio: "3/4" }}>
