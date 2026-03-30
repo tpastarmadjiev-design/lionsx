@@ -265,6 +265,11 @@ export function PoseTracker({
     if (!landmarks || landmarks.length === 0) return;
     const pose = landmarks[0];
 
+    // ─── PROTECTION 0: Off-screen landmarks — body not visible ───
+    const sY0 = ((pose[11]?.y ?? 0) + (pose[12]?.y ?? 0)) / 2;
+    const hY0 = ((pose[23]?.y ?? 0) + (pose[24]?.y ?? 0)) / 2;
+    if (sY0 > 1.05 || hY0 > 1.05) return;
+
     // ─── PROTECTION 1: Grace period — skip first 2 seconds ───
     if (Date.now() - activeStartTimeRef.current < GRACE_PERIOD_MS) return;
 
