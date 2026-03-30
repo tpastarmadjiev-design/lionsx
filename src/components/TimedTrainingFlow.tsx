@@ -281,6 +281,15 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
     };
   }, []);
 
+  // Auto-scroll to GIF when ready step opens (for combined layout)
+  useEffect(() => {
+    if (step === "ready" && gifRef.current && scrollContainerRef.current) {
+      setTimeout(() => {
+        gifRef.current?.scrollIntoView({ behavior: 'instant', block: 'center' });
+      }, 50);
+    }
+  }, [step]);
+
   // Handle rep/second detected
   const handleRepComplete = useCallback(() => {
     setRepCount((prev) => prev + 1);
