@@ -137,6 +137,8 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const suspicionTrackerRef = useRef<SessionSuspicionTracker>(createSessionSuspicionTracker());
+  const gifRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
   const Icon = categoryIcons[exercise.category as keyof typeof categoryIcons];
