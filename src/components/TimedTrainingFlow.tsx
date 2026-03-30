@@ -453,37 +453,73 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
 
         {/* Ready Step */}
         {step === "ready" && (
-          <div className="w-full max-w-sm space-y-6 animate-fade-in">
-            {/* Exercise Card */}
-            <div className="lion-card p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center border", colors)}>
-                  <Icon className="w-7 h-7" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-display font-bold text-foreground">{exercise.name}</h3>
-                  <p className="text-sm text-muted-foreground capitalize">{exercise.category}</p>
-                </div>
+          <div className="w-full max-w-sm space-y-5 animate-fade-in">
+            {/* Exercise Header with Icon */}
+            <div className="flex items-center gap-4">
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border", colors)}>
+                <Icon className="w-6 h-6" />
               </div>
-
-              {/* Info */}
-              <div className="space-y-2 p-3 rounded-lg bg-secondary/50">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Timer className="w-4 h-4" />
-                    Duration
-                  </span>
-                  <span className="font-medium text-foreground">60 seconds</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Zap className="w-4 h-4" />
-                    {isTimedHold ? "Each 2 sec" : "Each rep"}
-                  </span>
-                  <span className="font-medium text-primary">= 1 LP</span>
-                </div>
+              <div>
+                <h3 className="text-xl font-display font-bold text-foreground">{exercise.name}</h3>
+                <p className="text-sm text-muted-foreground capitalize">{exercise.category}</p>
               </div>
             </div>
+
+            {/* Combined GIF + Instructions card (only for Calf Raises as test) */}
+            {exercise.name === "Calf Raises" && exercise.gif_url ? (
+              <div className="lion-card p-4 space-y-4">
+                {/* GIF Demo */}
+                <div className="w-full rounded-xl overflow-hidden border border-border bg-secondary/30">
+                  <img
+                    src={exercise.gif_url}
+                    alt={`${exercise.name} demonstration`}
+                    className="w-full h-auto object-contain"
+                    loading="eager"
+                  />
+                </div>
+
+                {/* Info row */}
+                <div className="flex gap-2">
+                  <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 text-sm">
+                    <Timer className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">Duration</span>
+                    <span className="ml-auto font-medium text-foreground">60s</span>
+                  </div>
+                  <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 text-sm">
+                    <Zap className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-muted-foreground">{isTimedHold ? "2 sec" : "1 rep"}</span>
+                    <span className="ml-auto font-medium text-primary">= 1 LP</span>
+                  </div>
+                </div>
+
+                {/* Inline Instructions */}
+                <ExerciseInstructions exerciseName={exercise.name} />
+              </div>
+            ) : (
+              <>
+                {/* Original layout for all other exercises */}
+                <div className="lion-card p-6">
+                  <div className="space-y-2 p-3 rounded-lg bg-secondary/50">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Timer className="w-4 h-4" />
+                        Duration
+                      </span>
+                      <span className="font-medium text-foreground">60 seconds</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Zap className="w-4 h-4" />
+                        {isTimedHold ? "Each 2 sec" : "Each rep"}
+                      </span>
+                      <span className="font-medium text-primary">= 1 LP</span>
+                    </div>
+                  </div>
+                </div>
+
+                <ExerciseInstructions exerciseName={exercise.name} />
+              </>
+            )}
 
             {/* Daily LP remaining */}
             <div className="text-center text-sm text-muted-foreground">
@@ -493,9 +529,6 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
               </span>
             </div>
 
-            {/* Exercise Instructions */}
-            <ExerciseInstructions exerciseName={exercise.name} />
-
             {cameraBlocked && (
               <div className="text-center text-sm text-destructive p-3 rounded-lg bg-destructive/10">
                 Camera access is blocked by your browser. Please allow camera access in your browser's site settings
@@ -503,14 +536,16 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
               </div>
             )}
 
-            {/* Start Button → goes to gif preview (if available) or camera selection */}
+            {/* Start Button → for Calf Raises goes directly to camera, others keep gif-preview step */}
             <Button
               variant="hero"
               size="xl"
               className="w-full"
               onClick={() => {
                 setCameraBlocked(false);
-                if (exercise.gif_url) {
+                if (exercise.name === "Calf Raises") {
+                  setStep("camera-select");
+                } else if (exercise.gif_url) {
                   setStep("gif-preview");
                 } else {
                   setStep("camera-select");
