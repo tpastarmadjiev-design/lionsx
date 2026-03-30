@@ -366,9 +366,11 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
                     ? "Ready"
                     : step === "camera-select"
                       ? "Choose Camera"
-                      : step === "gif-preview"
-                        ? "How To"
-                        : "Training"}
+                      : step === "place-phone"
+                        ? "Setup"
+                        : step === "gif-preview"
+                          ? "How To"
+                          : "Training"}
         </h2>
         <div className="w-10" />
       </div>
