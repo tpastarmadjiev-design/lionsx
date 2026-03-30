@@ -5,6 +5,7 @@ import { PoseTracker } from "@/components/PoseTracker";
 import { SuspiciousActivityWarning } from "@/components/SuspiciousActivityWarning";
 import { ExerciseInstructions } from "@/components/ExerciseInstructions";
 import { CameraSelector, type CameraFacing } from "@/components/CameraSelector";
+import { ExerciseGifPreview } from "@/components/ExerciseGifPreview";
 import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus, Square } from "lucide-react";
 import {
   AlertDialog,
@@ -39,6 +40,7 @@ export function resetCameraPermissionFlag() {
 
 type FlowStep =
   | "ready"
+  | "gif-preview"
   | "camera-select"
   | "camera-init"
   | "camera-ready"
