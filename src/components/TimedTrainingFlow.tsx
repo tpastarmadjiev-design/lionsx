@@ -137,6 +137,8 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const suspicionTrackerRef = useRef<SessionSuspicionTracker>(createSessionSuspicionTracker());
+  const gifRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
   const Icon = categoryIcons[exercise.category as keyof typeof categoryIcons];
@@ -279,6 +281,15 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
     };
   }, []);
 
+  // Auto-scroll to GIF when ready step opens (for combined layout)
+  useEffect(() => {
+    if (step === "ready" && gifRef.current && scrollContainerRef.current) {
+      setTimeout(() => {
+        gifRef.current?.scrollIntoView({ behavior: 'instant', block: 'center' });
+      }, 50);
+    }
+  }, [step]);
+
   // Handle rep/second detected
   const handleRepComplete = useCallback(() => {
     setRepCount((prev) => prev + 1);
@@ -362,7 +373,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
+      <div ref={scrollContainerRef} className={cn("flex-1 flex flex-col items-center p-4 overflow-y-auto", step !== "ready" && "justify-center")}>
         {/* Single PoseTracker instance - persists across camera-init, camera-ready, countdown, active */}
         {(step === "camera-init" || step === "camera-ready" || step === "countdown" || step === "active") && (
           <div className="w-full max-w-lg mx-auto relative overflow-hidden rounded-xl" style={{ aspectRatio: "3/4" }}>
@@ -469,7 +480,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
             {exercise.name === "Calf Raises" && exercise.gif_url ? (
               <div className="lion-card p-4 space-y-4">
                 {/* GIF Demo */}
-                <div className="w-full rounded-xl overflow-hidden border border-border bg-secondary/30">
+                <div ref={gifRef} className="w-full rounded-xl overflow-hidden border border-border bg-secondary/30">
                   <img
                     src={exercise.gif_url}
                     alt={`${exercise.name} demonstration`}
