@@ -34,6 +34,7 @@ export default function Training() {
   const [showFlow, setShowFlow] = useState(false);
   const analyticsSessionIdRef = useRef<string | null>(null);
   const sessionStartTimeRef = useRef<number>(0);
+  const instructionRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useTrackScreen('training');
