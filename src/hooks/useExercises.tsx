@@ -13,6 +13,7 @@ export interface Exercise {
   skill_endurance: number;
   skill_mobility: number;
   is_timed: boolean;
+  gif_url: string | null;
 }
 
 export function useExercises() {

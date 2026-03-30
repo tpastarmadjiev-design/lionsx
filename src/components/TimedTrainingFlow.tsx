@@ -5,6 +5,7 @@ import { PoseTracker } from "@/components/PoseTracker";
 import { SuspiciousActivityWarning } from "@/components/SuspiciousActivityWarning";
 import { ExerciseInstructions } from "@/components/ExerciseInstructions";
 import { CameraSelector, type CameraFacing } from "@/components/CameraSelector";
+import { ExerciseGifPreview } from "@/components/ExerciseGifPreview";
 import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus, Square } from "lucide-react";
 import {
   AlertDialog,
@@ -39,6 +40,7 @@ export function resetCameraPermissionFlag() {
 
 type FlowStep =
   | "ready"
+  | "gif-preview"
   | "camera-select"
   | "camera-init"
   | "camera-ready"
@@ -352,7 +354,9 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
                     ? "Ready"
                     : step === "camera-select"
                       ? "Choose Camera"
-                      : "Training"}
+                      : step === "gif-preview"
+                        ? "How To"
+                        : "Training"}
         </h2>
         <div className="w-10" />
       </div>
@@ -499,20 +503,33 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
               </div>
             )}
 
-            {/* Start Button → goes to camera selection */}
+            {/* Start Button → goes to gif preview (if available) or camera selection */}
             <Button
               variant="hero"
               size="xl"
               className="w-full"
               onClick={() => {
                 setCameraBlocked(false);
-                setStep("camera-select");
+                if (exercise.gif_url) {
+                  setStep("gif-preview");
+                } else {
+                  setStep("camera-select");
+                }
               }}
             >
               <Play className="w-5 h-5" />
               {cameraBlocked ? "Retry Camera Access" : "Start 60s Challenge"}
             </Button>
           </div>
+        )}
+
+        {/* GIF Preview Step */}
+        {step === "gif-preview" && exercise.gif_url && (
+          <ExerciseGifPreview
+            exerciseName={exercise.name}
+            gifUrl={exercise.gif_url}
+            onConfirm={() => setStep("camera-select")}
+          />
         )}
 
         {/* Camera Selection Step */}

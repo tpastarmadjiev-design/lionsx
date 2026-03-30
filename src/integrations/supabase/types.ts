@@ -46,6 +46,7 @@ export type Database = {
           category: string
           created_at: string
           description: string | null
+          gif_url: string | null
           id: string
           is_timed: boolean
           lp_reward: number
@@ -58,6 +59,7 @@ export type Database = {
           category: string
           created_at?: string
           description?: string | null
+          gif_url?: string | null
           id?: string
           is_timed?: boolean
           lp_reward?: number
@@ -70,6 +72,7 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
+          gif_url?: string | null
           id?: string
           is_timed?: boolean
           lp_reward?: number
