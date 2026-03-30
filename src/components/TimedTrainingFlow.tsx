@@ -6,7 +6,7 @@ import { SuspiciousActivityWarning } from "@/components/SuspiciousActivityWarnin
 import { ExerciseInstructions } from "@/components/ExerciseInstructions";
 import { CameraSelector, type CameraFacing } from "@/components/CameraSelector";
 import { ExerciseGifPreview } from "@/components/ExerciseGifPreview";
-import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus, Square } from "lucide-react";
+import { Play, Check, X, Loader2, Dumbbell, Heart, Wind, Timer, Zap, Plus, Minus, Square, Smartphone, Eye, Hand, Sun } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
