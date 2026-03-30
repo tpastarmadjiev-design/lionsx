@@ -10,12 +10,10 @@ import { RunningTracker } from '@/components/RunningTracker';
 import { TreadmillTracker } from '@/components/TreadmillTracker';
 import { LocationSelector } from '@/components/training/LocationSelector';
 import { ExerciseGrid } from '@/components/training/ExerciseGrid';
-import { ExerciseInstructions } from '@/components/ExerciseInstructions';
 import { Button } from '@/components/ui/button';
 import { Zap, Play, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrainingLocation, filterExercisesByLocation } from '@/lib/exerciseLocations';
-import { getDailyLPCap } from '@/lib/ranks';
 import { gaEvents } from '@/lib/gtag';
 import {
   startTrainingSession,
