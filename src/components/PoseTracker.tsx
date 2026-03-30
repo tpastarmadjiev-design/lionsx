@@ -133,6 +133,7 @@ export function PoseTracker({
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugLandmarks, setDebugLandmarks] = useState({ sY: 0, hY: 0, eY: 0, sh: 0, se: 0 });
 
   const isTimedHold = TIMED_HOLD_EXERCISES.includes(exercise);
 
@@ -264,6 +265,15 @@ export function PoseTracker({
     if (!landmarks || landmarks.length === 0) return;
     const pose = landmarks[0];
 
+    // ─── DEBUG: Update landmark overlay ───
+    const dbgSY = ((pose[11]?.y ?? 0) + (pose[12]?.y ?? 0)) / 2;
+    const dbgHY = ((pose[23]?.y ?? 0) + (pose[24]?.y ?? 0)) / 2;
+    const dbgEY = ((pose[13]?.y ?? 0) + (pose[14]?.y ?? 0)) / 2;
+    setDebugLandmarks({ sY: dbgSY, hY: dbgHY, eY: dbgEY, sh: Math.abs(dbgHY - dbgSY), se: Math.abs(dbgEY - dbgSY) });
+
+    // ─── PROTECTION 0: Off-screen landmarks — body not visible ───
+    if (dbgSY > 1.05 || dbgHY > 1.05) return;
+
     // ─── PROTECTION 1: Grace period — skip first 2 seconds ───
     if (Date.now() - activeStartTimeRef.current < GRACE_PERIOD_MS) return;
 
@@ -379,6 +389,9 @@ export function PoseTracker({
       <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover opacity-0" />
       <canvas ref={canvasRef} width={640} height={480} className="w-full h-full object-cover"
         style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }} />
+      <div style={{ position: 'absolute', top: 4, left: 4, background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: '11px', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', pointerEvents: 'none', zIndex: 10 }}>
+        S:{debugLandmarks.sY.toFixed(2)} H:{debugLandmarks.hY.toFixed(2)} E:{debugLandmarks.eY.toFixed(2)} | S-H:{debugLandmarks.sh.toFixed(2)} S-E:{debugLandmarks.se.toFixed(2)}
+      </div>
     </div>
   );
 }
