@@ -531,7 +531,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
               className="w-full"
               onClick={() => {
                 setCameraBlocked(false);
-                setStep("camera-select");
+                setStep("place-phone");
               }}
             >
               <Play className="w-5 h-5" />
