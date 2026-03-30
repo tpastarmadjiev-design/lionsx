@@ -146,6 +146,7 @@ export function PoseTracker({
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState({ v03: 0, v05: 0, total: 0 });
 
   const isTimedHold = TIMED_HOLD_EXERCISES.includes(exercise);
 
@@ -399,8 +400,15 @@ export function PoseTracker({
       const now = performance.now();
       if (now - lastProcessTimeRef.current >= ML_INTERVAL_MS) {
         lastProcessTimeRef.current = now;
-        const results = poseLandmarkerRef.current.detectForVideo(video, now);
+      const results = poseLandmarkerRef.current.detectForVideo(video, now);
         if (results.landmarks && results.landmarks.length > 0) {
+          const pose = results.landmarks[0];
+          let v03 = 0, v05 = 0;
+          for (const lm of pose) {
+            if (lm && lm.visibility > 0.3) v03++;
+            if (lm && lm.visibility > 0.5) v05++;
+          }
+          setDebugInfo({ v03, v05, total: pose.length });
           detectRep(results.landmarks);
         }
       }
@@ -437,6 +445,9 @@ export function PoseTracker({
       <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover opacity-0" />
       <canvas ref={canvasRef} width={640} height={480} className="w-full h-full object-cover"
         style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }} />
+      <div style={{ position: 'absolute', top: 4, left: 4, background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: 12, padding: '2px 6px', borderRadius: 4, zIndex: 50, pointerEvents: 'none' }}>
+        V&gt;0.3: {debugInfo.v03} | V&gt;0.5: {debugInfo.v05} | Total: {debugInfo.total}
+      </div>
     </div>
   );
 }
