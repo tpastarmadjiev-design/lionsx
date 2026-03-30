@@ -476,10 +476,10 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
               </div>
             </div>
 
-            {/* Combined GIF + Instructions card (only for Calf Raises as test) */}
-            {exercise.name === "Calf Raises" && exercise.gif_url ? (
-              <div className="lion-card p-4 space-y-4">
-                {/* GIF Demo */}
+            {/* Combined GIF + Instructions */}
+            <div className="lion-card p-4 space-y-4">
+              {/* GIF Demo */}
+              {exercise.gif_url && (
                 <div ref={gifRef} className="w-full rounded-xl overflow-hidden border border-border bg-secondary/30">
                   <img
                     src={exercise.gif_url}
@@ -488,49 +488,25 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
                     loading="eager"
                   />
                 </div>
+              )}
 
-                {/* Info row */}
-                <div className="flex gap-2">
-                  <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 text-sm">
-                    <Timer className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground">Duration</span>
-                    <span className="ml-auto font-medium text-foreground">60s</span>
-                  </div>
-                  <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 text-sm">
-                    <Zap className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-muted-foreground">{isTimedHold ? "2 sec" : "1 rep"}</span>
-                    <span className="ml-auto font-medium text-primary">= 1 LP</span>
-                  </div>
+              {/* Info row */}
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 text-sm">
+                  <Timer className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground">Duration</span>
+                  <span className="ml-auto font-medium text-foreground">60s</span>
                 </div>
-
-                {/* Inline Instructions */}
-                <ExerciseInstructions exerciseName={exercise.name} />
+                <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 text-sm">
+                  <Zap className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-muted-foreground">{isTimedHold ? "2 sec" : "1 rep"}</span>
+                  <span className="ml-auto font-medium text-primary">= 1 LP</span>
+                </div>
               </div>
-            ) : (
-              <>
-                {/* Original layout for all other exercises */}
-                <div className="lion-card p-6">
-                  <div className="space-y-2 p-3 rounded-lg bg-secondary/50">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <Timer className="w-4 h-4" />
-                        Duration
-                      </span>
-                      <span className="font-medium text-foreground">60 seconds</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <Zap className="w-4 h-4" />
-                        {isTimedHold ? "Each 2 sec" : "Each rep"}
-                      </span>
-                      <span className="font-medium text-primary">= 1 LP</span>
-                    </div>
-                  </div>
-                </div>
 
-                <ExerciseInstructions exerciseName={exercise.name} />
-              </>
-            )}
+              {/* Inline Instructions */}
+              <ExerciseInstructions exerciseName={exercise.name} />
+            </div>
 
             {/* Daily LP remaining */}
             <div className="text-center text-sm text-muted-foreground">
@@ -547,20 +523,14 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
               </div>
             )}
 
-            {/* Start Button → for Calf Raises goes directly to camera, others keep gif-preview step */}
+            {/* Start Button → skip gif-preview, go directly to camera-select */}
             <Button
               variant="hero"
               size="xl"
               className="w-full"
               onClick={() => {
                 setCameraBlocked(false);
-                if (exercise.name === "Calf Raises") {
-                  setStep("camera-select");
-                } else if (exercise.gif_url) {
-                  setStep("gif-preview");
-                } else {
-                  setStep("camera-select");
-                }
+                setStep("camera-select");
               }}
             >
               <Play className="w-5 h-5" />
