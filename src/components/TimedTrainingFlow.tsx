@@ -542,6 +542,46 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
           </div>
         )}
 
+        {/* Place Your Phone Step */}
+        {step === "place-phone" && (
+          <div className="w-full max-w-sm space-y-6 animate-fade-in">
+            <div className="text-center space-y-3">
+              <div className="w-16 h-16 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto">
+                <Smartphone className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-2xl font-display font-bold text-foreground">Place Your Phone</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Put your phone on a stable surface before starting. Lean it against a wall, bottle, or use a phone stand.
+              </p>
+            </div>
+
+            <div className="lion-card p-4 space-y-3">
+              <div className="flex items-start gap-3 p-2.5 rounded-lg bg-secondary/50">
+                <Eye className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground">Make sure your full body is visible</p>
+              </div>
+              <div className="flex items-start gap-3 p-2.5 rounded-lg bg-secondary/50">
+                <Hand className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground">Keep the phone still during exercise</p>
+              </div>
+              <div className="flex items-start gap-3 p-2.5 rounded-lg bg-secondary/50">
+                <Sun className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground">Good lighting helps tracking accuracy</p>
+              </div>
+            </div>
+
+            <Button
+              variant="hero"
+              size="xl"
+              className="w-full"
+              onClick={() => setStep("camera-select")}
+            >
+              <Play className="w-5 h-5" />
+              Ready, Let's Go!
+            </Button>
+          </div>
+        )}
+
         {/* GIF Preview Step */}
         {step === "gif-preview" && exercise.gif_url && (
           <ExerciseGifPreview
