@@ -10,12 +10,10 @@ import { RunningTracker } from '@/components/RunningTracker';
 import { TreadmillTracker } from '@/components/TreadmillTracker';
 import { LocationSelector } from '@/components/training/LocationSelector';
 import { ExerciseGrid } from '@/components/training/ExerciseGrid';
-import { ExerciseInstructions } from '@/components/ExerciseInstructions';
 import { Button } from '@/components/ui/button';
 import { Zap, Play, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrainingLocation, filterExercisesByLocation } from '@/lib/exerciseLocations';
-import { getDailyLPCap } from '@/lib/ranks';
 import { gaEvents } from '@/lib/gtag';
 import {
   startTrainingSession,
@@ -34,7 +32,6 @@ export default function Training() {
   const [showFlow, setShowFlow] = useState(false);
   const analyticsSessionIdRef = useRef<string | null>(null);
   const sessionStartTimeRef = useRef<number>(0);
-  const instructionRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useTrackScreen('training');
@@ -188,13 +185,7 @@ export default function Training() {
         <ExerciseGrid
           exercises={filteredExercises}
           selectedExercise={selectedExercise}
-          onSelect={(ex) => {
-            setSelectedExercise(ex);
-            // Auto-scroll to instruction area after selection
-            setTimeout(() => {
-              instructionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
-          }}
+          onSelect={setSelectedExercise}
           onBack={() => {
             setSelectedLocation(null);
             setSelectedExercise(null);
@@ -202,52 +193,6 @@ export default function Training() {
           location={selectedLocation}
           remainingDaily={remainingDaily}
         />
-      )}
-
-      {/* Inline GIF + Instructions for selected exercise (Calf Raises test) */}
-      {selectedExercise && selectedExercise.name === 'Calf Raises' && selectedExercise.gif_url && remainingDaily > 0 && (
-        <div ref={instructionRef} className="mt-4 mb-28 animate-fade-in">
-          {/* GIF Demo */}
-          <div className="w-full rounded-2xl overflow-hidden border border-border bg-secondary/30 mb-4">
-            <img
-              src={selectedExercise.gif_url}
-              alt={`${selectedExercise.name} demonstration`}
-              className="w-full h-auto object-contain"
-              loading="eager"
-            />
-          </div>
-
-          {/* Instructions */}
-          <ExerciseInstructions exerciseName={selectedExercise.name} />
-
-          {/* Duration & LP info */}
-          <div className="lion-card p-4 mt-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Timer className="w-4 h-4" />
-                  Duration
-                </span>
-                <span className="font-medium text-foreground">60 seconds</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Zap className="w-4 h-4" />
-                  Each rep
-                </span>
-                <span className="font-medium text-primary">= 1 LP</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Daily LP remaining */}
-          <div className="text-center text-sm text-muted-foreground mt-4">
-            Daily LP remaining:{' '}
-            <span className="text-primary font-semibold">
-              {remainingDaily} / {getDailyLPCap(user?.id)}
-            </span>
-          </div>
-        </div>
       )}
 
       {/* Start Button */}

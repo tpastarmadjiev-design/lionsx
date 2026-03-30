@@ -118,9 +118,7 @@ function getExerciseType(name: string): import("@/lib/antiCheat").ExerciseType {
 }
 
 export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCancel }: TimedTrainingFlowProps) {
-  // For Calf Raises, skip "ready" step since instructions are shown inline on Training page
-  const skipReady = exercise.name === "Calf Raises";
-  const [step, setStep] = useState<FlowStep>(skipReady ? "camera-select" : "ready");
+  const [step, setStep] = useState<FlowStep>("ready");
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraBlocked, setCameraBlocked] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<CameraFacing>("user");
