@@ -480,7 +480,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
             {exercise.name === "Calf Raises" && exercise.gif_url ? (
               <div className="lion-card p-4 space-y-4">
                 {/* GIF Demo */}
-                <div className="w-full rounded-xl overflow-hidden border border-border bg-secondary/30">
+                <div ref={gifRef} className="w-full rounded-xl overflow-hidden border border-border bg-secondary/30">
                   <img
                     src={exercise.gif_url}
                     alt={`${exercise.name} demonstration`}
