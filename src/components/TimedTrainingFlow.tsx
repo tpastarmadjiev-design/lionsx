@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import placePhoneGif from "@/assets/place-phone.gif";
 import { Exercise } from "@/hooks/useExercises";
 import { Button } from "@/components/ui/button";
 import { PoseTracker } from "@/components/PoseTracker";
@@ -546,9 +547,11 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
         {step === "place-phone" && (
           <div className="w-full max-w-sm space-y-6 animate-fade-in">
             <div className="text-center space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto">
-                <Smartphone className="w-8 h-8 text-primary" />
-              </div>
+              <img
+                src={placePhoneGif}
+                alt="Place your phone on a stable surface"
+                className="w-40 h-40 object-contain mx-auto rounded-2xl"
+              />
               <h3 className="text-2xl font-display font-bold text-foreground">Place Your Phone</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Put your phone on a stable surface before starting. Lean it against a wall, bottle, or use a phone stand.
