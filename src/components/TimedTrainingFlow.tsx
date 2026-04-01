@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import placePhoneGif from "@/assets/place-phone.gif";
+import placePhoneImg from "@/assets/place-phone-dark.png";
 import { Exercise } from "@/hooks/useExercises";
 import { Button } from "@/components/ui/button";
 import { PoseTracker } from "@/components/PoseTracker";
