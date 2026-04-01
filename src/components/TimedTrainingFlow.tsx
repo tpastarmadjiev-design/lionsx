@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import placePhoneImg from "@/assets/place-phone-dark.png";
+import placePhoneVideo from "@/assets/place-phone.mp4";
 import { Exercise } from "@/hooks/useExercises";
 import { Button } from "@/components/ui/button";
 import { PoseTracker } from "@/components/PoseTracker";
@@ -547,10 +547,15 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
         {step === "place-phone" && (
           <div className="w-full max-w-sm space-y-6 animate-fade-in">
             <div className="text-center space-y-3">
-              <img
-                src={placePhoneImg}
-                alt="Place your phone on a stable surface"
-                className="w-40 h-40 object-contain mx-auto rounded-2xl"
+              <video
+                src={placePhoneVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                aria-label="Place your phone on a stable surface"
+                style={{ width: 160, height: 160 }}
+                className="object-contain mx-auto rounded-2xl"
               />
               <h3 className="text-2xl font-display font-bold text-foreground">Place Your Phone</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
