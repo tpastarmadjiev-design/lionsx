@@ -553,7 +553,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
                 loop
                 muted
                 playsInline
-                alt="Place your phone on a stable surface"
+                aria-label="Place your phone on a stable surface"
                 style={{ width: 160, height: 160 }}
                 className="object-contain mx-auto rounded-2xl"
               />
