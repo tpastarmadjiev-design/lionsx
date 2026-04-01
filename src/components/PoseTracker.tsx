@@ -39,8 +39,8 @@ interface PoseTrackerProps {
 // ─── TOGGLES (set to false to disable any protection) ───
 const CAMERA_STABILITY_ENABLED = true;
 const CAMERA_SHAKE_THRESHOLD = 0.06;
-const BODY_REALISM_ENABLED = true;
-const GRACE_PERIOD_MS = 2000;
+const BODY_REALISM_ENABLED = false;
+const GRACE_PERIOD_MS = 0;
 
 // ─── BODY REALISM CHECK ───
 // When holding phone at face, MediaPipe "guesses" body landmarks
