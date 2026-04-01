@@ -548,7 +548,7 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
           <div className="w-full max-w-sm space-y-6 animate-fade-in">
             <div className="text-center space-y-3">
               <img
-                src={placePhoneGif}
+                src={placePhoneImg}
                 alt="Place your phone on a stable surface"
                 className="w-40 h-40 object-contain mx-auto rounded-2xl"
               />
