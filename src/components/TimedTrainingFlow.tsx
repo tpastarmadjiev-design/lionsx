@@ -547,10 +547,15 @@ export function TimedTrainingFlow({ exercise, remainingDailyLP, onComplete, onCa
         {step === "place-phone" && (
           <div className="w-full max-w-sm space-y-6 animate-fade-in">
             <div className="text-center space-y-3">
-              <img
-                src={placePhoneImg}
+              <video
+                src={placePhoneVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
                 alt="Place your phone on a stable surface"
-                className="w-40 h-40 object-contain mx-auto rounded-2xl"
+                style={{ width: 160, height: 160 }}
+                className="object-contain mx-auto rounded-2xl"
               />
               <h3 className="text-2xl font-display font-bold text-foreground">Place Your Phone</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
