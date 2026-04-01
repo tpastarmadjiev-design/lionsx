@@ -251,31 +251,45 @@ export function detectBurpeePhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
-// FIX: Mountain Climbers — simplified: use knee Y relative to hip, more liberal thresholds
-let _mcLastKnee: 'left' | 'right' | null = null;
+// Mountain Climbers — track ankle Y position changes (feet moving forward and back)
+let _mcLastFoot: 'left' | 'right' | null = null;
 
 export function detectMountainClimberPhase(pose: Landmark[]): Phase {
+  const lShoulder = pose[LEFT_SHOULDER], rShoulder = pose[RIGHT_SHOULDER];
   const lHip = pose[LEFT_HIP], rHip = pose[RIGHT_HIP];
-  const lKnee = pose[LEFT_KNEE], rKnee = pose[RIGHT_KNEE];
-  const shoulder = pose[LEFT_SHOULDER] || pose[RIGHT_SHOULDER];
-  if (!shoulder || !lKnee || !rKnee) return 'neutral';
-  
-  const hipY = lHip && rHip ? (lHip.y + rHip.y) / 2 : (lHip || rHip)?.y;
-  if (hipY === undefined) return 'neutral';
-  
-  // Must be in plank-ish position (shoulder and hip roughly same height)
-  if (Math.abs(shoulder.y - hipY) > 0.25) return 'neutral';
-  
-  // Knee drive: knee comes forward (closer to chest = Y decreases)
-  const leftDrive = hipY - lKnee.y;
-  const rightDrive = hipY - rKnee.y;
-  
-  if (leftDrive > 0.03 && _mcLastKnee !== 'left') { _mcLastKnee = 'left'; return 'up'; }
-  if (rightDrive > 0.03 && _mcLastKnee !== 'right') { _mcLastKnee = 'right'; return 'up'; }
-  if (leftDrive < -0.01 && rightDrive < -0.01) { _mcLastKnee = null; return 'down'; }
+  const lAnkle = pose[27], rAnkle = pose[28];
+  if (!lAnkle || !rAnkle) return 'neutral';
+
+  const shoulderY = lShoulder && rShoulder ? (lShoulder.y + rShoulder.y) / 2
+    : (lShoulder || rShoulder)?.y;
+  const hipY = lHip && rHip ? (lHip.y + rHip.y) / 2
+    : (lHip || rHip)?.y;
+  if (shoulderY === undefined || hipY === undefined) return 'neutral';
+
+  // Verify plank position: shoulders and hips at roughly same Y level
+  if (Math.abs(shoulderY - hipY) > 0.25) return 'neutral';
+
+  // Track ankle Y difference — one foot driven forward means its ankle Y decreases
+  const ankleDiff = lAnkle.y - rAnkle.y; // positive = left ankle lower (further back), right forward
+
+  if (ankleDiff > 0.06 && _mcLastFoot !== 'right') {
+    // Right ankle is higher (driven forward)
+    _mcLastFoot = 'right';
+    return 'up';
+  }
+  if (ankleDiff < -0.06 && _mcLastFoot !== 'left') {
+    // Left ankle is higher (driven forward)
+    _mcLastFoot = 'left';
+    return 'up';
+  }
+  // Both ankles at similar Y level — both feet back
+  if (Math.abs(ankleDiff) < 0.03) {
+    _mcLastFoot = null;
+    return 'down';
+  }
   return 'neutral';
 }
-export function resetMountainClimberState() { _mcLastKnee = null; }
+export function resetMountainClimberState() { _mcLastFoot = null; }
 
 let _hkLastKnee: 'left' | 'right' | null = null;
 
