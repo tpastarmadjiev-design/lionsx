@@ -55,7 +55,7 @@ function MilestoneCelebration({ distance }: { distance: number }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-      <div className="animate-pulse bg-background/90 backdrop-blur-sm border border-primary/30 rounded-2xl flex flex-col items-center justify-center text-center shadow-2xl" style={{ width: 160, height: 160 }}>
+      <div className="animate-pulse bg-background/90 backdrop-blur-sm border border-primary/30 rounded-2xl flex flex-col items-center justify-center text-center shadow-2xl" style={{ width: 320, height: 320 }}>
         <Zap className="w-10 h-10 text-primary mb-2" fill="currentColor" />
         <p className="text-lg font-display font-bold text-primary leading-tight">
           You've Reached {distance}m!
