@@ -1,6 +1,6 @@
 import { getRank } from '@/lib/ranks';
 import { getCountryFlag } from '@/lib/countryFlags';
-import { User, Globe, Save } from 'lucide-react';
+import { User, Globe, Save, Dumbbell, Clock, Trophy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AvatarUpload } from '@/components/AvatarUpload';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 export default function Profile() {
   const { user, loading: authLoading } = useAuth();
