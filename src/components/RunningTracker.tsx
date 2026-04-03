@@ -284,9 +284,9 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   const handleConfirm = async () => {
     setIsSubmitting(true);
     const skillXp = {
-      strength: exercise.skill_strength * cappedLP,
-      endurance: exercise.skill_endurance * cappedLP,
-      mobility: exercise.skill_mobility * cappedLP,
+      strength: Math.round((exercise.skill_strength / 100) * cappedLP),
+      endurance: Math.round((exercise.skill_endurance / 100) * cappedLP),
+      mobility: Math.round((exercise.skill_mobility / 100) * cappedLP),
     };
     await onComplete(cappedLP, skillXp);
     setIsSubmitting(false);
@@ -540,15 +540,15 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
           <p className="text-sm text-muted-foreground mb-2">Skill XP Preview</p>
           <div className="flex justify-around">
             <div className="text-center">
-              <p className="text-foreground font-medium">+{exercise.skill_strength * cappedLP}</p>
+              <p className="text-foreground font-medium">+{Math.round((exercise.skill_strength / 100) * cappedLP)}</p>
               <p className="text-xs text-muted-foreground">Strength</p>
             </div>
             <div className="text-center">
-              <p className="text-primary font-medium">+{exercise.skill_endurance * cappedLP}</p>
+              <p className="text-primary font-medium">+{Math.round((exercise.skill_endurance / 100) * cappedLP)}</p>
               <p className="text-xs text-muted-foreground">Endurance</p>
             </div>
             <div className="text-center">
-              <p className="text-foreground font-medium">+{exercise.skill_mobility * cappedLP}</p>
+              <p className="text-foreground font-medium">+{Math.round((exercise.skill_mobility / 100) * cappedLP)}</p>
               <p className="text-xs text-muted-foreground">Mobility</p>
             </div>
           </div>
