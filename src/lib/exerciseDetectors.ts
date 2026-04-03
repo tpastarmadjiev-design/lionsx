@@ -377,12 +377,15 @@ export function detectChestPressPhase(pose: Landmark[]): Phase {
   return 'neutral';
 }
 
-// FIX: Bicep Curls — works with single arm (either side)
+// FIX: Bicep Curls — check BOTH arms independently
 export function detectBicepCurlPhase(pose: Landmark[]): Phase {
-  const elbowAngle = anySideAngle(pose, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST);
-  if (elbowAngle === null) return 'neutral';
-  if (elbowAngle < 65) return 'up';
-  if (elbowAngle > 140) return 'down';
+  const leftAngle = angle(pose[LEFT_SHOULDER], pose[LEFT_ELBOW], pose[LEFT_WRIST]);
+  const rightAngle = angle(pose[RIGHT_SHOULDER], pose[RIGHT_ELBOW], pose[RIGHT_WRIST]);
+  const leftValid = leftAngle !== null;
+  const rightValid = rightAngle !== null;
+  if (!leftValid && !rightValid) return 'neutral';
+  if ((leftValid && leftAngle < 65) || (rightValid && rightAngle < 65)) return 'up';
+  if ((!leftValid || leftAngle > 140) && (!rightValid || rightAngle > 140)) return 'down';
   return 'neutral';
 }
 
