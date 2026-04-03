@@ -1,6 +1,6 @@
 import { getRank } from '@/lib/ranks';
 import { getCountryFlag } from '@/lib/countryFlags';
-import { User, Globe, Save } from 'lucide-react';
+import { User, Globe, Save, Dumbbell, Clock, Trophy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AvatarUpload } from '@/components/AvatarUpload';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 export default function Profile() {
   const { user, loading: authLoading } = useAuth();
@@ -159,6 +161,80 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Recent Workouts */}
+      <RecentWorkouts userId={user?.id} />
     </AppLayout>
+  );
+}
+
+function formatDuration(seconds: number | null) {
+  if (!seconds || seconds <= 0) return '—';
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
+function RecentWorkouts({ userId }: { userId?: string }) {
+  const { data: workouts, isLoading } = useQuery({
+    queryKey: ['recent-workouts', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('training_logs')
+        .select('*, exercises(name)')
+        .eq('user_id', userId!)
+        .order('completed_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  return (
+    <div className="lion-card mt-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+      <h3 className="text-lg font-display font-semibold text-foreground mb-4">Recent Workouts</h3>
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-16 rounded-lg bg-secondary/30 animate-pulse" />
+          ))}
+        </div>
+      ) : !workouts || workouts.length === 0 ? (
+        <div className="text-center py-8">
+          <Dumbbell className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">No workouts yet. Start training to see your history here!</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {workouts.map((w) => (
+            <div key={w.id} className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground text-sm truncate">
+                  {(w.exercises as any)?.name || 'Unknown'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {format(new Date(w.completed_at), 'MMM d, HH:mm')}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                {w.reps_completed ? (
+                  <span>{w.reps_completed} reps</span>
+                ) : null}
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {formatDuration(w.session_duration_seconds)}
+                </span>
+                <span className="flex items-center gap-1 text-primary font-semibold">
+                  <Trophy className="w-3 h-3" />
+                  +{w.lp_earned}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
