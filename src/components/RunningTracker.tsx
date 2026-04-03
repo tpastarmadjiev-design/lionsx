@@ -25,11 +25,18 @@ const MAX_SPEED_KMH = 25;
 const MIN_SPEED_KMH = 0.3;
 
 // Reward constants
-const GPS_LOCK_SECONDS = 8;
-const TIME_LP_INTERVAL = 10; // seconds
-const TIME_LP_SPEED_THRESHOLD = 0.5; // km/h
-const MILESTONE_DISTANCE = 100; // meters
+const GPS_LOCK_MIN_SECONDS = 5;
+const TIME_LP_INTERVAL = 10;
+const ACTIVE_SPEED_THRESHOLD_KMH = 1.5;
+const MILESTONE_DISTANCE = 100;
 const MILESTONE_BONUS_LP = 3;
+const MOVEMENT_STALE_SECONDS = 5;
+
+// Milestone celebration timing
+const MILESTONE_FADE_IN = 300;
+const MILESTONE_VISIBLE = 1200;
+const MILESTONE_FADE_OUT = 500;
+const MILESTONE_TOTAL = MILESTONE_FADE_IN + MILESTONE_VISIBLE + MILESTONE_FADE_OUT;
 
 function calculateDistance(pos1: Position, pos2: Position): number {
   const R = 6371000;
@@ -44,23 +51,35 @@ function calculateDistance(pos1: Position, pos2: Position): number {
 }
 
 function MilestoneCelebration({ distance }: { distance: number }) {
-  const [visible, setVisible] = useState(true);
+  const [phase, setPhase] = useState<'in' | 'visible' | 'out' | 'gone'>('in');
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 3000);
-    return () => clearTimeout(timer);
+    const t1 = setTimeout(() => setPhase('visible'), MILESTONE_FADE_IN);
+    const t2 = setTimeout(() => setPhase('out'), MILESTONE_FADE_IN + MILESTONE_VISIBLE);
+    const t3 = setTimeout(() => setPhase('gone'), MILESTONE_TOTAL);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
-  if (!visible) return null;
+  if (phase === 'gone') return null;
+
+  const opacity = phase === 'in' ? 'opacity-0' : phase === 'out' ? 'opacity-0' : 'opacity-100';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-      <div className="animate-pulse bg-background/90 backdrop-blur-sm border border-primary/30 rounded-2xl flex flex-col items-center justify-center text-center shadow-2xl" style={{ width: 320, height: 320 }}>
-        <Zap className="w-10 h-10 text-primary mb-2" fill="currentColor" />
-        <p className="text-lg font-display font-bold text-primary leading-tight">
-          You've Reached {distance}m!
+      <div
+        className={`${opacity} transition-opacity bg-background/90 backdrop-blur-sm border border-amber-400/40 rounded-2xl flex flex-col items-center justify-center text-center shadow-2xl`}
+        style={{
+          width: 280,
+          height: 200,
+          transitionDuration: phase === 'in' ? `${MILESTONE_FADE_IN}ms` : phase === 'out' ? `${MILESTONE_FADE_OUT}ms` : '0ms',
+          boxShadow: '0 0 40px hsl(45 100% 50% / 0.15)',
+        }}
+      >
+        <Zap className="w-10 h-10 text-amber-400 mb-2 drop-shadow-[0_0_8px_hsl(45_100%_50%/0.5)]" fill="currentColor" />
+        <p className="text-xl font-display font-bold text-amber-400 leading-tight drop-shadow-[0_0_6px_hsl(45_100%_50%/0.3)]">
+          {distance}m Reached!
         </p>
-        <p className="text-sm font-semibold text-primary/80 mt-1">
+        <p className="text-sm font-semibold text-amber-300/80 mt-1">
           +{MILESTONE_BONUS_LP} LP
         </p>
       </div>
@@ -68,9 +87,36 @@ function MilestoneCelebration({ distance }: { distance: number }) {
   );
 }
 
+function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef<number>();
+
+  useEffect(() => {
+    const start = performance.now();
+    const from = 0;
+    const to = value;
+
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [value, duration]);
+
+  return <>{display}</>;
+}
+
 export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCancel }: RunningTrackerProps) {
   const [step, setStep] = useState<'ready' | 'active' | 'finish'>('ready');
   const [totalDistance, setTotalDistance] = useState(0);
+  const [displayDistance, setDisplayDistance] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -78,6 +124,7 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   const [permissionStatus, setPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
   const [lowAccuracy, setLowAccuracy] = useState(false);
   const [gpsLocked, setGpsLocked] = useState(false);
+  const [gpsLockFading, setGpsLockFading] = useState(false);
   const [timeLPEarned, setTimeLPEarned] = useState(0);
   const [milestonesHit, setMilestonesHit] = useState(0);
   const [activeMilestone, setActiveMilestone] = useState<number | null>(null);
@@ -93,6 +140,11 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   const lastTimeLPSecondRef = useRef(0);
   const lastMilestoneRef = useRef(0);
   const currentSpeedRef = useRef(0);
+  const realDistanceRef = useRef(0);
+  const displayDistanceRef = useRef(0);
+  const lastDistanceIncreaseRef = useRef(0);
+  const gpsMinTimePassed = useRef(false);
+  const gpsAccuracyOk = useRef(false);
 
   useEffect(() => {
     if ('permissions' in navigator) {
@@ -107,7 +159,6 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
     }
   }, []);
 
-  // Distance bonus LP
   const distanceBonusLP = milestonesHit * MILESTONE_BONUS_LP;
   const totalLP = timeLPEarned + distanceBonusLP;
   const cappedLP = Math.min(totalLP, remainingDailyLP);
@@ -119,17 +170,34 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   };
 
   const formatDistanceRounded = (meters: number): string => {
-    const rounded = Math.floor(meters / 10) * 10;
-    if (rounded >= 1000) {
-      return `${(rounded / 1000).toFixed(2)} km`;
+    if (meters >= 1000) {
+      return `${(meters / 1000).toFixed(2)} km`;
     }
-    return `${rounded} m`;
+    return `${meters} m`;
   };
 
   const formatSpeed = (metersPerSecond: number): string => {
     const kmPerHour = metersPerSecond * 3.6;
     return `${kmPerHour.toFixed(1)} km/h`;
   };
+
+  const tryGpsLock = useCallback(() => {
+    if (gpsMinTimePassed.current && gpsAccuracyOk.current) {
+      setGpsLockFading(true);
+      setTimeout(() => {
+        setGpsLocked(true);
+        setGpsLockFading(false);
+      }, 300);
+    }
+  }, []);
+
+  const isActivelyRunning = useCallback((elapsed: number): boolean => {
+    const speedKmh = currentSpeedRef.current * 3.6;
+    if (speedKmh < ACTIVE_SPEED_THRESHOLD_KMH) return false;
+    const timeSinceLastIncrease = elapsed - lastDistanceIncreaseRef.current;
+    if (timeSinceLastIncrease > MOVEMENT_STALE_SECONDS) return false;
+    return true;
+  }, []);
 
   const startTracking = useCallback(() => {
     if (!navigator.geolocation) {
@@ -144,24 +212,41 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
     lastAcceptedRef.current = null;
     setLowAccuracy(false);
     setGpsLocked(false);
+    setGpsLockFading(false);
+    gpsMinTimePassed.current = false;
+    gpsAccuracyOk.current = false;
     timeLPRef.current = 0;
     lastTimeLPSecondRef.current = 0;
     lastMilestoneRef.current = 0;
     currentSpeedRef.current = 0;
+    realDistanceRef.current = 0;
+    displayDistanceRef.current = 0;
+    lastDistanceIncreaseRef.current = 0;
 
-    // GPS lock timer
+    // Min time lock
     gpsLockTimerRef.current = setTimeout(() => {
-      setGpsLocked(true);
-    }, GPS_LOCK_SECONDS * 1000);
+      gpsMinTimePassed.current = true;
+      // If accuracy already ok, lock now. Otherwise wait for accuracy callback.
+      if (gpsAccuracyOk.current) {
+        setGpsLockFading(true);
+        setTimeout(() => {
+          setGpsLocked(true);
+          setGpsLockFading(false);
+        }, 300);
+      }
+    }, GPS_LOCK_MIN_SECONDS * 1000);
 
-    // Start timer — also handles time-based LP
+    // Timer — handles time-based LP
     timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
       setElapsedTime(elapsed);
 
-      // Time-based LP: 1 LP every 10s if speed > threshold
+      // Time-based LP: 1 LP every 10s if actively running
       const speedKmh = currentSpeedRef.current * 3.6;
-      if (speedKmh > TIME_LP_SPEED_THRESHOLD) {
+      const timeSinceMove = elapsed - lastDistanceIncreaseRef.current;
+      const active = speedKmh >= ACTIVE_SPEED_THRESHOLD_KMH && timeSinceMove <= MOVEMENT_STALE_SECONDS;
+
+      if (active) {
         const timeLPNow = Math.floor(elapsed / TIME_LP_INTERVAL);
         if (timeLPNow > lastTimeLPSecondRef.current) {
           const newLP = timeLPNow - lastTimeLPSecondRef.current;
@@ -170,7 +255,6 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
           setTimeLPEarned(timeLPRef.current);
         }
       } else {
-        // Update the checkpoint so standing still doesn't accumulate
         lastTimeLPSecondRef.current = Math.floor(elapsed / TIME_LP_INTERVAL);
       }
     }, 1000);
@@ -190,6 +274,18 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
           return;
         }
         setLowAccuracy(false);
+
+        // Mark accuracy as OK for GPS lock
+        if (!gpsAccuracyOk.current) {
+          gpsAccuracyOk.current = true;
+          if (gpsMinTimePassed.current) {
+            setGpsLockFading(true);
+            setTimeout(() => {
+              setGpsLocked(true);
+              setGpsLockFading(false);
+            }, 300);
+          }
+        }
 
         positionsRef.current.push(newPos);
 
@@ -222,20 +318,33 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
           currentSpeedRef.current = speedMs;
         }
 
-        setTotalDistance(prev => {
-          const newTotal = prev + rawDistance;
+        // Update real distance
+        realDistanceRef.current += rawDistance;
+        const realDist = realDistanceRef.current;
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        lastDistanceIncreaseRef.current = elapsed;
 
-          // Check milestones
-          const newMilestoneCount = Math.floor(newTotal / MILESTONE_DISTANCE);
-          if (newMilestoneCount > lastMilestoneRef.current) {
-            lastMilestoneRef.current = newMilestoneCount;
-            setMilestonesHit(newMilestoneCount);
-            setActiveMilestone(newMilestoneCount * MILESTONE_DISTANCE);
-            setMilestoneKey(k => k + 1);
+        setTotalDistance(realDist);
+
+        // Smoothed display distance: round to 10m, only increase
+        const rounded = Math.floor(realDist / 10) * 10;
+        if (rounded > displayDistanceRef.current) {
+          displayDistanceRef.current = rounded;
+          setDisplayDistance(rounded);
+        }
+
+        // Milestones use real distance
+        const newMilestoneCount = Math.floor(realDist / MILESTONE_DISTANCE);
+        if (newMilestoneCount > lastMilestoneRef.current) {
+          lastMilestoneRef.current = newMilestoneCount;
+          setMilestonesHit(newMilestoneCount);
+          setActiveMilestone(newMilestoneCount * MILESTONE_DISTANCE);
+          setMilestoneKey(k => k + 1);
+          // Haptic feedback if available
+          if (navigator.vibrate) {
+            navigator.vibrate(100);
           }
-
-          return newTotal;
-        });
+        }
 
         lastAcceptedRef.current = newPos;
         setGpsError(null);
@@ -413,7 +522,7 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
             <div className="text-center mb-8">
               <p className="text-muted-foreground text-sm mb-1">Distance</p>
               {!gpsLocked ? (
-                <div className="flex flex-col items-center gap-2">
+                <div className={`flex flex-col items-center gap-2 transition-opacity duration-300 ${gpsLockFading ? 'opacity-0' : 'opacity-100'}`}>
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
                     <p className="text-3xl font-display font-bold text-primary animate-pulse">
@@ -424,8 +533,8 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
                   <p className="text-xs text-muted-foreground">Acquiring satellite signal</p>
                 </div>
               ) : (
-                <p className="text-5xl font-display font-bold text-primary">
-                  {formatDistanceRounded(totalDistance)}
+                <p className="text-5xl font-display font-bold text-primary animate-fade-in">
+                  {formatDistanceRounded(displayDistance)}
                 </p>
               )}
             </div>
@@ -492,7 +601,7 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
         <div className="grid grid-cols-2 gap-4 w-full max-w-sm mb-6">
           <div className="bg-secondary/50 rounded-lg p-4 text-center">
             <p className="text-muted-foreground text-sm">Distance</p>
-            <p className="text-xl font-bold text-foreground">{formatDistanceRounded(totalDistance)}</p>
+            <p className="text-xl font-bold text-foreground">{formatDistanceRounded(displayDistance)}</p>
           </div>
           <div className="bg-secondary/50 rounded-lg p-4 text-center">
             <p className="text-muted-foreground text-sm">Time</p>
@@ -510,21 +619,27 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
           </div>
         </div>
 
-        {/* LP Breakdown */}
+        {/* LP Breakdown with animated numbers */}
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 w-full max-w-sm mb-6">
           <p className="text-sm font-semibold text-primary mb-3 text-center">LP Summary</p>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-foreground">
-              <span>⏱ Time LP ({timeLPEarned})</span>
-              <span className="font-medium">{timeLPEarned} LP</span>
+              <span>⏱ Time LP</span>
+              <span className="font-medium">
+                <AnimatedNumber value={timeLPEarned} /> LP
+              </span>
             </div>
             <div className="flex justify-between text-foreground">
               <span>🏃 Distance Bonus ({milestonesHit} × {MILESTONE_BONUS_LP})</span>
-              <span className="font-medium">{distanceBonusLP} LP</span>
+              <span className="font-medium">
+                <AnimatedNumber value={distanceBonusLP} duration={600} /> LP
+              </span>
             </div>
             <div className="border-t border-primary/20 pt-2 flex justify-between text-primary font-bold">
               <span>Total</span>
-              <span>{cappedLP} LP</span>
+              <span>
+                <AnimatedNumber value={cappedLP} duration={1000} /> LP
+              </span>
             </div>
           </div>
         </div>
