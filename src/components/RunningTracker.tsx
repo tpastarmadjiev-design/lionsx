@@ -284,9 +284,9 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
   const handleConfirm = async () => {
     setIsSubmitting(true);
     const skillXp = {
-      strength: exercise.skill_strength * cappedLP,
-      endurance: exercise.skill_endurance * cappedLP,
-      mobility: exercise.skill_mobility * cappedLP,
+      strength: Math.round((exercise.skill_strength / 100) * cappedLP),
+      endurance: Math.round((exercise.skill_endurance / 100) * cappedLP),
+      mobility: Math.round((exercise.skill_mobility / 100) * cappedLP),
     };
     await onComplete(cappedLP, skillXp);
     setIsSubmitting(false);
