@@ -384,9 +384,6 @@ export function PoseTracker({
       <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover opacity-0" />
       <canvas ref={canvasRef} width={640} height={480} className="w-full h-full object-cover"
         style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }} />
-      <div style={{ position: 'absolute', top: 4, left: 4, background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: '11px', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', pointerEvents: 'none', zIndex: 10 }}>
-        S:{debugLandmarks.sY.toFixed(2)} H:{debugLandmarks.hY.toFixed(2)} E:{debugLandmarks.eY.toFixed(2)} | S-H:{debugLandmarks.sh.toFixed(2)} S-E:{debugLandmarks.se.toFixed(2)}
-      </div>
     </div>
   );
 }
