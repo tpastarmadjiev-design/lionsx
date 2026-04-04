@@ -1,11 +1,13 @@
-import { Home, Dumbbell, User, LogOut, Trophy } from 'lucide-react';
+import { Home, Dumbbell, User, LogOut, Trophy, Shield } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { cn } from '@/lib/utils';
 
 export function BottomNav() {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { isAdmin } = useAdmin();
 
   const leftItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
@@ -14,6 +16,7 @@ export function BottomNav() {
 
   const rightItems = [
     { path: '/profile', icon: User, label: 'Profile' },
+    ...(isAdmin ? [{ path: '/admin', icon: Shield, label: 'Admin' }] : []),
   ];
 
   const isTrainActive = location.pathname === '/training';
@@ -41,31 +44,27 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
       <div className="flex items-center justify-around py-2 px-2 max-w-lg mx-auto relative">
-        {/* Left items */}
         {leftItems.map(renderNavItem)}
 
-        {/* Center Train FAB */}
+        {/* Center Train FAB - teal matching Start Training card */}
         <Link
           to="/training"
           className={cn(
             'absolute left-1/2 -translate-x-1/2 -top-5 flex flex-col items-center justify-center',
             'w-16 h-16 rounded-full shadow-lg transition-all duration-200',
-            'bg-primary text-primary-foreground hover:scale-105',
-            isTrainActive && 'ring-2 ring-primary ring-offset-2 ring-offset-card'
+            'bg-teal-900 text-foreground hover:scale-105',
+            isTrainActive && 'ring-2 ring-teal-700 ring-offset-2 ring-offset-card'
           )}
-          style={{ boxShadow: 'var(--shadow-glow)' }}
+          style={{ boxShadow: '0 0 20px rgba(13, 148, 136, 0.4)' }}
         >
           <Dumbbell className="w-7 h-7" />
           <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5">Train</span>
         </Link>
 
-        {/* Spacer for center button */}
         <div className="w-16" />
 
-        {/* Right items */}
         {rightItems.map(renderNavItem)}
 
-        {/* Logout */}
         <button
           onClick={signOut}
           className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 text-muted-foreground hover:text-destructive min-w-[56px]"
