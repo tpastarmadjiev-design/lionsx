@@ -267,7 +267,9 @@ export function PoseTracker({
 
 
     // ─── PROTECTION 0: Off-screen landmarks — body not visible ───
-    if (dbgSY > 1.05 || dbgHY > 1.05) return;
+    const shoulderY = ((pose[11]?.y ?? 0) + (pose[12]?.y ?? 0)) / 2;
+    const hipY = ((pose[23]?.y ?? 0) + (pose[24]?.y ?? 0)) / 2;
+    if (shoulderY > 1.05 || hipY > 1.05) return;
 
     // ─── PROTECTION 1: Grace period — skip first 2 seconds ───
     if (Date.now() - activeStartTimeRef.current < GRACE_PERIOD_MS) return;
