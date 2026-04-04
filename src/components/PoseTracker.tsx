@@ -265,11 +265,6 @@ export function PoseTracker({
     if (!landmarks || landmarks.length === 0) return;
     const pose = landmarks[0];
 
-    // ─── DEBUG: Update landmark overlay ───
-    const dbgSY = ((pose[11]?.y ?? 0) + (pose[12]?.y ?? 0)) / 2;
-    const dbgHY = ((pose[23]?.y ?? 0) + (pose[24]?.y ?? 0)) / 2;
-    const dbgEY = ((pose[13]?.y ?? 0) + (pose[14]?.y ?? 0)) / 2;
-    setDebugLandmarks({ sY: dbgSY, hY: dbgHY, eY: dbgEY, sh: Math.abs(dbgHY - dbgSY), se: Math.abs(dbgEY - dbgSY) });
 
     // ─── PROTECTION 0: Off-screen landmarks — body not visible ───
     if (dbgSY > 1.05 || dbgHY > 1.05) return;
