@@ -133,7 +133,7 @@ export function PoseTracker({
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [debugLandmarks, setDebugLandmarks] = useState({ sY: 0, hY: 0, eY: 0, sh: 0, se: 0 });
+  
 
   const isTimedHold = TIMED_HOLD_EXERCISES.includes(exercise);
 
