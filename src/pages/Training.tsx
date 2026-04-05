@@ -59,7 +59,7 @@ export default function Training() {
       if (user?.id) {
         const durationSeconds = Math.round((Date.now() - sessionStartTimeRef.current) / 1000);
         if (analyticsSessionIdRef.current) {
-          completeTrainingSession(analyticsSessionIdRef.current, reps, reps, durationSeconds);
+          await completeTrainingSession(analyticsSessionIdRef.current, reps, reps, durationSeconds);
         }
         updateStreak(user.id);
         markFirstSession(user.id);

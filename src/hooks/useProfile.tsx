@@ -181,7 +181,7 @@ export function useProfile() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
-      toast.success(`+${data.earnedLP} LP earned!`);
+      toast.success(`+${data.earnedLP} LP earned!`, { duration: 2000 });
     },
     onError: (error: Error) => {
       toast.error(error.message);
