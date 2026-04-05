@@ -181,9 +181,10 @@ function RecentWorkouts({ userId }: { userId?: string }) {
     queryKey: ['recent-workouts', userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('training_logs')
-        .select('*, exercises(name)')
+        .from('training_sessions')
+        .select('*')
         .eq('user_id', userId!)
+        .eq('was_completed', true)
         .order('completed_at', { ascending: false })
         .limit(10);
       if (error) throw error;
