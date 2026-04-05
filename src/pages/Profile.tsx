@@ -181,9 +181,10 @@ function RecentWorkouts({ userId }: { userId?: string }) {
     queryKey: ['recent-workouts', userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('training_logs')
-        .select('*, exercises(name)')
+        .from('training_sessions')
+        .select('*')
         .eq('user_id', userId!)
+        .eq('was_completed', true)
         .order('completed_at', { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -212,15 +213,15 @@ function RecentWorkouts({ userId }: { userId?: string }) {
             <div key={w.id} className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-sm truncate">
-                  {(w.exercises as any)?.name || 'Unknown'}
+                  {w.exercise_name || 'Unknown'}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {format(new Date(w.completed_at), 'MMM d, HH:mm')}
+                  {format(new Date(w.completed_at!), 'MMM d, HH:mm')}
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
-                {w.reps_completed ? (
-                  <span>{w.reps_completed} reps</span>
+                {w.reps_achieved ? (
+                  <span>{w.reps_achieved} reps</span>
                 ) : null}
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
