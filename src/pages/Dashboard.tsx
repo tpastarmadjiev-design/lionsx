@@ -6,7 +6,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { CircularSkillProgress } from '@/components/CircularSkillProgress';
 import { Crown, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { getRank } from '@/lib/ranks';
+import { getRank, getNextRank, getRankProgress, formatLP } from '@/lib/ranks';
 import { SocialLinksModal } from '@/components/SocialLinksModal';
 
 import trainingCardBg from '@/assets/training-card-bg.jpg';
