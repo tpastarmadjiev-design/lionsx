@@ -226,9 +226,9 @@ export default function Dashboard() {
           <img 
             src={followCardBg} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover object-[65%_center]"
+            className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035]/90 via-[#8B2035]/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035]/85 via-[#8B2035]/40 to-[#1a0a0f]/60" />
           <div className="relative z-10 h-full flex flex-col justify-center px-5">
             <h3 className="text-xl font-display font-bold text-foreground text-left">
               FOLLOW US
@@ -236,6 +236,12 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground text-left">
               Join the Lions-X community
             </p>
+            <div className="flex items-center gap-3 mt-1.5">
+              <Facebook className="w-4 h-4 text-foreground/50" />
+              <Instagram className="w-4 h-4 text-foreground/50" />
+              <TikTokIcon />
+              <Youtube className="w-4 h-4 text-foreground/50" />
+            </div>
           </div>
           <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
         </button>
