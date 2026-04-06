@@ -226,7 +226,7 @@ export default function Dashboard() {
           <img 
             src={followCardBg} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-contain object-right"
+            className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035]/90 via-[#8B2035]/50 to-transparent" />
           <div className="relative z-10 h-full flex flex-col justify-center px-5">
