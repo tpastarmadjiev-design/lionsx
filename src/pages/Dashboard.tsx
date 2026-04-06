@@ -18,6 +18,7 @@ import { SocialLinksModal } from '@/components/SocialLinksModal';
 import trainingCardBg from '@/assets/training-card-bg.jpg';
 import shopCardBg from '@/assets/shop-card-bg.jpg';
 import ranksCardBg from '@/assets/ranks-card-bg.jpg';
+import followCardBg from '@/assets/follow-card-bg.jpg';
 
 const MAX_SKILL = 10000;
 
