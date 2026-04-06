@@ -7,7 +7,7 @@ import { CircularSkillProgress } from '@/components/CircularSkillProgress';
 import { Crown, ChevronRight, Facebook, Instagram, Youtube } from 'lucide-react';
 
 const TikTokIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-foreground/50">
     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.7a8.16 8.16 0 0 0 4.76 1.52v-3.4a4.85 4.85 0 0 1-1-.13z" />
   </svg>
 );
@@ -226,9 +226,9 @@ export default function Dashboard() {
           <img 
             src={followCardBg} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover object-[65%_center]"
+            className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035]/90 via-[#8B2035]/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035]/85 via-[#8B2035]/40 to-[#1a0a0f]/60" />
           <div className="relative z-10 h-full flex flex-col justify-center px-5">
             <h3 className="text-xl font-display font-bold text-foreground text-left">
               FOLLOW US
@@ -236,6 +236,12 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground text-left">
               Join the Lions-X community
             </p>
+            <div className="flex items-center gap-3 mt-1.5">
+              <Facebook className="w-4 h-4 text-foreground/50" />
+              <Instagram className="w-4 h-4 text-foreground/50" />
+              <TikTokIcon />
+              <Youtube className="w-4 h-4 text-foreground/50" />
+            </div>
           </div>
           <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
         </button>
