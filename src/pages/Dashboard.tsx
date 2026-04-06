@@ -223,19 +223,13 @@ export default function Dashboard() {
           onClick={() => setSocialOpen(true)}
           className="relative w-full h-32 rounded-2xl overflow-hidden group"
         >
-          {/* Layered gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#8B2035] via-[#6a1a2d] to-[#3a0e18]" />
-          {/* Radial glows for visual depth */}
-          <div className="absolute top-0 right-0 w-48 h-32 rounded-full bg-[#E4405F]/20 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-36 h-28 rounded-full bg-[#1877F2]/15 blur-3xl" />
-          <div className="absolute top-1/2 right-1/4 w-20 h-20 rounded-full bg-[#FF0000]/10 blur-2xl" />
-          {/* Diagonal stripe pattern */}
-          <div className="absolute inset-0 opacity-[0.08]" style={{
-            backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 14px, white 14px, white 15px)',
-          }} />
-
+          <img 
+            src={followCardBg} 
+            alt="" 
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035]/85 to-[#3a0e18]/60" />
           <div className="relative z-10 h-full flex items-center justify-between px-5">
-            {/* Left text */}
             <div className="flex flex-col justify-center">
               <h3 className="text-xl font-display font-bold text-foreground text-left">
                 FOLLOW US
@@ -244,8 +238,6 @@ export default function Dashboard() {
                 Join the Lions-X community
               </p>
             </div>
-
-            {/* Right side: social icons */}
             <div className="flex items-center gap-2.5">
               {[
                 { bg: '#1877F2', icon: <Facebook className="w-4 h-4" /> },
@@ -263,7 +255,7 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-0 group-hover:opacity-60 transition-opacity" />
+          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
         </button>
       </div>
 
