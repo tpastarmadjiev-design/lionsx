@@ -216,16 +216,45 @@ export default function Dashboard() {
           onClick={() => setSocialOpen(true)}
           className="relative w-full h-32 rounded-2xl overflow-hidden group"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035] to-[#5a1523]" />
-          <div className="relative z-10 h-full flex flex-col justify-center px-5">
-            <h3 className="text-xl font-display font-bold text-foreground text-left">
-              FOLLOW US
-            </h3>
-            <p className="text-sm text-muted-foreground text-left">
-              Join the Lions-X community
-            </p>
+          {/* Layered gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#8B2035] via-[#6a1a2d] to-[#3a0e18]" />
+          {/* Subtle radial glow */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-[#E4405F]/15 blur-2xl" />
+          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-[#1877F2]/10 blur-2xl" />
+          {/* Diagonal pattern lines */}
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 20px, white 20px, white 21px)',
+          }} />
+
+          <div className="relative z-10 h-full flex items-center justify-between px-5">
+            {/* Left text */}
+            <div className="flex flex-col justify-center">
+              <h3 className="text-xl font-display font-bold text-foreground text-left">
+                FOLLOW US
+              </h3>
+              <p className="text-sm text-muted-foreground text-left">
+                Join the Lions-X community
+              </p>
+            </div>
+
+            {/* Right side: social icons */}
+            <div className="flex items-center gap-2 mr-2">
+              {[
+                { color: '#1877F2', icon: <Facebook className="w-4 h-4" /> },
+                { color: '#E4405F', icon: <Instagram className="w-4 h-4" /> },
+                { color: '#ffffff', icon: <TikTokIcon /> },
+                { color: '#FF0000', icon: <Youtube className="w-4 h-4" /> },
+              ].map((s, i) => (
+                <div
+                  key={i}
+                  className="w-9 h-9 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
+                  style={{ backgroundColor: `${s.color}20`, color: s.color }}
+                >
+                  {s.icon}
+                </div>
+              ))}
+            </div>
           </div>
-          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
         </button>
       </div>
 
