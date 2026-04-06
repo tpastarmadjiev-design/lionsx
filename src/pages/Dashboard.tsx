@@ -224,12 +224,13 @@ export default function Dashboard() {
         >
           {/* Layered gradient background */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#8B2035] via-[#6a1a2d] to-[#3a0e18]" />
-          {/* Subtle radial glow */}
-          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-[#E4405F]/15 blur-2xl" />
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-[#1877F2]/10 blur-2xl" />
-          {/* Diagonal pattern lines */}
-          <div className="absolute inset-0 opacity-[0.04]" style={{
-            backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 20px, white 20px, white 21px)',
+          {/* Radial glows for visual depth */}
+          <div className="absolute top-0 right-0 w-48 h-32 rounded-full bg-[#E4405F]/20 blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-36 h-28 rounded-full bg-[#1877F2]/15 blur-3xl" />
+          <div className="absolute top-1/2 right-1/4 w-20 h-20 rounded-full bg-[#FF0000]/10 blur-2xl" />
+          {/* Diagonal stripe pattern */}
+          <div className="absolute inset-0 opacity-[0.08]" style={{
+            backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 14px, white 14px, white 15px)',
           }} />
 
           <div className="relative z-10 h-full flex items-center justify-between px-5">
@@ -244,23 +245,24 @@ export default function Dashboard() {
             </div>
 
             {/* Right side: social icons */}
-            <div className="flex items-center gap-2 mr-2">
+            <div className="flex items-center gap-2.5">
               {[
-                { color: '#1877F2', icon: <Facebook className="w-4 h-4" /> },
-                { color: '#E4405F', icon: <Instagram className="w-4 h-4" /> },
-                { color: '#ffffff', icon: <TikTokIcon /> },
-                { color: '#FF0000', icon: <Youtube className="w-4 h-4" /> },
+                { bg: '#1877F2', icon: <Facebook className="w-4 h-4" /> },
+                { bg: '#E4405F', icon: <Instagram className="w-4 h-4" /> },
+                { bg: '#000000', icon: <TikTokIcon /> },
+                { bg: '#FF0000', icon: <Youtube className="w-4 h-4" /> },
               ].map((s, i) => (
                 <div
                   key={i}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
-                  style={{ backgroundColor: `${s.color}20`, color: s.color }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110"
+                  style={{ backgroundColor: s.bg }}
                 >
                   {s.icon}
                 </div>
               ))}
             </div>
           </div>
+          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-0 group-hover:opacity-60 transition-opacity" />
         </button>
       </div>
 
