@@ -221,14 +221,14 @@ export default function Dashboard() {
         {/* Follow Us Card */}
         <button
           onClick={() => setSocialOpen(true)}
-          className="relative w-full h-32 rounded-2xl overflow-hidden group"
+          className="relative w-full h-44 rounded-2xl overflow-hidden group"
         >
           <img 
             src={followCardBg} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-contain object-right"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035]/85 to-[#3a0e18]/60" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#8B2035]/90 via-[#8B2035]/50 to-transparent" />
           <div className="relative z-10 h-full flex flex-col justify-center px-5">
             <h3 className="text-xl font-display font-bold text-foreground text-left">
               FOLLOW US
