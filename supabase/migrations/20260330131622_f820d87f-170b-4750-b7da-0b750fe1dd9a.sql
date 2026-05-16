@@ -1,0 +1,10 @@
+UPDATE public.exercises SET gif_url = '/exercises/treadmill-run.gif' WHERE name = 'Treadmill Run';
+UPDATE public.exercises SET gif_url = '/exercises/dumbbell-bent-over-rows.gif' WHERE name = 'Dumbbell Bent-over Rows';
+UPDATE public.exercises SET gif_url = '/exercises/seated-cable-row.gif' WHERE name = 'Seated Cable Row';
+UPDATE public.exercises SET gif_url = '/exercises/lat-pulldown.gif' WHERE name = 'Lat Pulldown';
+UPDATE public.exercises SET gif_url = '/exercises/bench-press.gif' WHERE name = 'Bench Press';
+UPDATE public.exercises SET gif_url = '/exercises/running.gif' WHERE name = 'Running';
+UPDATE public.exercises SET gif_url = '/exercises/pull-ups.gif' WHERE name = 'Pull-ups';
+UPDATE public.exercises SET gif_url = '/exercises/dips.gif' WHERE name = 'Dips';
+UPDATE public.exercises SET gif_url = '/exercises/dumbbell-bicep-curls.gif' WHERE name = 'Dumbbell Bicep Curls';
+UPDATE public.exercises SET gif_url = '/exercises/dumbbell-chest-press.gif' WHERE name = 'Dumbbell Chest Press';

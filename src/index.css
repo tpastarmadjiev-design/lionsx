@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Lion System Dark Theme - Bold, Powerful, Athletic */
+    --background: 240 10% 6%;
+    --foreground: 45 10% 95%;
+
+    --card: 240 10% 10%;
+    --card-foreground: 45 10% 95%;
+
+    --popover: 240 10% 8%;
+    --popover-foreground: 45 10% 95%;
+
+    /* Gold/Amber - Lion's Mane */
+    --primary: 42 100% 50%;
+    --primary-foreground: 240 10% 6%;
+
+    --secondary: 240 8% 16%;
+    --secondary-foreground: 45 10% 90%;
+
+    --muted: 240 6% 20%;
+    --muted-foreground: 240 5% 55%;
+
+    --accent: 30 90% 55%;
+    --accent-foreground: 240 10% 6%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 18%;
+    --input: 240 6% 18%;
+    --ring: 42 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Rank Colors - Lion System */
+    --rank-cub: 35 60% 50%;
+    --rank-scout: 140 50% 45%;
+    --rank-hunter: 25 80% 50%;
+    --rank-warrior: 0 70% 50%;
+    --rank-guardian: 210 70% 55%;
+    --rank-champion: 45 100% 50%;
+    --rank-elite: 280 70% 60%;
+    --rank-alpha: 320 80% 55%;
+    --rank-legendary: 42 100% 55%;
+
+    /* Skill Colors */
+    --strength: 0 75% 55%;
+    --endurance: 200 85% 55%;
+    --mobility: 150 70% 45%;
+
+    /* Gradients */
+    --gradient-gold: linear-gradient(135deg, hsl(42 100% 50%) 0%, hsl(30 90% 45%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(240 10% 10%) 0%, hsl(240 10% 6%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(240 10% 8%) 0%, hsl(240 15% 4%) 100%);
+    --gradient-strength: linear-gradient(90deg, hsl(0 75% 55%) 0%, hsl(15 80% 50%) 100%);
+    --gradient-endurance: linear-gradient(90deg, hsl(200 85% 55%) 0%, hsl(220 80% 60%) 100%);
+    --gradient-mobility: linear-gradient(90deg, hsl(150 70% 45%) 0%, hsl(170 75% 40%) 100%);
+
+    /* Shadows */
+    --shadow-glow: 0 0 30px hsl(42 100% 50% / 0.3);
+    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.4);
+    --shadow-button: 0 4px 15px hsl(42 100% 50% / 0.25);
+
+    /* Sidebar */
+    --sidebar-background: 240 10% 8%;
+    --sidebar-foreground: 45 10% 90%;
+    --sidebar-primary: 42 100% 50%;
+    --sidebar-primary-foreground: 240 10% 6%;
+    --sidebar-accent: 240 8% 14%;
+    --sidebar-accent-foreground: 45 10% 90%;
+    --sidebar-border: 240 6% 16%;
+    --sidebar-ring: 42 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Oswald', sans-serif;
+    @apply font-semibold tracking-tight uppercase;
+  }
+}
+
+@layer components {
+  .lion-card {
+    @apply bg-card border border-border rounded-xl p-4;
+    box-shadow: var(--shadow-card);
+  }
+
+  .lion-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .skill-bar {
+    @apply h-3 rounded-full overflow-hidden bg-muted;
+  }
+
+  .skill-bar-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+  }
+
+  .rank-badge {
+    @apply inline-flex items-center justify-center px-3 py-1 rounded-lg font-bold uppercase text-xs tracking-wider;
+    font-family: 'Oswald', sans-serif;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200;
+  }
+
+  .nav-item:hover {
+    @apply bg-secondary;
+  }
+
+  .nav-item.active {
+    @apply bg-primary text-primary-foreground;
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-gold {
+    background: var(--gradient-gold);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes shine-sweep {
+  0% { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(100%) rotate(25deg); }
+}
+
+.animate-shine-sweep {
+  animation: shine-sweep 1.5s ease-in-out;
+}
