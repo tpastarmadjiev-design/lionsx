@@ -239,7 +239,7 @@ export default function Dashboard() {
             src={shopCardBg} 
             alt="" 
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: 'center 30%' }}
+            style={{ objectPosition: 'center 40%' }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-amber-900/80 to-transparent" />
           <div className="relative z-10 h-full flex flex-col justify-center px-5">
