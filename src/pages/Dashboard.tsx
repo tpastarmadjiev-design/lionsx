@@ -296,7 +296,7 @@ export default function Dashboard() {
                 src={challengePromoImg}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover"
-                style={{ objectPosition: 'center 10%' }}
+                style={{ objectPosition: 'center 30%' }}
               />
               {/* Dark gradient overlay for readability */}
               <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background/95" />
