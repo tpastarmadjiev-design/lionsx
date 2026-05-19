@@ -127,7 +127,7 @@ export default function Challenges() {
   };
 
   useEffect(() => {
-    if (!authLoading && !user) navigate('/auth');
+    if (!authLoading && !user) navigate('/');
   }, [user, authLoading, navigate]);
 
   const { data: existing, isLoading } = useQuery({
