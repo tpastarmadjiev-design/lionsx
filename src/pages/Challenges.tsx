@@ -128,7 +128,7 @@ export default function Challenges() {
       setView('picker');
       return;
     }
-    setActiveChallenge(data as ChallengeRow);
+    setActiveChallenge(data as unknown as ChallengeRow);
     setView('list');
   };
 
