@@ -3,17 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useExercises, type Exercise } from '@/hooks/useExercises';
 import { useTrackScreen } from '@/hooks/useAnalyticsTracker';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { PoseTracker } from '@/components/PoseTracker';
+import { ExerciseInstructions } from '@/components/ExerciseInstructions';
 import { getExerciseType } from '@/components/TimedTrainingFlow';
-import { Flame, Zap, Trophy, Play, Square, ChevronRight, Check, X, Loader2, ArrowLeft } from 'lucide-react';
+import {
+  Flame, Zap, Trophy, Play, Square, ChevronRight, Check, Loader2, ArrowLeft,
+  Dumbbell as DumbbellIcon, Activity, Wind,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import trainingCardBg from '@/assets/training-card-bg.jpg';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
+type Category = 'strength' | 'endurance' | 'mobility';
 
 interface ChallengeExercise {
   name: string;
@@ -32,13 +39,27 @@ interface ChallengeRow {
   completed_at: string | null;
 }
 
-const DIFFICULTY_CONFIG: Record<Difficulty, { reps: number; bonus: number; label: string; color: string; icon: string }> = {
-  easy:   { reps: 15, bonus: 30, label: 'Easy',   color: 'from-emerald-700 to-emerald-900', icon: '🟢' },
-  medium: { reps: 25, bonus: 50, label: 'Medium', color: 'from-amber-700 to-orange-900',    icon: '🟡' },
-  hard:   { reps: 40, bonus: 75, label: 'Hard',   color: 'from-rose-700 to-red-900',        icon: '🔴' },
+const DIFFICULTY_CONFIG: Record<Difficulty, {
+  reps: number; bonus: number; label: string;
+  gradient: string; glow: string; icon: string;
+}> = {
+  easy: {
+    reps: 15, bonus: 30, label: 'Easy', icon: '🟢',
+    gradient: 'from-emerald-900/95 via-emerald-800/60 to-transparent',
+    glow: 'bg-emerald-500/20',
+  },
+  medium: {
+    reps: 25, bonus: 50, label: 'Medium', icon: '🟡',
+    gradient: 'from-amber-900/95 via-orange-800/60 to-transparent',
+    glow: 'bg-amber-500/20',
+  },
+  hard: {
+    reps: 40, bonus: 75, label: 'Hard', icon: '🔴',
+    gradient: 'from-rose-900/95 via-red-800/60 to-transparent',
+    glow: 'bg-rose-500/25',
+  },
 };
 
-// Rep-based exercises only (exclude timed holds, GPS, treadmill)
 const CHALLENGE_POOL = [
   'Push-ups', 'Diamond Push-ups', 'Pike Push-ups',
   'Squats', 'Lunges', 'Calf Raises', 'Jumps',
@@ -54,6 +75,18 @@ const CHALLENGE_POOL = [
   'Dumbbell Punches', 'Deadlift', 'Dumbbell Windmill',
 ];
 
+const CATEGORY_ICON: Record<Category, typeof DumbbellIcon> = {
+  strength: DumbbellIcon,
+  endurance: Activity,
+  mobility: Wind,
+};
+
+const CATEGORY_COLOR: Record<Category, string> = {
+  strength: 'text-strength',
+  endurance: 'text-endurance',
+  mobility: 'text-mobility',
+};
+
 function pickRandom(pool: string[], n: number): string[] {
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, n);
@@ -62,6 +95,7 @@ function pickRandom(pool: string[], n: number): string[] {
 export default function Challenges() {
   const { user, loading: authLoading } = useAuth();
   const { profile } = useProfile();
+  const { exercises } = useExercises();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   useTrackScreen('challenges');
@@ -71,11 +105,22 @@ export default function Challenges() {
   const [execIndex, setExecIndex] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState<{ lp: number } | null>(null);
 
+  // name -> Exercise map (for category icon + gif + instructions)
+  const exerciseByName = useMemo(() => {
+    const m = new Map<string, Exercise>();
+    (exercises || []).forEach(e => m.set(e.name.toLowerCase(), e));
+    return m;
+  }, [exercises]);
+
+  const getCategory = (name: string): Category => {
+    const ex = exerciseByName.get(name.toLowerCase());
+    return (ex?.category as Category) || 'strength';
+  };
+
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
   }, [user, authLoading, navigate]);
 
-  // Load active challenge on mount
   const { data: existing, isLoading } = useQuery({
     queryKey: ['active-challenge', user?.id],
     queryFn: async () => {
@@ -101,7 +146,7 @@ export default function Challenges() {
     }
   }, [existing, activeChallenge]);
 
-  const handlePickDifficulty = (diff: Difficulty) => {
+  const handlePickDifficulty = (_diff: Difficulty) => {
     setView('slot');
   };
 
@@ -152,7 +197,6 @@ export default function Challenges() {
 
   const handleExitExec = (idx: number, finalCount: number) => {
     if (!activeChallenge) return;
-    const ex = activeChallenge.exercises[idx];
     const next = activeChallenge.exercises.map((e, i) =>
       i === idx ? { ...e, completed: Math.min(finalCount, e.target) } : e
     );
@@ -161,7 +205,6 @@ export default function Challenges() {
     setExecIndex(null);
     setView('list');
 
-    // Check if all complete
     const allDone = next.every(e => e.completed >= e.target);
     if (allDone) finishChallenge(next);
   };
@@ -170,8 +213,6 @@ export default function Challenges() {
     if (!activeChallenge || !user?.id || !profile) return;
     const bonus = DIFFICULTY_CONFIG[activeChallenge.difficulty].bonus;
 
-    // Award LP bypassing daily cap
-    const totalReps = finalExs.reduce((s, e) => s + e.completed, 0);
     const skillStrength = Math.floor(bonus * 0.4);
     const skillEndurance = Math.floor(bonus * 0.4);
     const skillMobility = Math.floor(bonus * 0.2);
@@ -225,11 +266,14 @@ export default function Challenges() {
 
   if (view === 'exec' && activeChallenge && execIndex !== null) {
     const ex = activeChallenge.exercises[execIndex];
+    const exData = exerciseByName.get(ex.name.toLowerCase());
     return (
       <ChallengeExecution
         exerciseName={ex.name}
         target={ex.target}
         initialCompleted={ex.completed}
+        gifUrl={exData?.gif_url || null}
+        category={(exData?.category as Category) || 'strength'}
         onRepChange={(n) => handleRepProgress(execIndex, n)}
         onExit={(finalCount) => handleExitExec(execIndex, finalCount)}
       />
@@ -242,8 +286,6 @@ export default function Challenges() {
         <SlotMachine
           pool={CHALLENGE_POOL}
           onDone={(names) => {
-            // Need difficulty — we passed it via state. Read from a ref instead.
-            // For simplicity reuse the last selected via closure: we'll track via a ref.
             const diff = (window as any).__lx_pickedDifficulty as Difficulty;
             handleSlotDone(diff, names);
           }}
@@ -274,6 +316,8 @@ export default function Challenges() {
           {activeChallenge.exercises.map((ex, i) => {
             const done = ex.completed >= ex.target;
             const pct = Math.min(100, (ex.completed / ex.target) * 100);
+            const cat = getCategory(ex.name);
+            const CatIcon = CATEGORY_ICON[cat];
             return (
               <button
                 key={i}
@@ -287,8 +331,17 @@ export default function Challenges() {
                 )}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {done && <Check className="w-4 h-4 text-emerald-500" />}
+                  <div className="flex items-center gap-2.5">
+                    {done ? (
+                      <Check className="w-5 h-5 text-emerald-500" />
+                    ) : (
+                      <div className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center bg-secondary/60",
+                        CATEGORY_COLOR[cat]
+                      )}>
+                        <CatIcon className="w-4 h-4" />
+                      </div>
+                    )}
                     <span className="font-display font-semibold text-foreground">{ex.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -348,7 +401,7 @@ export default function Challenges() {
       </div>
 
       <div className="space-y-3">
-        {(Object.keys(DIFFICULTY_CONFIG) as Difficulty[]).map(d => {
+        {(Object.keys(DIFFICULTY_CONFIG) as Difficulty[]).map((d, idx) => {
           const c = DIFFICULTY_CONFIG[d];
           return (
             <button
@@ -357,12 +410,29 @@ export default function Challenges() {
                 (window as any).__lx_pickedDifficulty = d;
                 handlePickDifficulty(d);
               }}
-              className={cn(
-                "relative w-full h-28 rounded-2xl overflow-hidden bg-gradient-to-br",
-                c.color
-              )}
+              className="relative w-full h-28 rounded-2xl overflow-hidden group active:scale-[0.98] transition-transform"
+              style={{ animationDelay: `${idx * 80}ms` }}
             >
-              <div className="absolute inset-0 bg-black/20" />
+              {/* Atmospheric background image */}
+              <img
+                src={trainingCardBg}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              {/* Color gradient */}
+              <div className={cn("absolute inset-0 bg-gradient-to-t", c.gradient)} />
+              {/* Pulsing glow */}
+              <div className={cn(
+                "absolute -inset-8 rounded-full blur-3xl animate-pulse-glow pointer-events-none",
+                c.glow
+              )} />
+              {/* Shimmer sweep */}
+              <div
+                className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none"
+                style={{
+                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)',
+                }}
+              />
               <div className="relative z-10 h-full flex items-center justify-between px-5">
                 <div className="text-left">
                   <p className="text-xl font-display font-bold text-foreground">{c.icon} {c.label}</p>
@@ -393,7 +463,7 @@ function SlotMachine({ pool, onDone }: { pool: string[]; onDone: (names: string[
   useEffect(() => {
     finalRef.current = pickRandom(pool, 6);
     let tick = 0;
-    const total = 30; // ~1.5s
+    const total = 30;
     const iv = setInterval(() => {
       tick++;
       if (tick < total) {
@@ -436,25 +506,31 @@ function SlotMachine({ pool, onDone }: { pool: string[]; onDone: (names: string[
   );
 }
 
-// ─── Execution ───
+// ─── Execution: shows ready (GIF + instructions) -> active (PoseTracker + stop) ───
 function ChallengeExecution({
   exerciseName,
   target,
   initialCompleted,
+  gifUrl,
+  category,
   onRepChange,
   onExit,
 }: {
   exerciseName: string;
   target: number;
   initialCompleted: number;
+  gifUrl: string | null;
+  category: Category;
   onRepChange: (n: number) => void;
   onExit: (finalCount: number) => void;
 }) {
+  const [step, setStep] = useState<'ready' | 'active'>('ready');
   const [count, setCount] = useState(initialCompleted);
-  const [cameraActive, setCameraActive] = useState(true);
+  const [cameraActive, setCameraActive] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
   const countRef = useRef(initialCompleted);
   const exerciseType = useMemo(() => getExerciseType(exerciseName), [exerciseName]);
+  const CatIcon = CATEGORY_ICON[category];
 
   const handleRep = () => {
     if (countRef.current >= target) return;
@@ -467,11 +543,21 @@ function ChallengeExecution({
     }
   };
 
+  const startActive = () => {
+    setCameraActive(true);
+    setStep('active');
+  };
+
+  const stopAndExit = () => {
+    setCameraActive(false);
+    onExit(countRef.current);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <button
-          onClick={() => { setCameraActive(false); onExit(countRef.current); }}
+          onClick={stopAndExit}
           className="p-2 rounded-lg hover:bg-secondary"
         >
           <ArrowLeft className="w-5 h-5 text-muted-foreground" />
@@ -481,43 +567,102 @@ function ChallengeExecution({
       </div>
 
       <div className="flex-1 flex flex-col items-center p-4 overflow-y-auto">
-        <div className="w-full max-w-lg mx-auto relative overflow-hidden rounded-xl mb-4" style={{ aspectRatio: '3/4' }}>
-          <PoseTracker
-            exercise={exerciseType}
-            isActive={cameraActive}
-            facingMode="user"
-            onRepComplete={handleRep}
-          />
-          <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between">
-            <div className="px-3 py-1.5 rounded-full bg-background/80 backdrop-blur-sm">
-              <span className="text-sm font-bold text-foreground">
-                {count} / {target}
-              </span>
+        {step === 'ready' && (
+          <div className="w-full max-w-sm space-y-5 animate-fade-in">
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center border bg-secondary/60",
+                CATEGORY_COLOR[category]
+              )}>
+                <CatIcon className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-display font-bold text-foreground">{exerciseName}</h3>
+                <p className="text-sm text-muted-foreground capitalize">{category} · Target: {target} reps</p>
+              </div>
             </div>
-            <div className="px-3 py-1.5 rounded-full bg-primary/90">
-              <span className="text-sm font-bold text-primary-foreground">
-                {Math.max(0, target - count)} left
-              </span>
-            </div>
-          </div>
-        </div>
 
-        <div className="w-full max-w-lg space-y-2">
-          <div className="h-3 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all"
-              style={{ width: `${Math.min(100, (count / target) * 100)}%` }}
-            />
+            <div className="lion-card p-4 space-y-4">
+              {gifUrl && (
+                <div className="w-full rounded-xl overflow-hidden border border-border bg-secondary/30">
+                  <img
+                    src={gifUrl}
+                    alt={`${exerciseName} demonstration`}
+                    className="w-full h-auto object-contain"
+                    loading="eager"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 text-sm">
+                  <Zap className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-muted-foreground">Target</span>
+                  <span className="ml-auto font-medium text-primary">{target} reps</span>
+                </div>
+                <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 text-sm">
+                  <Trophy className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="ml-auto font-medium text-foreground">{initialCompleted}/{target}</span>
+                </div>
+              </div>
+
+              <ExerciseInstructions exerciseName={exerciseName} />
+            </div>
+
+            <Button
+              variant="hero"
+              size="xl"
+              className="w-full"
+              onClick={startActive}
+            >
+              <Play className="w-5 h-5" />
+              {initialCompleted > 0 ? 'Resume Exercise' : 'Start Exercise'}
+            </Button>
           </div>
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={() => setConfirmStop(true)}
-          >
-            <Square className="w-4 h-4" />
-            Stop & Save Progress
-          </Button>
-        </div>
+        )}
+
+        {step === 'active' && (
+          <>
+            <div className="w-full max-w-lg mx-auto relative overflow-hidden rounded-xl mb-4" style={{ aspectRatio: '3/4' }}>
+              <PoseTracker
+                exercise={exerciseType}
+                isActive={cameraActive}
+                facingMode="user"
+                onRepComplete={handleRep}
+              />
+              <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between">
+                <div className="px-3 py-1.5 rounded-full bg-background/80 backdrop-blur-sm">
+                  <span className="text-sm font-bold text-foreground">
+                    {count} / {target}
+                  </span>
+                </div>
+                <div className="px-3 py-1.5 rounded-full bg-primary/90">
+                  <span className="text-sm font-bold text-primary-foreground">
+                    {Math.max(0, target - count)} left
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="w-full max-w-lg space-y-2">
+              <div className="h-3 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{ width: `${Math.min(100, (count / target) * 100)}%` }}
+                />
+              </div>
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => setConfirmStop(true)}
+              >
+                <Square className="w-4 h-4" />
+                Stop & Save Progress
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       {confirmStop && (
@@ -531,7 +676,7 @@ function ChallengeExecution({
               <Button variant="outline" className="flex-1" onClick={() => setConfirmStop(false)}>
                 Keep Going
               </Button>
-              <Button variant="destructive" className="flex-1" onClick={() => { setCameraActive(false); onExit(countRef.current); }}>
+              <Button variant="destructive" className="flex-1" onClick={stopAndExit}>
                 Stop
               </Button>
             </div>
