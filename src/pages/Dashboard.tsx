@@ -35,11 +35,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user?.id) return;
-    const key = `challengePromoShown:${user.id}`;
-    if (sessionStorage.getItem(key)) return;
+    const key = `challengePromoLastShown:${user.id}`;
+    const ONE_HOUR = 60 * 60 * 1000;
+    const last = Number(localStorage.getItem(key) || 0);
+    if (Date.now() - last < ONE_HOUR) return;
     const t = setTimeout(() => {
       setPromoOpen(true);
-      sessionStorage.setItem(key, '1');
+      localStorage.setItem(key, String(Date.now()));
     }, 400);
     return () => clearTimeout(t);
   }, [user?.id]);
