@@ -238,7 +238,7 @@ export default function Dashboard() {
           <img 
             src={shopCardBg} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover scale-110"
             style={{ objectPosition: 'center 40%' }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-amber-900/80 to-transparent" />
