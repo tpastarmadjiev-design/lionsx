@@ -233,12 +233,12 @@ export default function Dashboard() {
         {/* Our Shop Card */}
         <button
           onClick={() => window.open('https://lions-wear.com', '_blank')}
-          className="relative w-full h-32 rounded-2xl overflow-hidden group"
+          className="relative w-full h-32 rounded-2xl overflow-hidden group bg-card"
         >
           <img 
             src={shopCardBg} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover scale-110"
+            className="absolute inset-0 w-full h-full object-cover scale-90"
             style={{ objectPosition: 'center 40%' }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-amber-900/80 to-transparent" />
