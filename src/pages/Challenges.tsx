@@ -426,7 +426,8 @@ export default function Challenges() {
               <img
                 src={DIFFICULTY_BG[d]}
                 alt=""
-                className="absolute inset-0 w-full h-full object-cover object-[center_20%]"
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ objectPosition: d === 'easy' ? 'center 30%' : d === 'hard' ? 'center 10%' : 'center 20%' }}
               />
               {/* Color gradient */}
               <div className={cn("absolute inset-0 bg-gradient-to-t", c.gradient)} />
