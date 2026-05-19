@@ -34,13 +34,15 @@ export default function Dashboard() {
   useTrackScreen('dashboard');
 
   useEffect(() => {
-    if (sessionStorage.getItem('challengePromoShown')) return;
+    if (!user?.id) return;
+    const key = `challengePromoShown:${user.id}`;
+    if (sessionStorage.getItem(key)) return;
     const t = setTimeout(() => {
       setPromoOpen(true);
-      sessionStorage.setItem('challengePromoShown', '1');
+      sessionStorage.setItem(key, '1');
     }, 400);
     return () => clearTimeout(t);
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!authLoading && !user) {
