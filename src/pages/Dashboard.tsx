@@ -31,20 +31,36 @@ export default function Dashboard() {
   
   const [socialOpen, setSocialOpen] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
+  const [discordOpen, setDiscordOpen] = useState(false);
+  const [discordPending, setDiscordPending] = useState(false);
   useTrackScreen('dashboard');
 
   useEffect(() => {
     if (!user?.id) return;
     const key = `challengePromoLastShown:${user.id}`;
+    const discordKey = `discordPromoLastShown:${user.id}`;
     const ONE_HOUR = 60 * 60 * 1000;
     const last = Number(localStorage.getItem(key) || 0);
     if (Date.now() - last < ONE_HOUR) return;
     const t = setTimeout(() => {
       setPromoOpen(true);
       localStorage.setItem(key, String(Date.now()));
+      const lastDiscord = Number(localStorage.getItem(discordKey) || 0);
+      if (Date.now() - lastDiscord >= ONE_HOUR) {
+        setDiscordPending(true);
+        localStorage.setItem(discordKey, String(Date.now()));
+      }
     }, 400);
     return () => clearTimeout(t);
   }, [user?.id]);
+
+  const closePromo = () => {
+    setPromoOpen(false);
+    if (discordPending) {
+      setDiscordPending(false);
+      setTimeout(() => setDiscordOpen(true), 300);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
