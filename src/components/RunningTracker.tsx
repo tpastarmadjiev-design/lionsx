@@ -283,9 +283,11 @@ export function RunningTracker({ exercise, remainingDailyLP, onComplete, onCance
 
   const handleConfirm = async () => {
     setIsSubmitting(true);
+    // Reduced endurance XP for running/cycling sessions (50% of nominal)
+    const ENDURANCE_SCALE = 0.5;
     const skillXp = {
       strength: Math.round((exercise.skill_strength / 100) * cappedLP),
-      endurance: Math.round((exercise.skill_endurance / 100) * cappedLP),
+      endurance: Math.round((exercise.skill_endurance / 100) * cappedLP * ENDURANCE_SCALE),
       mobility: Math.round((exercise.skill_mobility / 100) * cappedLP),
     };
     await onComplete(cappedLP, skillXp);

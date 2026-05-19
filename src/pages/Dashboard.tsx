@@ -152,27 +152,48 @@ export default function Dashboard() {
 
       {/* Action Cards */}
       <div className="space-y-4">
-        {/* Start Training Card */}
-        <button
-          onClick={() => navigate('/training')}
-          className="relative w-full h-32 rounded-2xl overflow-hidden group"
-        >
-          <img 
-            src={trainingCardBg} 
-            alt="" 
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-teal-900/80 to-transparent" />
-          <div className="relative z-10 h-full flex flex-col justify-center px-5">
-            <h3 className="text-xl font-display font-bold text-foreground text-left">
-              Start Training
-            </h3>
-            <p className="text-sm text-muted-foreground text-left">
-              Begin your workout session
-            </p>
-          </div>
-          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
-        </button>
+        {/* Training + Challenges Cards (side by side) */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/training')}
+            className="relative h-32 rounded-2xl overflow-hidden group"
+          >
+            <img
+              src={trainingCardBg}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-teal-900/90 via-teal-900/40 to-transparent" />
+            <div className="relative z-10 h-full flex flex-col justify-end px-4 pb-3">
+              <h3 className="text-lg font-display font-bold text-foreground text-left leading-tight">
+                Training
+              </h3>
+              <p className="text-[11px] text-muted-foreground text-left">
+                Begin a workout
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/challenges')}
+            className="relative h-32 rounded-2xl overflow-hidden group"
+          >
+            <img
+              src={trainingCardBg}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-orange-900/90 via-rose-900/40 to-transparent" />
+            <div className="relative z-10 h-full flex flex-col justify-end px-4 pb-3">
+              <h3 className="text-lg font-display font-bold text-foreground text-left leading-tight">
+                Challenges
+              </h3>
+              <p className="text-[11px] text-muted-foreground text-left">
+                Random 6-exercise gauntlet
+              </p>
+            </div>
+          </button>
+        </div>
 
         {/* Our Shop Card */}
         <button
