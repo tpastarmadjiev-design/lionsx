@@ -383,7 +383,7 @@ export default function Dashboard() {
                   Join Our<br />Discord.
                 </h2>
                 <p className="text-sm text-foreground/80 mb-6 max-w-xs drop-shadow-md">
-                  Connect with other Lions. Share progress. Help us build the best fitness app.
+                  Connect with other Players. Share your thoughts, ideas, bugs, progress. Help us Improve.
                 </p>
                 <a
                   href="https://discord.gg/YzrhcACptR"
