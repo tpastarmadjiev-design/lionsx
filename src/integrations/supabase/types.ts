@@ -83,6 +83,36 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback: {
+        Row: {
+          bugs: string | null
+          created_at: string | null
+          id: string
+          improvements: string | null
+          rating: number | null
+          user_id: string | null
+          what_liked: string | null
+        }
+        Insert: {
+          bugs?: string | null
+          created_at?: string | null
+          id?: string
+          improvements?: string | null
+          rating?: number | null
+          user_id?: string | null
+          what_liked?: string | null
+        }
+        Update: {
+          bugs?: string | null
+          created_at?: string | null
+          id?: string
+          improvements?: string | null
+          rating?: number | null
+          user_id?: string | null
+          what_liked?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
