@@ -89,7 +89,7 @@ export default function Challenges() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as ChallengeRow | null;
+      return data as unknown as ChallengeRow | null;
     },
     enabled: !!user?.id,
   });
