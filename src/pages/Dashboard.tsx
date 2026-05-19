@@ -290,31 +290,43 @@ export default function Dashboard() {
             onClick={(e) => e.stopPropagation()}
             className="relative w-[75vw] h-[75vh] max-w-md rounded-2xl p-[1px] bg-gradient-to-br from-primary/70 via-accent/40 to-primary/70 shadow-[0_0_60px_-10px_hsl(var(--primary)/0.6)] animate-scale-in"
           >
-            <div className="w-full h-full rounded-2xl bg-card border border-border flex flex-col items-center justify-center text-center px-6 py-8 overflow-hidden">
-              <p className="text-xs font-display uppercase tracking-[0.3em] text-primary mb-3">New Mode</p>
-              <h2 className="text-3xl sm:text-4xl font-display font-black uppercase text-foreground leading-tight mb-3">
-                Challenge<br />Yourself.
-              </h2>
-              <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-                6 random exercises. No daily limit. Pure results.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-                <span className="px-3 py-1 rounded-full text-xs font-display font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Easy +30LP</span>
-                <span className="px-3 py-1 rounded-full text-xs font-display font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">Medium +50LP</span>
-                <span className="px-3 py-1 rounded-full text-xs font-display font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">Hard +75LP</span>
+            <div className="relative w-full h-full rounded-2xl bg-card border border-border overflow-hidden">
+              {/* Background image */}
+              <img
+                src={challengePromoImg}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover object-top"
+              />
+              {/* Dark gradient overlay for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background/95" />
+
+              {/* Content */}
+              <div className="relative z-10 w-full h-full flex flex-col items-center justify-end text-center px-6 py-8">
+                <p className="text-xs font-display uppercase tracking-[0.3em] text-primary mb-3 drop-shadow-lg">New Mode</p>
+                <h2 className="text-3xl sm:text-4xl font-display font-black uppercase text-foreground leading-tight mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                  Challenge<br />Yourself.
+                </h2>
+                <p className="text-sm text-foreground/80 mb-5 max-w-xs drop-shadow-md">
+                  6 random exercises. No daily limit. Pure results.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
+                  <span className="px-3 py-1 rounded-full text-xs font-display font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 backdrop-blur-sm">Easy +30LP</span>
+                  <span className="px-3 py-1 rounded-full text-xs font-display font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40 backdrop-blur-sm">Medium +50LP</span>
+                  <span className="px-3 py-1 rounded-full text-xs font-display font-bold bg-rose-500/20 text-rose-300 border border-rose-400/40 backdrop-blur-sm">Hard +75LP</span>
+                </div>
+                <button
+                  onClick={() => { setPromoOpen(false); navigate('/challenges'); }}
+                  className="w-full max-w-xs h-12 rounded-xl font-display font-bold uppercase tracking-wider text-primary-foreground bg-gradient-to-r from-primary to-accent shadow-lg hover:shadow-[0_0_24px_-2px_hsl(var(--primary)/0.7)] transition-all"
+                >
+                  Start a Challenge
+                </button>
+                <button
+                  onClick={() => setPromoOpen(false)}
+                  className="mt-3 text-xs text-foreground/70 hover:text-foreground transition-colors underline-offset-4 hover:underline"
+                >
+                  Maybe later
+                </button>
               </div>
-              <button
-                onClick={() => { setPromoOpen(false); navigate('/challenges'); }}
-                className="w-full max-w-xs h-12 rounded-xl font-display font-bold uppercase tracking-wider text-primary-foreground bg-gradient-to-r from-primary to-accent shadow-lg hover:shadow-[0_0_24px_-2px_hsl(var(--primary)/0.7)] transition-all"
-              >
-                Start a Challenge
-              </button>
-              <button
-                onClick={() => setPromoOpen(false)}
-                className="mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
-              >
-                Maybe later
-              </button>
             </div>
           </div>
         </div>
