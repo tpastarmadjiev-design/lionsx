@@ -18,6 +18,15 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import trainingCardBg from '@/assets/training-card-bg.jpg';
+import challengeEasyBg from '@/assets/challenge-easy.png';
+import challengeMediumBg from '@/assets/challenge-medium.png';
+import challengeHardBg from '@/assets/challenge-hard.png';
+
+const DIFFICULTY_BG: Record<'easy' | 'medium' | 'hard', string> = {
+  easy: challengeEasyBg,
+  medium: challengeMediumBg,
+  hard: challengeHardBg,
+};
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type Category = 'strength' | 'endurance' | 'mobility';
@@ -415,7 +424,7 @@ export default function Challenges() {
             >
               {/* Atmospheric background image */}
               <img
-                src={trainingCardBg}
+                src={DIFFICULTY_BG[d]}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover"
               />
