@@ -426,7 +426,7 @@ export default function Challenges() {
               <img
                 src={DIFFICULTY_BG[d]}
                 alt=""
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover object-top"
               />
               {/* Color gradient */}
               <div className={cn("absolute inset-0 bg-gradient-to-t", c.gradient)} />
@@ -444,7 +444,7 @@ export default function Challenges() {
               />
               <div className="relative z-10 h-full flex items-center justify-between px-5">
                 <div className="text-left">
-                  <p className="text-xl font-display font-bold text-foreground">{c.icon} {c.label}</p>
+                  <p className="text-3xl font-black text-foreground">{c.label}</p>
                   <p className="text-xs text-foreground/80">{c.reps} reps × 6 exercises</p>
                 </div>
                 <div className="text-right">
