@@ -129,6 +129,9 @@ export default function Dashboard() {
           })()}
 
         </div>
+
+        {/* Feedback icon */}
+        <FeedbackIconButton />
       </div>
 
       {/* Circular Skill Progress */}
