@@ -29,7 +29,17 @@ export default function Dashboard() {
   const navigate = useNavigate();
   
   const [socialOpen, setSocialOpen] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
   useTrackScreen('dashboard');
+
+  useEffect(() => {
+    if (sessionStorage.getItem('challengePromoShown')) return;
+    const t = setTimeout(() => {
+      setPromoOpen(true);
+      sessionStorage.setItem('challengePromoShown', '1');
+    }, 600);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
