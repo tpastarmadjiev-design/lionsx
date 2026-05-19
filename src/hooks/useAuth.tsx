@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     gaEvents.logout();
     // Clear popup throttle so it shows again on next login
     Object.keys(localStorage)
-      .filter((k) => k.startsWith('challengePromoLastShown:'))
+      .filter((k) => k.startsWith('challengePromoLastShown:') || k.startsWith('discordPromoLastShown:'))
       .forEach((k) => localStorage.removeItem(k));
     await supabase.auth.signOut();
     toast.success('Signed out successfully');
