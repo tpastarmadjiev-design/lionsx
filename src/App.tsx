@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Training from "./pages/Training";
+import Challenges from "./pages/Challenges";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import Ranks from "./pages/Ranks";
@@ -25,6 +26,7 @@ function AppRoutes() {
       <Route path="/auth" element={<Auth />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/training" element={<Training />} />
+      <Route path="/challenges" element={<Challenges />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/ranks" element={<Ranks />} />
