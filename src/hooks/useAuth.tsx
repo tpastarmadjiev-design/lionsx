@@ -91,6 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     resetCameraPermissionFlag();
     gaEvents.logout();
+    // Clear per-user popup flags so popup shows again on next login
+    Object.keys(sessionStorage)
+      .filter((k) => k.startsWith('challengePromoShown:'))
+      .forEach((k) => sessionStorage.removeItem(k));
     await supabase.auth.signOut();
     toast.success('Signed out successfully');
   };
