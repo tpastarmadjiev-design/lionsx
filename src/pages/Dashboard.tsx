@@ -34,11 +34,7 @@ export default function Dashboard() {
   useTrackScreen('dashboard');
 
   useEffect(() => {
-    if (sessionStorage.getItem('challengePromoShown')) return;
-    const t = setTimeout(() => {
-      setPromoOpen(true);
-      sessionStorage.setItem('challengePromoShown', '1');
-    }, 600);
+    const t = setTimeout(() => setPromoOpen(true), 400);
     return () => clearTimeout(t);
   }, []);
 
