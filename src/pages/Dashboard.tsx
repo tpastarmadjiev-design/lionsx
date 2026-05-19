@@ -14,6 +14,7 @@ const TikTokIcon = () => (
 import { useEffect, useState } from 'react';
 import { getRank, getNextRank, getRankProgress, formatLP } from '@/lib/ranks';
 import { SocialLinksModal } from '@/components/SocialLinksModal';
+import { FeedbackIconButton } from '@/components/FeedbackForm';
 
 import trainingCardBg from '@/assets/training-card-bg.jpg';
 import shopCardBg from '@/assets/shop-card-bg.jpg';
