@@ -12,18 +12,37 @@ export function FeedbackButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="lion-card mt-4 w-full p-4 flex items-center gap-3 animate-fade-in hover:bg-secondary/50 transition-colors"
+        className="relative mt-4 w-full p-[1px] rounded-xl bg-gradient-to-r from-primary/60 via-accent/40 to-primary/60 shadow-[0_0_24px_-6px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_32px_-4px_hsl(var(--primary)/0.7)] transition-all animate-fade-in group"
         style={{ animationDelay: '0.4s' }}
       >
-        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-          <MessageSquare className="w-5 h-5 text-primary" />
-        </div>
-        <div className="text-left">
-          <p className="font-display font-semibold text-foreground">Send Feedback</p>
-          <p className="text-xs text-muted-foreground">Help us improve Lions-X</p>
+        <div className="flex items-center gap-3 p-4 rounded-[11px] bg-card/95 backdrop-blur-sm">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
+            <MessageSquare className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <div className="text-left flex-1">
+            <p className="font-display font-bold uppercase tracking-wider text-foreground">Send Feedback</p>
+            <p className="text-xs text-muted-foreground">Help us improve Lions-X</p>
+          </div>
         </div>
       </button>
 
+      {isOpen && <FeedbackModal onClose={() => setIsOpen(false)} />}
+    </>
+  );
+}
+
+export function FeedbackIconButton() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        aria-label="Send feedback"
+        className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 border border-white/20 shadow-[0_0_12px_rgba(255,255,255,0.25)] hover:shadow-[0_0_18px_rgba(255,255,255,0.5)] hover:bg-white/10 transition-all"
+      >
+        <MessageSquare className="w-5 h-5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
+      </button>
       {isOpen && <FeedbackModal onClose={() => setIsOpen(false)} />}
     </>
   );
