@@ -41,6 +41,39 @@ export type Database = {
         }
         Relationships: []
       }
+      challenges: {
+        Row: {
+          completed_at: string | null
+          difficulty: string
+          exercises: Json
+          id: string
+          lp_awarded: number
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          difficulty: string
+          exercises?: Json
+          id?: string
+          lp_awarded?: number
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          difficulty?: string
+          exercises?: Json
+          id?: string
+          lp_awarded?: number
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           category: string
