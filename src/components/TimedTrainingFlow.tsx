@@ -73,7 +73,7 @@ const categoryColors = {
 const TIMER_DURATION = 60; // 60 seconds
 
 // Map exercise names to PoseTracker exercise types
-function getExerciseType(name: string): import("@/lib/antiCheat").ExerciseType {
+export function getExerciseType(name: string): import("@/lib/antiCheat").ExerciseType {
   const normalized = name.toLowerCase();
   if (normalized === "squats") return "squats";
   if (normalized === "lunges") return "lunges";
